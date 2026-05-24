@@ -27,7 +27,10 @@
 	onMount(async () => {
 		await chat.bootstrap();
 		if (chat.state.connected) {
-			await sessions.bootstrap(chat);
+			const activeKey = await sessions.bootstrap(chat);
+			if (!activeKey) {
+				chat.state.loading = false;
+			}
 		} else {
 			chat.state.loading = false;
 		}

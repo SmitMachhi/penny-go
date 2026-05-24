@@ -12,7 +12,7 @@ import socket
 import sys
 from datetime import UTC, datetime
 from typing import Final
-from urllib.parse import ParseResult, urlparse
+from urllib.parse import urlparse
 
 _MAX_SOURCE_CHARS: Final[int] = 50_000
 _TRUNCATION_MARKER: Final[str] = "\n\n[PENNY_TRUNCATED_MAX_SOURCE_CHARS]\n"
@@ -30,13 +30,13 @@ def main() -> None:
         _emit(False, {}, "missing_url")
         sys.exit(1)
     resolved = urlparse(url)
-    fetch_url, browser_headers, hostname_err = resolve_and_pin_https_url(resolved.geturl())
+    fetch_url, browser_extra_args, hostname_err = resolve_https_fetch(resolved.geturl())
     if hostname_err:
         _emit(False, {"url": url}, hostname_err)
         sys.exit(0)
     try:
         with _silence_crawl4ai_stdout():
-            out = asyncio.run(fetch_url_markdown(url, fetch_url, browser_headers))
+            out = asyncio.run(fetch_url_markdown(url, browser_extra_args))
     except KeyboardInterrupt:
         raise
     except Exception as exc:  # noqa: BLE001 — surface to caller JSON
@@ -45,22 +45,22 @@ def main() -> None:
     print(json.dumps(out, ensure_ascii=False))
 
 
-def resolve_and_pin_https_url(
+def resolve_https_fetch(
     original_url: str,
-) -> tuple[str, dict[str, str], str | None]:
-    """Return fetch URL (IP-pinned when hostname-based), browser headers, and error."""
+) -> tuple[str, list[str], str | None]:
+    """Return fetch URL, Chromium resolver args, and error."""
     parsed = urlparse(original_url)
     if parsed.scheme.lower() != "https":
-        return "", {}, "only_https"
+        return "", [], "only_https"
     hostname = parsed.hostname
     if not hostname:
-        return "", {}, "missing_hostname"
+        return "", [], "missing_hostname"
     lowered_host = hostname.lower()
     blocked_hosts_re = r"^(localhost|127\.0\.0\.1|::1|\[::1\])$"
     if re.match(blocked_hosts_re, lowered_host):
-        return "", {}, "blocked_hostname"
+        return "", [], "blocked_hostname"
     if lowered_host.endswith(".local") or lowered_host.endswith(".localhost"):
-        return "", {}, "blocked_hostname"
+        return "", [], "blocked_hostname"
     ip_like = lowered_host.startswith("[") and lowered_host.endswith("]")
     ip_raw = lowered_host[1:-1] if ip_like else lowered_host
     try:
@@ -68,15 +68,20 @@ def resolve_and_pin_https_url(
     except ValueError:
         pinned_ip, dns_err = _first_public_resolved_ip(hostname)
         if dns_err:
-            return "", {}, dns_err
+            return "", [], dns_err
         return (
-            _build_pinned_url(parsed, pinned_ip),
-            {"Host": hostname},
+            original_url,
+            [_host_resolver_rule(hostname, pinned_ip)],
             None,
         )
     if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-        return "", {}, "blocked_ip"
-    return original_url, {}, None
+        return "", [], "blocked_ip"
+    return original_url, [], None
+
+
+def _host_resolver_rule(hostname: str, ip: str) -> str:
+    """Pin validated DNS without rewriting the HTTPS URL (preserves TLS SNI)."""
+    return f"--host-resolver-rules=MAP {hostname} {ip}"
 
 
 def _first_public_resolved_ip(hostname: str) -> tuple[str, str | None]:
@@ -99,13 +104,6 @@ def _first_public_resolved_ip(hostname: str) -> tuple[str, str | None]:
             return "", "blocked_resolved_ip"
         return ip_str, None
     return "", "dns_empty"
-
-
-def _build_pinned_url(parsed: ParseResult, ip: str) -> str:
-    ip_host = f"[{ip}]" if ipaddress.ip_address(ip).version == 6 else ip
-    port_suffix = f":{parsed.port}" if parsed.port else ""
-    pinned = parsed._replace(netloc=f"{ip_host}{port_suffix}")
-    return pinned.geturl()
 
 
 @contextlib.contextmanager
@@ -145,15 +143,13 @@ def _markdown_as_string(raw: object | None) -> str:
 
 async def fetch_url_markdown(
     url: str,
-    fetch_url: str | None = None,
-    browser_headers: dict[str, str] | None = None,
+    browser_extra_args: list[str] | None = None,
 ) -> dict[str, object]:
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
     from crawl4ai.processors.pdf import PDFContentScrapingStrategy
 
     fetched_at = datetime.now(UTC).isoformat()
     normalized = urlparse(url)._replace(fragment="").geturl()
-    actual_fetch_url = fetch_url or normalized
 
     path_only = urlparse(normalized).path.lower()
 
@@ -163,7 +159,7 @@ async def fetch_url_markdown(
     browser_config = BrowserConfig(
         headless=True,
         verbose=False,
-        headers=browser_headers or {},
+        extra_args=browser_extra_args or [],
     )
     if pdf_branch:
         run_cfg = CrawlerRunConfig(
@@ -174,7 +170,7 @@ async def fetch_url_markdown(
         run_cfg = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        result = await crawler.arun(url=actual_fetch_url, config=run_cfg)
+        result = await crawler.arun(url=normalized, config=run_cfg)
 
     raw_md = getattr(result, "markdown", None)
     markdown_text = _markdown_as_string(raw_md)

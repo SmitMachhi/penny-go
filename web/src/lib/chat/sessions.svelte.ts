@@ -1,4 +1,5 @@
 import {
+	clearActiveSessionKey,
 	pickBootstrapSessionKey,
 	readActiveSessionKey,
 	writeActiveSessionKey
@@ -154,6 +155,17 @@ export class SessionClient {
 		const created = await this.createSession();
 		if (created) {
 			await this.switchSession(chat, created.key);
+			return;
 		}
+
+		chat.dispose();
+		clearActiveSessionKey();
+		chat.state.sessionKey = '';
+		chat.state.sessionId = null;
+		chat.state.messages = [];
+		chat.state.streamText = '';
+		chat.state.tools = [];
+		chat.state.loading = false;
+		chat.state.sending = false;
 	}
 }

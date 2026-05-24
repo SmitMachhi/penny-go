@@ -13,7 +13,11 @@ export function parseJsonlPrograms(raw: string): ProgramProfile[] {
       continue;
     }
 
-    programs.push(JSON.parse(trimmed) as ProgramProfile);
+    try {
+      programs.push(JSON.parse(trimmed) as ProgramProfile);
+    } catch {
+      // skip malformed lines rather than aborting the entire load
+    }
   }
 
   return programs;

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import ipaddress
 import json
 import re
@@ -11,7 +12,7 @@ import socket
 import sys
 from datetime import UTC, datetime
 from typing import Final
-from urllib.parse import urlparse
+from urllib.parse import ParseResult, urlparse
 
 _MAX_SOURCE_CHARS: Final[int] = 50_000
 _TRUNCATION_MARKER: Final[str] = "\n\n[PENNY_TRUNCATED_MAX_SOURCE_CHARS]\n"
@@ -29,12 +30,13 @@ def main() -> None:
         _emit(False, {}, "missing_url")
         sys.exit(1)
     resolved = urlparse(url)
-    hostname_err = resolve_hostname_https_url(resolved.geturl())
+    fetch_url, browser_headers, hostname_err = resolve_and_pin_https_url(resolved.geturl())
     if hostname_err:
         _emit(False, {"url": url}, hostname_err)
         sys.exit(0)
     try:
-        out = asyncio.run(fetch_url_markdown(url))
+        with _silence_crawl4ai_stdout():
+            out = asyncio.run(fetch_url_markdown(url, fetch_url, browser_headers))
     except KeyboardInterrupt:
         raise
     except Exception as exc:  # noqa: BLE001 — surface to caller JSON
@@ -43,38 +45,47 @@ def main() -> None:
     print(json.dumps(out, ensure_ascii=False))
 
 
-def resolve_hostname_https_url(original_url: str) -> str | None:
-    """Return error string or None if allowed."""
+def resolve_and_pin_https_url(
+    original_url: str,
+) -> tuple[str, dict[str, str], str | None]:
+    """Return fetch URL (IP-pinned when hostname-based), browser headers, and error."""
     parsed = urlparse(original_url)
     if parsed.scheme.lower() != "https":
-        return "only_https"
+        return "", {}, "only_https"
     hostname = parsed.hostname
     if not hostname:
-        return "missing_hostname"
+        return "", {}, "missing_hostname"
     lowered_host = hostname.lower()
     blocked_hosts_re = r"^(localhost|127\.0\.0\.1|::1|\[::1\])$"
     if re.match(blocked_hosts_re, lowered_host):
-        return "blocked_hostname"
+        return "", {}, "blocked_hostname"
     if lowered_host.endswith(".local") or lowered_host.endswith(".localhost"):
-        return "blocked_hostname"
+        return "", {}, "blocked_hostname"
     ip_like = lowered_host.startswith("[") and lowered_host.endswith("]")
     ip_raw = lowered_host[1:-1] if ip_like else lowered_host
     try:
         addr = ipaddress.ip_address(ip_raw)
     except ValueError:
-        return _resolve_dns_block(hostname)
+        pinned_ip, dns_err = _first_public_resolved_ip(hostname)
+        if dns_err:
+            return "", {}, dns_err
+        return (
+            _build_pinned_url(parsed, pinned_ip),
+            {"Host": hostname},
+            None,
+        )
     if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-        return "blocked_ip"
-    return None
+        return "", {}, "blocked_ip"
+    return original_url, {}, None
 
 
-def _resolve_dns_block(hostname: str) -> str | None:
+def _first_public_resolved_ip(hostname: str) -> tuple[str, str | None]:
     try:
         infos = socket.getaddrinfo(hostname, None, type=socket.SOCK_STREAM)
     except OSError as exc:
-        return f"dns_error: {exc}"
+        return "", f"dns_error: {exc}"
     if not infos:
-        return "dns_empty"
+        return "", "dns_empty"
     for info in infos:
         sockaddr = info[4]
         if not sockaddr:
@@ -85,8 +96,27 @@ def _resolve_dns_block(hostname: str) -> str | None:
         except ValueError:
             continue
         if addr.is_private or addr.is_loopback or addr.is_link_local or addr.is_reserved:
-            return "blocked_resolved_ip"
-    return None
+            return "", "blocked_resolved_ip"
+        return ip_str, None
+    return "", "dns_empty"
+
+
+def _build_pinned_url(parsed: ParseResult, ip: str) -> str:
+    ip_host = f"[{ip}]" if ipaddress.ip_address(ip).version == 6 else ip
+    port_suffix = f":{parsed.port}" if parsed.port else ""
+    pinned = parsed._replace(netloc=f"{ip_host}{port_suffix}")
+    return pinned.geturl()
+
+
+@contextlib.contextmanager
+def _silence_crawl4ai_stdout() -> object:
+    """Keep Crawl4AI progress lines off stdout so the plugin reads pure JSON."""
+    prior_stdout = sys.stdout
+    sys.stdout = sys.stderr
+    try:
+        yield
+    finally:
+        sys.stdout = prior_stdout
 
 
 def _emit(success: bool, extra: dict[str, object], error: str) -> None:
@@ -113,19 +143,28 @@ def _markdown_as_string(raw: object | None) -> str:
     return str(raw)
 
 
-async def fetch_url_markdown(url: str) -> dict[str, object]:
+async def fetch_url_markdown(
+    url: str,
+    fetch_url: str | None = None,
+    browser_headers: dict[str, str] | None = None,
+) -> dict[str, object]:
     from crawl4ai import AsyncWebCrawler, BrowserConfig, CacheMode, CrawlerRunConfig
     from crawl4ai.processors.pdf import PDFContentScrapingStrategy
 
     fetched_at = datetime.now(UTC).isoformat()
     normalized = urlparse(url)._replace(fragment="").geturl()
+    actual_fetch_url = fetch_url or normalized
 
     path_only = urlparse(normalized).path.lower()
 
     stripped_path = path_only.rstrip("/")
 
     pdf_branch = stripped_path.endswith(".pdf")
-    browser_config = BrowserConfig(headless=True, verbose=False)
+    browser_config = BrowserConfig(
+        headless=True,
+        verbose=False,
+        headers=browser_headers or {},
+    )
     if pdf_branch:
         run_cfg = CrawlerRunConfig(
             scraping_strategy=PDFContentScrapingStrategy(),
@@ -135,19 +174,22 @@ async def fetch_url_markdown(url: str) -> dict[str, object]:
         run_cfg = CrawlerRunConfig(cache_mode=CacheMode.BYPASS)
 
     async with AsyncWebCrawler(config=browser_config) as crawler:
-        result = await crawler.arun(url=normalized, config=run_cfg)
+        result = await crawler.arun(url=actual_fetch_url, config=run_cfg)
 
-    if not getattr(result, "success", False):
+    raw_md = getattr(result, "markdown", None)
+    markdown_text = _markdown_as_string(raw_md)
+    cleaned = getattr(result, "cleaned_html", None)
+    cleaned_text = str(cleaned) if cleaned else ""
+    has_extracted_content = len(markdown_text) > 0 or len(cleaned_text) > 0
+    crawl_success = getattr(result, "success", False)
+
+    if not crawl_success and not (pdf_branch and has_extracted_content):
         return {
             "success": False,
             "url": normalized,
             "error": getattr(result, "error_message", "crawl_unsuccessful"),
             "fetched_at": fetched_at,
         }
-
-    raw_md = getattr(result, "markdown", None)
-    markdown_text = _markdown_as_string(raw_md)
-    cleaned = getattr(result, "cleaned_html", None)
 
     truncate_note = ""
 

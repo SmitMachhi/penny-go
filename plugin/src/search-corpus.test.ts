@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { ProgramProfile } from "./corpus-types.js";
+import { textLooksLoanBacked } from "./loan-filter.js";
 import { filterAndRankPrograms } from "./search-corpus.js";
+import { parseJsonlPrograms } from "./search-corpus-load.js";
 
 const ONTARIO_LOAN: ProgramProfile = {
   business_only: true,
@@ -67,4 +69,23 @@ test("include_federal admits federal jurisdiction when provincial filter applied
   });
   assert.equal(withFederal.length, 1);
   assert.equal(withFederal[0]?.jurisdiction, "federal");
+});
+
+test("loan filter stays stable across consecutive corpus rows", () => {
+  const loanBlob = ["Loan guarantee up to $1m", "Ontario low-interest financing"];
+  assert.equal(textLooksLoanBacked(loanBlob), true);
+  assert.equal(textLooksLoanBacked(loanBlob), true);
+  assert.equal(textLooksLoanBacked(loanBlob), true);
+});
+
+test("parseJsonlPrograms skips malformed lines", () => {
+  const raw = [
+    JSON.stringify(ONTARIO_HIRING),
+    "{not valid json",
+    JSON.stringify(FEDERAL_BROADBAND),
+  ].join("\n");
+  const programs = parseJsonlPrograms(raw);
+  assert.equal(programs.length, 2);
+  assert.equal(programs[0]?.program_name, ONTARIO_HIRING.program_name);
+  assert.equal(programs[1]?.program_name, FEDERAL_BROADBAND.program_name);
 });

@@ -1,3 +1,4 @@
+/** OpenClaw sends incremental deltaText; message carries cumulative text when present. */
 import { extractMessageText } from '$lib/chat/messages.js';
 import type { ChatEventPayload } from '$lib/gateway/types.js';
 

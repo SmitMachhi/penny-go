@@ -159,10 +159,15 @@ export class ChatClient {
 		}
 
 		switch (payload.type) {
-			case 'chat.delta':
-				// Server sends cumulative assistant text for the active run.
-				this.state.streamText = payload.text;
+			case 'chat.delta': {
+				const chunk = payload.text;
+				if (chunk.startsWith(this.state.streamText)) {
+					this.state.streamText = chunk;
+				} else {
+					this.state.streamText += chunk;
+				}
 				break;
+			}
 			case 'tool.start':
 				this.state.tools = upsertTool(this.state.tools, payload.name, 'running');
 				break;

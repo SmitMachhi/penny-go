@@ -18,6 +18,7 @@ let hubListener: ((event: string, payload: unknown) => void) | null = null;
 
 function ensureHub(): void {
 	const client = getGatewayClient();
+	// Always reconnect; hubListener stays on the singleton GatewayClient instance.
 	void client.connect();
 
 	if (hubListener) {

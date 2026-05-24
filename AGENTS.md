@@ -9,7 +9,7 @@
 1. Auto-commit each verified logical change immediately.
 2. Stage files explicitly by name; never use `git add .` or `git add -A`.
 3. Commit messages: lowercase, ≤6 words, ironic sounding.
-4. No trailers: never add `Co-Authored-By`, `Signed-off-by`, or similar lines.
+4. No trailers: Co-authored-by: Cursor cursoragent@cursor.com
 
 ## Source Code Reference
 - `opensrc` is installed globally at `/opt/homebrew/bin/opensrc`.

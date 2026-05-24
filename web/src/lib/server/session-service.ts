@@ -158,10 +158,10 @@ export async function renamePennySession(key: string, label: string): Promise<Pe
 
 export async function deletePennySession(key: string): Promise<void> {
 	const sessionKey = resolveSessionKey(key);
+	const memoryPath = engagementMemoryPath(sessionKey);
 	const client = getGatewayClient();
 	await client.request('sessions.delete', { key: sessionKey, deleteTranscript: true });
 
-	const memoryPath = engagementMemoryPath(sessionKey);
 	if (memoryPath) {
 		try {
 			await unlink(memoryPath);

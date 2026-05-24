@@ -46,7 +46,7 @@ export class SessionClient {
 		await this.refresh();
 		let activeKey = pickBootstrapSessionKey(readActiveSessionKey(), this.state.sessions);
 
-		if (!activeKey) {
+		if (!activeKey && !this.state.error) {
 			const created = await this.createSession();
 			activeKey = created?.key ?? null;
 		}

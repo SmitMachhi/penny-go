@@ -23,7 +23,18 @@ Set `OPENCLAW_GATEWAY_TOKEN` from `~/.openclaw/openclaw.json` → `gateway.auth.
 Optional:
 
 - `OPENCLAW_GATEWAY_URL` (default `ws://127.0.0.1:18789`)
-- `PENNY_SESSION_KEY` (default `agent:main:main`)
+- `PENNY_REPO_ROOT` (repo root; used to delete engagement memory files on session delete)
+
+## Sessions
+
+Each chat is a separate business engagement (`agent:main:penny:<uuid>`). The sidebar lists sessions from OpenClaw; the active session key is stored in browser `localStorage` (`penny:activeSessionKey`).
+
+API routes:
+
+- `GET /api/sessions` — list penny sessions (plus legacy **Previous chat** when applicable)
+- `POST /api/sessions` — create session
+- `PATCH /api/sessions/:key` — rename
+- `DELETE /api/sessions/:key` — delete transcript + engagement memory file
 
 ## Run
 
@@ -62,6 +73,7 @@ curl -X POST http://localhost:5173/api/chat/send \
 API routes:
 
 - `GET /api/health` — gateway connectivity
+- `GET /api/sessions` — list/create/manage chat sessions
 - `GET /api/chat/history` — transcript
 - `POST /api/chat/send` — start a run
 - `GET /api/chat/stream` — SSE (`chat`, tool events)

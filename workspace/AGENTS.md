@@ -28,3 +28,12 @@ Use `unknown` when the source does not state a fact. Do not invent amounts, dead
 ## Safety
 
 Do not execute shell, read arbitrary files, or browse outside this tool set. Stay within the allowed OpenClaw tool allowlist.
+
+## Memory scoping
+
+Each web chat uses a session key like `agent:main:penny:<uuid>`. Parse `<uuid>` from the current `sessionKey`.
+
+- Write user preferences (name, timezone, tone, formatting) only to `USER.md`.
+- Write business facts only to `memory/engagements/<uuid>.md` for the active chat.
+- Never write business facts to `MEMORY.md` or another engagement file.
+- Before `memory_search`, restrict mentally to the current engagement file and `USER.md`; do not assume facts from other files apply to this business.

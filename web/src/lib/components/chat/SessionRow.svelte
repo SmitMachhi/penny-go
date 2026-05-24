@@ -1,0 +1,109 @@
+<script lang="ts">
+	import { MoreHorizontal } from '@lucide/svelte';
+
+	import type { PennySession } from '$lib/chat/sessions.svelte.js';
+	import { cn } from '$lib/utils.js';
+
+	type Props = {
+		session: PennySession;
+		active: boolean;
+		onSelect: () => void;
+		onRename: (label: string) => void;
+		onDelete: () => void;
+	};
+
+	let { session, active, onSelect, onRename, onDelete }: Props = $props();
+
+	let editing = $state(false);
+	let draft = $state('');
+	let menuOpen = $state(false);
+
+	function startRename() {
+		menuOpen = false;
+		draft = session.title;
+		editing = true;
+	}
+
+	function commitRename() {
+		const label = draft.trim();
+		editing = false;
+		if (label && label !== session.title) {
+			onRename(label);
+		}
+	}
+
+	function handleRenameKeydown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			event.preventDefault();
+			commitRename();
+		}
+		if (event.key === 'Escape') {
+			editing = false;
+			draft = session.title;
+		}
+	}
+</script>
+
+<div class="group relative">
+	{#if editing}
+		<input
+			class="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+			bind:value={draft}
+			maxlength="60"
+			onblur={commitRename}
+			onkeydown={handleRenameKeydown}
+		/>
+	{:else}
+		<button
+			type="button"
+			class={cn(
+				'w-full rounded-lg px-3 py-2 text-left transition-colors',
+				active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'
+			)}
+			onclick={onSelect}
+			ondblclick={startRename}
+		>
+			<p class="truncate text-sm font-medium">{session.title}</p>
+			{#if session.preview}
+				<p class="truncate text-xs text-muted-foreground">{session.preview}</p>
+			{/if}
+		</button>
+	{/if}
+
+	<div class="absolute right-1 top-1">
+		<button
+			type="button"
+			class="rounded-md p-1 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
+			aria-label="Session actions"
+			onclick={(event) => {
+				event.stopPropagation();
+				menuOpen = !menuOpen;
+			}}
+		>
+			<MoreHorizontal class="h-4 w-4" />
+		</button>
+		{#if menuOpen}
+			<div
+				class="absolute right-0 z-10 mt-1 min-w-28 rounded-lg border border-border bg-card py-1 shadow-md"
+			>
+				<button
+					type="button"
+					class="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+					onclick={startRename}
+				>
+					Rename
+				</button>
+				<button
+					type="button"
+					class="block w-full px-3 py-1.5 text-left text-sm text-destructive hover:bg-accent"
+					onclick={() => {
+						menuOpen = false;
+						onDelete();
+					}}
+				>
+					Delete
+				</button>
+			</div>
+		{/if}
+	</div>
+</div>

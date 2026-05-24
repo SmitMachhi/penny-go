@@ -10,6 +10,7 @@ import json
 import re
 import socket
 import sys
+from collections.abc import Iterator
 from datetime import UTC, datetime
 from typing import Final
 from urllib.parse import urlparse
@@ -36,7 +37,7 @@ def main() -> None:
         sys.exit(0)
     try:
         with _silence_crawl4ai_stdout():
-            out = asyncio.run(fetch_url_markdown(url, browser_extra_args))
+            out = asyncio.run(fetch_url_markdown(fetch_url, browser_extra_args))
     except KeyboardInterrupt:
         raise
     except Exception as exc:  # noqa: BLE001 — surface to caller JSON
@@ -107,7 +108,7 @@ def _first_public_resolved_ip(hostname: str) -> tuple[str, str | None]:
 
 
 @contextlib.contextmanager
-def _silence_crawl4ai_stdout() -> object:
+def _silence_crawl4ai_stdout() -> Iterator[None]:
     """Keep Crawl4AI progress lines off stdout so the plugin reads pure JSON."""
     prior_stdout = sys.stdout
     sys.stdout = sys.stderr

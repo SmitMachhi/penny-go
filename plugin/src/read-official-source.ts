@@ -114,6 +114,11 @@ function registerAbortKill(
   child: ReturnType<typeof spawn>,
   signal: AbortSignal,
 ): () => void {
+  if (signal.aborted) {
+    child.kill("SIGKILL");
+    return () => undefined;
+  }
+
   const onAbort = () => {
     child.kill("SIGKILL");
   };
@@ -128,8 +133,27 @@ function parseStdoutJson(stdout: string): Record<string, unknown> | undefined {
     return undefined;
   }
 
+  const direct = parseJsonRecord(trimmed);
+  if (direct) {
+    return direct;
+  }
+
+  const trailingJsonStart = trimmed.lastIndexOf("\n{");
+  if (trailingJsonStart >= 0) {
+    return parseJsonRecord(trimmed.slice(trailingJsonStart + 1));
+  }
+
+  const inlineJsonStart = trimmed.lastIndexOf("{");
+  if (inlineJsonStart >= 0) {
+    return parseJsonRecord(trimmed.slice(inlineJsonStart));
+  }
+
+  return undefined;
+}
+
+function parseJsonRecord(raw: string): Record<string, unknown> | undefined {
   try {
-    const value: unknown = JSON.parse(trimmed);
+    const value: unknown = JSON.parse(raw.trim());
 
     if (value && typeof value === "object" && !Array.isArray(value)) {
       return value as Record<string, unknown>;

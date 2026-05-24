@@ -1,0 +1,30 @@
+{
+  "agents": {
+    "defaults": {
+      "model": { "primary": "deepseek/deepseek-v4-flash" },
+      "workspace": "/ABSOLUTE_PATH_TO_REPO/workspace",
+      "skills": ["penny-funding"]
+    }
+  },
+  "tools": {
+    "profile": "minimal",
+    "allow": ["search_corpus", "read_official_source", "web_search"],
+    "web": {
+      "search": { "provider": "exa" },
+      "fetch": { "enabled": false }
+    }
+  },
+  "plugins": {
+    "entries": {
+      "exa": { "enabled": true },
+      "penny-tools": {
+        "enabled": true,
+        "config": {
+          "corpusPath": "/ABSOLUTE_PATH_TO_REPO/database/data/funding/curated/verified-programs.jsonl",
+          "pythonPath": "/ABSOLUTE_PATH_TO_REPO/.venv/bin/python",
+          "repoRoot": "/ABSOLUTE_PATH_TO_REPO"
+        }
+      }
+    }
+  }
+}

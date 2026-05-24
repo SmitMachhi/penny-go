@@ -12,34 +12,17 @@
 4. No trailers: Co-authored-by: Cursor cursoragent@cursor.com
 
 ## Source Code Reference
-- `opensrc` is installed globally at `/opt/homebrew/bin/opensrc`.
-- Source code for dependencies is cached at `~/.opensrc/` unless `OPENSRC_HOME` is set.
-- Use `opensrc path` inside shell commands to inspect dependency source:
+Before implementing against OpenClaw, Composio, QMD, or Browser Harness, read their source via `opensrc` — do not guess APIs or behavior from memory.
 
-```bash
-rg "pattern" $(opensrc path <package>)
-cat $(opensrc path <package>)/path/to/file
-```
-- OpenClaw source is cached for both repo and npm package lookup:
-
-```bash
-opensrc path openclaw/openclaw
-opensrc path openclaw
-```
-- Composio source is cached for the repo and Python package lookup; use the repo path for TypeScript SDK source because `@composio/core` lacks repository metadata for `opensrc`:
-
-```bash
-opensrc path composiohq/composio
-opensrc path pypi:composio
-```
-- QMD source is cached for both repo and npm package lookup:
-
-```bash
-opensrc path tobi/qmd
-opensrc path @tobilu/qmd
-```
-- Browser Harness source is cached for repo lookup:
-
-```bash
-opensrc path browser-use/browser-harness
-```
+1. Resolve a local path: `opensrc path <ref>` (binary `/opt/homebrew/bin/opensrc`; cache `~/.opensrc/`, override with `OPENSRC_HOME`).
+2. Search and read inside shell commands:
+   ```bash
+   rg "pattern" $(opensrc path <ref>)
+   cat $(opensrc path <ref>)/path/to/file
+   ```
+3. Use the correct `<ref>` for each dependency:
+   - OpenClaw → `openclaw/openclaw` or `openclaw`
+   - Composio TS → `composiohq/composio` (not `@composio/core` — no repo metadata)
+   - Composio Python → `pypi:composio`
+   - QMD → `tobi/qmd` or `@tobilu/qmd`
+   - Browser Harness → `browser-use/browser-harness`

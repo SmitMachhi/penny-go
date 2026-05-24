@@ -1,0 +1,36 @@
+{
+  "name": "penny-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Penny corpus search and Crawl4AI official source reader tools for OpenClaw",
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "plugin:build": "openclaw plugins build",
+    "plugin:validate": "openclaw plugins validate",
+    "test": "npm run build && node --test dist/search-corpus.test.js"
+  },
+  "dependencies": {
+    "@sinclair/typebox": "^0.34.15"
+  },
+  "peerDependencies": {
+    "openclaw": ">=2026.5.17"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.19",
+    "openclaw": "^2026.5.22",
+    "typescript": "^5.7.3"
+  },
+  "openclaw": {
+    "extensions": [
+      "./dist/index.js"
+    ],
+    "compat": {
+      "pluginApi": ">=2026.3.24-beta.2",
+      "minGatewayVersion": "2026.3.24-beta.2",
+      "openclawVersion": "2026.5.22",
+      "pluginSdkVersion": "2026.5.22"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "id": "penny-tools",
+  "name": "Penny Tools",
+  "description": "Search verified Canadian business funding corpus and read live official URLs.",
+  "version": "0.1.0",
+  "configSchema": {
+    "additionalProperties": false,
+    "type": "object",
+    "properties": {
+      "corpusPath": {
+        "description": "Absolute path to verified-programs.jsonl",
+        "type": "string"
+      },
+      "pythonPath": {
+        "description": "Python interpreter for read_official_source.py",
+        "type": "string"
+      },
+      "repoRoot": {
+        "description": "penny-go repo root",
+        "type": "string"
+      }
+    }
+  },
+  "activation": {
+    "onStartup": true
+  },
+  "contracts": {
+    "tools": [
+      "search_corpus",
+      "read_official_source"
+    ]
+  }
+}

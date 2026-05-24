@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# env & secrets
+.env
+.env.*
+!.env.example
+
+# build output
+dist/
+build/
+.next/
+.turbo/
+
+# logs & debug
+*.log
+npm-debug.log*
+
+# OS & editor
+.DS_Store
+.idea/
+.vscode/
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+venv/

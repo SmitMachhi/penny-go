@@ -50,5 +50,8 @@ describe('session key helpers', () => {
 			'/repo/workspace/memory/engagements/550e8400-e29b-41d4-a716-446655440000.md'
 		);
 		expect(engagementMemoryPath(LEGACY_SESSION_KEY, WORKSPACE_ROOT)).toBeNull();
+		expect(
+			engagementMemoryPath('agent:main:penny:550e8400-e29b-41d4-a716-446655440000', WORKSPACE_ROOT)
+		).toBe('/repo/workspace/memory/engagements/550e8400-e29b-41d4-a716-446655440000.md');
 	});
 });

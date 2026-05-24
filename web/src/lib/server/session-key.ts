@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { relative, resolve } from 'node:path';
 
 import { resolveWorkspaceRoot } from '$lib/server/penny-config.js';
 
@@ -50,7 +50,15 @@ export function engagementMemoryPath(sessionKey: string, workspaceRoot = resolve
 	if (!uuid) {
 		return null;
 	}
-	return join(workspaceRoot, 'memory/engagements', `${uuid}.md`);
+
+	const engagementsDir = resolve(workspaceRoot, 'memory', 'engagements');
+	const target = resolve(engagementsDir, `${uuid}.md`);
+	const relativePath = relative(engagementsDir, target);
+	if (relativePath.startsWith('..') || relativePath.includes('..')) {
+		return null;
+	}
+
+	return target;
 }
 
 export function sessionKeyErrorStatus(error: unknown): number {

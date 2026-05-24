@@ -54,6 +54,8 @@ export class SessionClient {
 		if (activeKey) {
 			writeActiveSessionKey(activeKey);
 			await chat.switchSession(activeKey);
+		} else {
+			chat.state.loading = false;
 		}
 
 		return activeKey;
@@ -129,6 +131,7 @@ export class SessionClient {
 			if (!response.ok) {
 				throw new Error(payload.error ?? 'failed to delete session');
 			}
+			this.state.sessions = this.state.sessions.filter((session) => session.key !== key);
 			await this.refresh();
 			return true;
 		} catch (error) {
@@ -142,7 +145,7 @@ export class SessionClient {
 			return;
 		}
 
-		const fallback = this.state.sessions[0];
+		const fallback = this.state.sessions.find((session) => session.key !== deletedKey);
 		if (fallback) {
 			await this.switchSession(chat, fallback.key);
 			return;

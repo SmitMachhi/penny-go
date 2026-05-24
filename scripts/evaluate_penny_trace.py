@@ -1,0 +1,244 @@
+#!/usr/bin/env python3
+"""Score Penny OpenClaw agent runs against Phase 1 rubric (session trace + JSON output)."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Literal
+
+Scenario = Literal["path-a", "path-b"]
+
+LOANLIKE_RE = re.compile(
+    r"\bloan\b|loan[- ]guarantee|low[- ]cost financing|low interest rate|"
+    r"(?<!non-)repayable contribution|(?<!non-)repayable royalty|"
+    r"(?<!non-)repayable tax deferral",
+    re.IGNORECASE,
+)
+RECOMMENDATION_HEADING_RE = re.compile(r"^#{2,3}\s+\d+\.", re.MULTILINE)
+VERIFIED_LABEL_RE = re.compile(r"\*\*Verified live\*\*|\*\*Newly discovered\*\*", re.IGNORECASE)
+MAX_RECOMMENDATIONS = 5
+
+
+@dataclass(frozen=True)
+class CheckResult:
+    name: str
+    passed: bool
+    detail: str
+
+
+def parse_tool_sequence(session_path: Path) -> list[str]:
+    tools: list[str] = []
+    with session_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            event = json.loads(line)
+            if event.get("type") != "message":
+                continue
+            message = event.get("message", {})
+            for part in message.get("content", []):
+                part_type = part.get("type")
+                if part_type in {"toolCall", "tool_use"}:
+                    name = part.get("name")
+                    if isinstance(name, str):
+                        tools.append(name)
+    return tools
+
+
+def extract_response_text(agent_json_path: Path | None, session_path: Path) -> str:
+    if agent_json_path is not None:
+        payload = json.loads(agent_json_path.read_text(encoding="utf-8"))
+        payloads = payload.get("payloads") or []
+        if payloads and isinstance(payloads[0], dict):
+            text = payloads[0].get("text")
+            if isinstance(text, str):
+                return text
+
+    last_assistant = ""
+    with session_path.open(encoding="utf-8") as handle:
+        for line in handle:
+            event = json.loads(line)
+            if event.get("type") != "message":
+                continue
+            message = event.get("message", {})
+            if message.get("role") != "assistant":
+                continue
+            chunks: list[str] = []
+            for part in message.get("content", []):
+                if part.get("type") == "text" and isinstance(part.get("text"), str):
+                    chunks.append(part["text"])
+            if chunks:
+                last_assistant = "\n".join(chunks)
+    return last_assistant
+
+
+def extract_tool_summary(agent_json_path: Path | None) -> dict[str, object] | None:
+    if agent_json_path is None:
+        return None
+    payload = json.loads(agent_json_path.read_text(encoding="utf-8"))
+    summary = payload.get("meta", {}).get("toolSummary")
+    return summary if isinstance(summary, dict) else None
+
+
+def first_index(tools: list[str], name: str) -> int | None:
+    try:
+        return tools.index(name)
+    except ValueError:
+        return None
+
+
+def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | None) -> list[CheckResult]:
+    tools = parse_tool_sequence(session_path)
+    response = extract_response_text(agent_json_path, session_path)
+    summary = extract_tool_summary(agent_json_path)
+
+    corpus_idx = first_index(tools, "search_corpus")
+    web_idx = first_index(tools, "web_search")
+    read_count = tools.count("read_official_source")
+    web_count = tools.count("web_search")
+    rec_count = len(RECOMMENDATION_HEADING_RE.findall(response))
+    verified_labels = len(VERIFIED_LABEL_RE.findall(response))
+
+    checks: list[CheckResult] = []
+
+    checks.append(
+        CheckResult(
+            "corpus_used",
+            corpus_idx is not None,
+            f"search_corpus calls: {tools.count('search_corpus')}"
+            if corpus_idx is not None
+            else "search_corpus was never called",
+        )
+    )
+
+    corpus_before_web = web_idx is None or (corpus_idx is not None and corpus_idx < web_idx)
+    checks.append(
+        CheckResult(
+            "corpus_before_web",
+            corpus_before_web,
+            f"tool order: {' -> '.join(tools)}"
+            if corpus_before_web
+            else "web_search ran before the first search_corpus",
+        )
+    )
+
+    checks.append(
+        CheckResult(
+            "read_official_source_used",
+            read_count >= 1,
+            f"read_official_source calls: {read_count}",
+        )
+    )
+
+    read_covers = read_count >= max(rec_count, verified_labels, 1)
+    checks.append(
+        CheckResult(
+            "read_covers_recommendations",
+            read_covers,
+            f"reads={read_count}, numbered_recs={rec_count}, verified_labels={verified_labels}"
+            if read_covers
+            else f"too few reads ({read_count}) for {max(rec_count, verified_labels)} recommendations",
+        )
+    )
+
+    checks.append(
+        CheckResult(
+            "verified_labels_present",
+            verified_labels >= 1,
+            f"Verified live / Newly discovered labels: {verified_labels}",
+        )
+    )
+
+    loan_hit = LOANLIKE_RE.search(response)
+    checks.append(
+        CheckResult(
+            "no_loan_products",
+            loan_hit is None,
+            "no loan-like benefit language detected"
+            if loan_hit is None
+            else f"loan-like phrase matched: {loan_hit.group(0)!r}",
+        )
+    )
+
+    checks.append(
+        CheckResult(
+            "max_five_recommendations",
+            rec_count <= MAX_RECOMMENDATIONS,
+            f"numbered recommendations: {rec_count}",
+        )
+    )
+
+    if scenario == "path-a":
+        checks.append(
+            CheckResult(
+                "path_a_no_web_search",
+                web_count == 0,
+                f"web_search calls: {web_count}"
+                if web_count == 0
+                else f"unexpected web_search calls: {web_count}",
+            )
+        )
+    else:
+        checks.append(
+            CheckResult(
+                "path_b_web_search_used",
+                web_count >= 1,
+                f"web_search calls: {web_count}"
+                if web_count >= 1
+                else "Path B expected web_search after weak corpus hits",
+            )
+        )
+        read_after_web = web_idx is None or any(
+            tool == "read_official_source" for tool in tools[web_idx + 1 :]
+        )
+        checks.append(
+            CheckResult(
+                "path_b_read_after_web",
+                read_after_web,
+                "read_official_source followed web_search"
+                if read_after_web
+                else "web_search results were not verified with read_official_source",
+            )
+        )
+
+    if summary is not None:
+        failures = summary.get("failures", 0)
+        checks.append(
+            CheckResult(
+                "no_tool_failures",
+                failures == 0,
+                f"tool failures reported: {failures}",
+            )
+        )
+
+    return checks
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--scenario", choices=("path-a", "path-b"), required=True)
+    parser.add_argument("--session-file", type=Path, required=True)
+    parser.add_argument("--agent-json", type=Path, default=None)
+    args = parser.parse_args()
+
+    if not args.session_file.is_file():
+        print(f"session file not found: {args.session_file}", file=sys.stderr)
+        return 2
+
+    checks = evaluate(args.scenario, args.session_file, args.agent_json)
+    passed = sum(1 for check in checks if check.passed)
+    total = len(checks)
+
+    print(f"Penny rubric — {args.scenario} ({passed}/{total} checks passed)\n")
+    for check in checks:
+        status = "PASS" if check.passed else "FAIL"
+        print(f"  [{status}] {check.name}: {check.detail}")
+
+    return 0 if passed == total else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

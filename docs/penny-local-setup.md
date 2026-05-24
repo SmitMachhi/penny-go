@@ -90,10 +90,10 @@ npm run plugin:build
 npm run plugin:validate
 ```
 
-Install for the Gateway’s Node runtime:
+Install for the Gateway’s Node runtime (link the checkout; child_process in the reader triggers OpenClaw’s safety gate):
 
 ```bash
-openclaw plugins install ./plugin
+openclaw plugins install --link --dangerously-force-unsafe-install /ABSOLUTE_PATH_TO/penny-go/plugin
 openclaw plugins inspect penny-tools --runtime --json
 ```
 
@@ -103,7 +103,8 @@ Rebuild after edits: `npm run build && npm run plugin:build`.
 
 Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.openclaw/openclaw.json`:
 
-- Restrict tools to corpus + verifier + web search (`profile: minimal` + explicit `allow`)
+- Restrict tools to corpus + verifier + web search via explicit **`tools.allow`** only (do **not** combine `tools.profile: minimal` with `tools.allow` — OpenClaw intersects those policies and you end up with zero tools)
+- Set **`plugins.enabled: true`** and **`plugins.allow: ["penny-tools", "exa"]`**
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
@@ -180,8 +181,10 @@ Use section **3** HTML + PDF commands.
 
 ### 6d — Path A — Ontario SaaS hiring
 
+Use **embedded mode** for Phase 1 tasting (no gateway daemon required):
+
 ```bash
-openclaw agent \
+openclaw agent --local \
   --session-id penny-path-a \
   --message "We're a 12-person SaaS company in Toronto hiring two senior developers in Q3. What government funding can help?" \
   --json
@@ -196,7 +199,7 @@ Pass when the transcript shows:
 ### 6e — Path B — Niche territorial corpus miss
 
 ```bash
-openclaw agent \
+openclaw agent --local \
   --session-id penny-path-b \
   --message "We are a small Inuvik tourism business launching a new cultural experience program in 2026. What territorial or federal non-loan funding exists?" \
   --json
@@ -206,6 +209,25 @@ Pass when corpus-first behavior remains, weak corpus hits escalate to scoped `we
 
 **Note:** these full-agent runs require a live model session (Gateway plus keys, or `openclaw agent --local` with working DeepSeek auth). The repo cannot complete 6d/6e in CI without your secrets.
 
+## 7. Web chat UI (Phase 2)
+
+SvelteKit app in `web/` — browser chat against the OpenClaw gateway via a server-side BFF (gateway token never reaches the browser).
+
+```bash
+openclaw gateway
+cd web && cp .env.example .env   # set OPENCLAW_GATEWAY_TOKEN
+npm install && npm run dev
+```
+
+Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
+
+Regression ladder (offline + optional live agent runs):
+
+```bash
+./scripts/verify_penny_phase1.sh --skip-reader
+./scripts/verify_penny_phase1.sh --live
+```
+
 ## What we deliberately skip here
 
-Frontend, Fly deployments, corpus refresh cron jobs, and auxiliary fetch/browser/exec tools—all deferred to later phases.
+Fly deployments, corpus refresh cron jobs, and auxiliary fetch/browser/exec tools—all deferred to later phases.

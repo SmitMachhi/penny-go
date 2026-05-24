@@ -1,0 +1,7 @@
+# Penny web UI secrets (never commit)
+.env
+.env.local
+
+# SvelteKit build artifacts
+.svelte-kit
+node_modules

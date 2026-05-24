@@ -1,0 +1,162 @@
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-border: var(--border);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--radius-lg: var(--radius);
+}
+
+:root {
+	--background: oklch(0.99 0.002 260);
+	--foreground: oklch(0.18 0.02 260);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.18 0.02 260);
+	--muted: oklch(0.96 0.005 260);
+	--muted-foreground: oklch(0.45 0.02 260);
+	--border: oklch(0.9 0.01 260);
+	--primary: oklch(0.45 0.12 250);
+	--primary-foreground: oklch(0.99 0 0);
+	--accent: oklch(0.94 0.02 250);
+	--accent-foreground: oklch(0.25 0.05 250);
+	--destructive: oklch(0.55 0.2 25);
+	--radius: 0.75rem;
+}
+
+.dark {
+	--background: oklch(0.14 0.02 260);
+	--foreground: oklch(0.96 0.005 260);
+	--card: oklch(0.18 0.02 260);
+	--card-foreground: oklch(0.96 0.005 260);
+	--muted: oklch(0.22 0.02 260);
+	--muted-foreground: oklch(0.7 0.02 260);
+	--border: oklch(0.28 0.02 260);
+	--primary: oklch(0.72 0.12 250);
+	--primary-foreground: oklch(0.14 0.02 260);
+	--accent: oklch(0.24 0.04 250);
+	--accent-foreground: oklch(0.92 0.02 250);
+	--destructive: oklch(0.62 0.18 25);
+}
+
+@layer base {
+	* {
+		@apply border-border;
+	}
+
+	body {
+		@apply bg-background text-foreground antialiased;
+	}
+}
+
+@layer components {
+	.penny-markdown {
+		@apply space-y-3;
+	}
+
+	.penny-markdown :is(h1, h2, h3, h4) {
+		@apply font-semibold tracking-tight text-foreground;
+	}
+
+	.penny-markdown h1 {
+		@apply text-xl;
+	}
+
+	.penny-markdown h2 {
+		@apply text-lg;
+	}
+
+	.penny-markdown h3 {
+		@apply text-base;
+	}
+
+	.penny-markdown p {
+		@apply leading-relaxed;
+	}
+
+	.penny-markdown :is(ul, ol) {
+		@apply my-2 space-y-1 pl-5;
+	}
+
+	.penny-markdown ul {
+		@apply list-disc;
+	}
+
+	.penny-markdown ol {
+		@apply list-decimal;
+	}
+
+	.penny-markdown li {
+		@apply leading-relaxed;
+	}
+
+	.penny-markdown a {
+		@apply font-medium text-primary underline underline-offset-2;
+	}
+
+	.penny-markdown strong {
+		@apply font-semibold text-foreground;
+	}
+
+	.penny-markdown hr {
+		@apply my-4 border-border;
+	}
+
+	.penny-markdown code {
+		@apply rounded bg-muted px-1 py-0.5 font-mono text-[0.85em];
+	}
+
+	.penny-markdown pre {
+		@apply overflow-x-auto rounded-lg bg-muted p-3 font-mono text-xs;
+	}
+
+	.penny-markdown pre code {
+		@apply bg-transparent p-0;
+	}
+
+	.penny-markdown blockquote {
+		@apply border-l-2 border-border pl-3 text-muted-foreground;
+	}
+
+	.penny-markdown-table-wrap {
+		@apply my-4 overflow-x-auto rounded-xl border border-border bg-card shadow-sm;
+	}
+
+	.penny-markdown table {
+		@apply w-full min-w-[32rem] border-collapse text-left text-sm;
+	}
+
+	.penny-markdown thead {
+		@apply bg-muted/80;
+	}
+
+	.penny-markdown th {
+		@apply border-b border-border px-4 py-3 text-sm font-semibold text-foreground;
+	}
+
+	.penny-markdown td {
+		@apply border-b border-border/70 px-4 py-3 align-top leading-snug text-card-foreground;
+	}
+
+	.penny-markdown tbody tr:last-child td {
+		@apply border-b-0;
+	}
+
+	.penny-markdown tbody tr:nth-child(even) {
+		@apply bg-muted/30;
+	}
+
+	.penny-markdown tbody tr:hover {
+		@apply bg-accent/40;
+	}
+}

@@ -7,7 +7,6 @@
     }
   },
   "tools": {
-    "profile": "minimal",
     "allow": ["search_corpus", "read_official_source", "web_search"],
     "web": {
       "search": { "provider": "exa" },

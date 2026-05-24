@@ -23,12 +23,20 @@ export async function GET({ url }) {
 		start(controller) {
 			const encoder = new TextEncoder();
 			const send = (payload: SsePayload) => {
-				controller.enqueue(encoder.encode(encodeSse(payload)));
+				try {
+					controller.enqueue(encoder.encode(encodeSse(payload)));
+				} catch {
+					cleanup?.();
+				}
 			};
 
 			const unsubscribe = subscribeToStream(sessionKey, send);
 			const heartbeat = setInterval(() => {
-				controller.enqueue(encoder.encode(': heartbeat\n\n'));
+				try {
+					controller.enqueue(encoder.encode(': heartbeat\n\n'));
+				} catch {
+					cleanup?.();
+				}
 			}, 15_000);
 
 			cleanup = () => {

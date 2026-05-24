@@ -97,8 +97,11 @@ export class SessionClient {
 			}
 			const session = payload.session;
 			await this.refresh();
+			const refreshFailed = this.state.error !== null;
 			if (!this.state.sessions.some((entry) => entry.key === session.key)) {
 				this.state.sessions = upsertSession(this.state.sessions, session);
+			}
+			if (!refreshFailed) {
 				this.state.error = null;
 			}
 			return session;

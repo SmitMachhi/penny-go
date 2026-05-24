@@ -161,7 +161,11 @@ export class ChatClient {
 
 		switch (payload.type) {
 			case 'chat.delta': {
-				this.state.streamText = applyStreamDelta(this.state.streamText, payload.text);
+				this.state.streamText = applyStreamDelta(
+					this.state.streamText,
+					payload.text,
+					payload.replace === true
+				);
 				break;
 			}
 			case 'tool.start':

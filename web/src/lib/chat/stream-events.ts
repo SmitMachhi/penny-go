@@ -1,5 +1,5 @@
 export type SsePayload =
-	| { type: 'chat.delta'; runId: string; text: string }
+	| { type: 'chat.delta'; runId: string; text: string; replace?: boolean }
 	| { type: 'chat.final'; runId: string; text: string }
 	| { type: 'chat.error'; runId: string; message: string }
 	| { type: 'chat.aborted'; runId: string }

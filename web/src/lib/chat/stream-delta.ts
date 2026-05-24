@@ -1,4 +1,7 @@
-export function applyStreamDelta(current: string, chunk: string): string {
+export function applyStreamDelta(current: string, chunk: string, replace = false): string {
+	if (replace) {
+		return chunk;
+	}
 	if (chunk.startsWith(current)) {
 		return chunk;
 	}

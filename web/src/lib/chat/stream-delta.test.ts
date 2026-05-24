@@ -10,4 +10,8 @@ describe('applyStreamDelta', () => {
 	it('appends incremental chunks when needed', () => {
 		expect(applyStreamDelta('Hello', ' world')).toBe('Hello world');
 	});
+
+	it('replaces accumulated text when the gateway resets mid-stream', () => {
+		expect(applyStreamDelta('Hello', 'Goodbye', true)).toBe('Goodbye');
+	});
 });

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { extractMessageText } from '$lib/chat/messages.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
-import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
+import type { AgentEventPayload, ChatEventPayload, ChatSendResult } from '$lib/gateway/types.js';
 import { clearStreamingText, resolveStreamingText } from '$lib/server/chat-stream-text.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
 import { getGatewayConfig } from '$lib/server/gateway-env.js';
@@ -15,11 +15,20 @@ type StreamSubscriber = {
 
 const subscribers = new Set<StreamSubscriber>();
 let hubListener: ((event: string, payload: unknown) => void) | null = null;
+let reconnectHookRegistered = false;
 
 function ensureHub(): void {
 	const client = getGatewayClient();
-	// Always reconnect; hubListener stays on the singleton GatewayClient instance.
 	void client.connect();
+
+	if (!reconnectHookRegistered) {
+		client.onDisconnect(() => {
+			if (subscribers.size > 0) {
+				void getGatewayClient().connect();
+			}
+		});
+		reconnectHookRegistered = true;
+	}
 
 	if (hubListener) {
 		return;
@@ -53,7 +62,12 @@ function broadcastChat(payload: ChatEventPayload): void {
 		if (payload.state === 'delta') {
 			const cumulative = resolveStreamingText(payload);
 			if (cumulative) {
-				safeSend(subscriber, { type: 'chat.delta', runId, text: cumulative });
+				safeSend(subscriber, {
+					type: 'chat.delta',
+					runId,
+					text: cumulative,
+					...(payload.replace ? { replace: true } : {})
+				});
 			}
 			continue;
 		}
@@ -144,17 +158,18 @@ export async function sendChatMessage(input: {
 	sessionKey: string;
 	sessionId?: string;
 }) {
-	const runId = randomUUID();
+	const idempotencyKey = randomUUID();
 	const client = getGatewayClient();
 
-	await client.request('chat.send', {
+	const response = (await client.request('chat.send', {
 		sessionKey: input.sessionKey,
 		...(input.sessionId ? { sessionId: input.sessionId } : {}),
 		message: input.message,
 		deliver: false,
-		idempotencyKey: runId
-	});
+		idempotencyKey
+	})) as ChatSendResult;
 
+	const runId = response.runId ?? idempotencyKey;
 	return { runId, sessionKey: input.sessionKey };
 }
 

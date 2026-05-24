@@ -5,7 +5,6 @@ import type { SsePayload } from '$lib/chat/stream-events.js';
 import type { AgentEventPayload, ChatEventPayload, ChatSendResult } from '$lib/gateway/types.js';
 import { clearStreamingText, resolveStreamingText } from '$lib/server/chat-stream-text.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
-import { getGatewayConfig } from '$lib/server/gateway-env.js';
 
 type StreamSubscriber = {
 	id: string;
@@ -181,8 +180,7 @@ export async function abortChatRun(input: { sessionKey: string; runId?: string }
 	);
 }
 
-export async function pingGateway(): Promise<{ ok: true; sessionKey: string }> {
-	const config = getGatewayConfig();
+export async function pingGateway(): Promise<{ ok: true }> {
 	await getGatewayClient().connect();
-	return { ok: true, sessionKey: config.sessionKey };
+	return { ok: true };
 }

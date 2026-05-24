@@ -8,6 +8,7 @@
 		size?: 'default' | 'icon';
 		disabled?: boolean;
 		type?: 'button' | 'submit';
+		'aria-label'?: string;
 		onclick?: (event: MouseEvent) => void;
 		children: Snippet;
 	};
@@ -18,6 +19,7 @@
 		size = 'default',
 		disabled = false,
 		type = 'button',
+		'aria-label': ariaLabel,
 		onclick,
 		children
 	}: Props = $props();
@@ -27,6 +29,7 @@
 	{type}
 	{disabled}
 	{onclick}
+	aria-label={ariaLabel}
 	class={cn(
 		'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
 		variant === 'default' && 'bg-primary text-primary-foreground hover:opacity-90',

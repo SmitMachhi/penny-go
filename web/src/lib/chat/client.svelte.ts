@@ -30,7 +30,7 @@ export function createInitialChatState(): ChatClientState {
 		connected: false,
 		loading: true,
 		sending: false,
-		sessionKey: 'agent:main:main',
+		sessionKey: '',
 		sessionId: null,
 		messages: [],
 		streamText: '',
@@ -46,8 +46,6 @@ export class ChatClient {
 
 	async bootstrap(): Promise<void> {
 		await this.refreshHealth();
-		await this.loadHistory();
-		this.connectStream();
 	}
 
 	dispose(): void {
@@ -57,20 +55,41 @@ export class ChatClient {
 
 	async refreshHealth(): Promise<void> {
 		const response = await fetch('/api/health');
-		const payload = (await response.json()) as { ok?: boolean; sessionKey?: string; message?: string };
+		const payload = (await response.json()) as { ok?: boolean; message?: string };
 		this.state.connected = response.ok && payload.ok === true;
-		if (payload.sessionKey) {
-			this.state.sessionKey = payload.sessionKey;
-		}
 		if (!this.state.connected) {
 			this.state.error = payload.message ?? 'OpenClaw gateway is unavailable';
 		}
 	}
 
+	async switchSession(sessionKey: string): Promise<void> {
+		if (this.state.sending) {
+			await this.abortActiveRun();
+		}
+
+		this.dispose();
+		this.state.sessionKey = sessionKey;
+		this.state.sessionId = null;
+		this.state.messages = [];
+		this.state.streamText = '';
+		this.state.tools = [];
+		this.state.error = null;
+		this.activeRunId = null;
+
+		await this.loadHistory();
+		this.connectStream();
+	}
+
 	async loadHistory(): Promise<void> {
+		if (!this.state.sessionKey) {
+			return;
+		}
+
 		this.state.loading = true;
 		try {
-			const response = await fetch(`/api/chat/history?sessionKey=${encodeURIComponent(this.state.sessionKey)}`);
+			const response = await fetch(
+				`/api/chat/history?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
+			);
 			const payload = (await response.json()) as HistoryResponse & { error?: string };
 			if (!response.ok) {
 				throw new Error(payload.error ?? 'failed to load chat history');
@@ -87,7 +106,7 @@ export class ChatClient {
 
 	async sendMessage(message: string): Promise<void> {
 		const trimmed = message.trim();
-		if (!trimmed || this.state.sending) {
+		if (!trimmed || this.state.sending || !this.state.sessionKey) {
 			return;
 		}
 
@@ -122,7 +141,7 @@ export class ChatClient {
 	}
 
 	async abortActiveRun(): Promise<void> {
-		if (!this.activeRunId) {
+		if (!this.activeRunId || !this.state.sessionKey) {
 			return;
 		}
 		await fetch('/api/chat/abort', {
@@ -133,6 +152,10 @@ export class ChatClient {
 	}
 
 	private connectStream(): void {
+		if (!this.state.sessionKey) {
+			return;
+		}
+
 		this.eventSource?.close();
 		const source = new EventSource(
 			`/api/chat/stream?sessionKey=${encodeURIComponent(this.state.sessionKey)}`

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { MoreHorizontal } from '@lucide/svelte';
 
 	import type { PennySession } from '$lib/chat/sessions.svelte.js';
@@ -17,6 +18,26 @@
 	let editing = $state(false);
 	let draft = $state('');
 	let menuOpen = $state(false);
+	let menuRoot: HTMLDivElement | undefined = $state();
+
+	function closeMenu() {
+		menuOpen = false;
+	}
+
+	function handleDocumentClick(event: MouseEvent) {
+		if (!menuOpen || !menuRoot) {
+			return;
+		}
+		const target = event.target;
+		if (target instanceof Node && !menuRoot.contains(target)) {
+			closeMenu();
+		}
+	}
+
+	onMount(() => {
+		document.addEventListener('click', handleDocumentClick);
+		return () => document.removeEventListener('click', handleDocumentClick);
+	});
 
 	function startRename() {
 		menuOpen = false;
@@ -70,7 +91,7 @@
 		</button>
 	{/if}
 
-	<div class="absolute right-1 top-1">
+	<div class="absolute right-1 top-1" bind:this={menuRoot}>
 		<button
 			type="button"
 			class="rounded-md p-1 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"

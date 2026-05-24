@@ -6,13 +6,9 @@ import {
 } from '$lib/server/session-service.js';
 import { resolveSessionKey, sessionKeyErrorStatus } from '$lib/server/session-key.js';
 
-function decodeSessionKeyParam(raw: string): string {
-	return decodeURIComponent(raw);
-}
-
 export async function PATCH({ params, request }) {
 	try {
-		const sessionKey = resolveSessionKey(decodeSessionKeyParam(params.key));
+		const sessionKey = resolveSessionKey(params.key);
 		const body = (await request.json()) as { label?: string };
 		const label = body.label?.trim();
 		if (!label) {
@@ -29,7 +25,7 @@ export async function PATCH({ params, request }) {
 
 export async function DELETE({ params }) {
 	try {
-		const sessionKey = resolveSessionKey(decodeSessionKeyParam(params.key));
+		const sessionKey = resolveSessionKey(params.key);
 		await deletePennySession(sessionKey);
 		return json({ ok: true, key: sessionKey });
 	} catch (error) {

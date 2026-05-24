@@ -20,6 +20,7 @@ describe('session key helpers', () => {
 		expect(isPennySessionKey(SAMPLE_KEY)).toBe(true);
 		expect(isPennySessionKey(LEGACY_SESSION_KEY)).toBe(false);
 		expect(isPennySessionKey('agent:main:other')).toBe(false);
+		expect(isPennySessionKey('agent:main:penny:../../../etc/passwd')).toBe(false);
 	});
 
 	it('allows penny and legacy keys only', () => {
@@ -36,6 +37,7 @@ describe('session key helpers', () => {
 	it('rejects missing or foreign session keys', () => {
 		expect(() => resolveSessionKey(null)).toThrow(SessionKeyError);
 		expect(() => resolveSessionKey('agent:main:other')).toThrow(SessionKeyError);
+		expect(() => resolveSessionKey('agent:main:penny:../../../etc/passwd')).toThrow(SessionKeyError);
 	});
 
 	it('parses penny uuid suffix', () => {

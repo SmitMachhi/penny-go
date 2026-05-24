@@ -28,16 +28,24 @@ describe('session service', () => {
 	it('lists penny sessions sorted by updatedAt', async () => {
 		request.mockResolvedValueOnce({
 			sessions: [
-				{ key: 'agent:main:penny:older', updatedAt: 100, derivedTitle: 'Older chat' },
-				{ key: 'agent:main:penny:newer', updatedAt: 200, label: 'Newer chat' },
+				{
+					key: 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001',
+					updatedAt: 100,
+					derivedTitle: 'Older chat'
+				},
+				{
+					key: 'agent:main:penny:550e8400-e29b-41d4-a716-446655440002',
+					updatedAt: 200,
+					label: 'Newer chat'
+				},
 				{ key: LEGACY_SESSION_KEY, updatedAt: 300 }
 			]
 		});
 
 		const sessions = await listPennySessions();
 		expect(sessions.map((session) => session.key)).toEqual([
-			'agent:main:penny:newer',
-			'agent:main:penny:older'
+			'agent:main:penny:550e8400-e29b-41d4-a716-446655440002',
+			'agent:main:penny:550e8400-e29b-41d4-a716-446655440001'
 		]);
 		expect(sessions[0]?.title).toBe('Newer chat');
 	});

@@ -1,4 +1,5 @@
 import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
+import { applyStreamDelta } from '$lib/chat/stream-delta.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 type HistoryResponse = {
@@ -160,12 +161,7 @@ export class ChatClient {
 
 		switch (payload.type) {
 			case 'chat.delta': {
-				const chunk = payload.text;
-				if (chunk.startsWith(this.state.streamText)) {
-					this.state.streamText = chunk;
-				} else {
-					this.state.streamText += chunk;
-				}
+				this.state.streamText = applyStreamDelta(this.state.streamText, payload.text);
 				break;
 			}
 			case 'tool.start':

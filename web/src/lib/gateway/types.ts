@@ -23,6 +23,7 @@ export type ChatEventPayload = {
 	runId?: string;
 	sessionKey?: string;
 	deltaText?: string;
+	replace?: boolean;
 	message?: unknown;
 	error?: string;
 };

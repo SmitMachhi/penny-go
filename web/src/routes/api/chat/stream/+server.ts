@@ -1,13 +1,22 @@
-import { getGatewayConfig } from '$lib/server/gateway-env.js';
-import { subscribeToStream } from '$lib/server/chat-service.js';
+import { json } from '@sveltejs/kit';
+
 import type { SsePayload } from '$lib/chat/stream-events.js';
+import { subscribeToStream } from '$lib/server/chat-service.js';
+import { resolveSessionKey, sessionKeyErrorStatus } from '$lib/server/session-key.js';
 
 function encodeSse(payload: SsePayload): string {
 	return `data: ${JSON.stringify(payload)}\n\n`;
 }
 
 export async function GET({ url }) {
-	const sessionKey = url.searchParams.get('sessionKey') ?? getGatewayConfig().sessionKey;
+	let sessionKey: string;
+	try {
+		sessionKey = resolveSessionKey(url.searchParams.get('sessionKey'));
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'invalid sessionKey';
+		return json({ error: message }, { status: sessionKeyErrorStatus(error) });
+	}
+
 	let cleanup: (() => void) | null = null;
 
 	const stream = new ReadableStream<Uint8Array>({

@@ -160,6 +160,7 @@ export class ChatClient {
 
 		switch (payload.type) {
 			case 'chat.delta':
+				// Server sends cumulative assistant text for the active run.
 				this.state.streamText = payload.text;
 				break;
 			case 'tool.start':

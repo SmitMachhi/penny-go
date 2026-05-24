@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 
 import { sendChatMessage } from '$lib/server/chat-service.js';
+import { resolveSessionKey, sessionKeyErrorStatus } from '$lib/server/session-key.js';
 
 export async function POST({ request }) {
 	try {
@@ -14,14 +15,15 @@ export async function POST({ request }) {
 			return json({ error: 'message is required' }, { status: 400 });
 		}
 
+		const sessionKey = resolveSessionKey(body.sessionKey);
 		const result = await sendChatMessage({
 			message,
-			sessionKey: body.sessionKey,
+			sessionKey,
 			sessionId: body.sessionId
 		});
 		return json(result);
 	} catch (error) {
 		const detail = error instanceof Error ? error.message : 'failed to send message';
-		return json({ error: detail }, { status: 503 });
+		return json({ error: detail }, { status: sessionKeyErrorStatus(error) });
 	}
 }

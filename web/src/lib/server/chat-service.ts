@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
-import { getGatewayConfig } from '$lib/server/gateway-env.js';
-import { getGatewayClient } from '$lib/server/gateway-client.js';
-import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
 import { extractMessageText } from '$lib/chat/messages.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
+import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
+import { clearStreamingText, resolveStreamingText } from '$lib/server/chat-stream-text.js';
+import { getGatewayClient } from '$lib/server/gateway-client.js';
+import { getGatewayConfig } from '$lib/server/gateway-env.js';
 
 type StreamSubscriber = {
 	id: string;
@@ -13,18 +14,17 @@ type StreamSubscriber = {
 };
 
 const subscribers = new Set<StreamSubscriber>();
-let hubStarted = false;
+let hubListener: ((event: string, payload: unknown) => void) | null = null;
 
 function ensureHub(): void {
-	if (hubStarted) {
-		return;
-	}
-	hubStarted = true;
-
 	const client = getGatewayClient();
 	void client.connect();
 
-	client.onEvent((event, payload) => {
+	if (hubListener) {
+		return;
+	}
+
+	hubListener = (event, payload) => {
 		if (event === 'chat') {
 			broadcastChat(payload as ChatEventPayload);
 			return;
@@ -32,7 +32,9 @@ function ensureHub(): void {
 		if (event === 'agent' || event === 'session.tool') {
 			broadcastAgent(payload as AgentEventPayload);
 		}
-	});
+	};
+
+	client.onEvent(hubListener);
 }
 
 function broadcastChat(payload: ChatEventPayload): void {
@@ -48,23 +50,22 @@ function broadcastChat(payload: ChatEventPayload): void {
 		}
 
 		if (payload.state === 'delta') {
-			const deltaText =
-				typeof payload.deltaText === 'string'
-					? payload.deltaText
-					: extractMessageText(payload.message);
-			if (deltaText) {
-				subscriber.send({ type: 'chat.delta', runId, text: deltaText });
+			const cumulative = resolveStreamingText(payload);
+			if (cumulative) {
+				subscriber.send({ type: 'chat.delta', runId, text: cumulative });
 			}
 			continue;
 		}
 
 		if (payload.state === 'final') {
+			clearStreamingText(runId);
 			const text = extractMessageText(payload.message);
 			subscriber.send({ type: 'chat.final', runId, text });
 			continue;
 		}
 
 		if (payload.state === 'error') {
+			clearStreamingText(runId);
 			subscriber.send({
 				type: 'chat.error',
 				runId,
@@ -74,6 +75,7 @@ function broadcastChat(payload: ChatEventPayload): void {
 		}
 
 		if (payload.state === 'aborted') {
+			clearStreamingText(runId);
 			subscriber.send({ type: 'chat.aborted', runId });
 		}
 	}
@@ -113,7 +115,7 @@ export function subscribeToStream(
 	return () => subscribers.delete(subscriber);
 }
 
-export async function fetchChatHistory(sessionKey = getGatewayConfig().sessionKey) {
+export async function fetchChatHistory(sessionKey: string) {
 	const client = getGatewayClient();
 	const payload = (await client.request('chat.history', {
 		sessionKey,
@@ -130,32 +132,28 @@ export async function fetchChatHistory(sessionKey = getGatewayConfig().sessionKe
 
 export async function sendChatMessage(input: {
 	message: string;
-	sessionKey?: string;
+	sessionKey: string;
 	sessionId?: string;
 }) {
-	const config = getGatewayConfig();
-	const sessionKey = input.sessionKey ?? config.sessionKey;
 	const runId = randomUUID();
 	const client = getGatewayClient();
 
 	await client.request('chat.send', {
-		sessionKey,
+		sessionKey: input.sessionKey,
 		...(input.sessionId ? { sessionId: input.sessionId } : {}),
 		message: input.message,
 		deliver: false,
 		idempotencyKey: runId
 	});
 
-	return { runId, sessionKey };
+	return { runId, sessionKey: input.sessionKey };
 }
 
-export async function abortChatRun(input: { sessionKey?: string; runId?: string }) {
-	const config = getGatewayConfig();
-	const sessionKey = input.sessionKey ?? config.sessionKey;
+export async function abortChatRun(input: { sessionKey: string; runId?: string }) {
 	const client = getGatewayClient();
 	await client.request(
 		'chat.abort',
-		input.runId ? { sessionKey, runId: input.runId } : { sessionKey }
+		input.runId ? { sessionKey: input.sessionKey, runId: input.runId } : { sessionKey: input.sessionKey }
 	);
 }
 

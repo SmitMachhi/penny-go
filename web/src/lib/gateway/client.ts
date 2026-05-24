@@ -49,8 +49,14 @@ export class GatewayClient {
 	private connected = false;
 	private readonly pending = new Map<string, PendingRequest>();
 	private readonly listeners = new Set<GatewayEventListener>();
+	private readonly disconnectListeners = new Set<() => void>();
 
 	constructor(private readonly config: GatewayConfig) {}
+
+	onDisconnect(listener: () => void): () => void {
+		this.disconnectListeners.add(listener);
+		return () => this.disconnectListeners.delete(listener);
+	}
 
 	onEvent(listener: GatewayEventListener): () => void {
 		this.listeners.add(listener);
@@ -81,9 +87,16 @@ export class GatewayClient {
 			});
 			ws.on('error', () => fail(new Error('gateway websocket error')));
 			ws.on('close', (code, reason) => {
+				if (this.ws !== ws) {
+					return;
+				}
 				this.connectPromise = null;
 				this.ws = null;
+				this.connected = false;
 				this.flushPending(new Error(`gateway closed (${code}): ${reason.toString()}`));
+				for (const listener of this.disconnectListeners) {
+					listener();
+				}
 			});
 		});
 

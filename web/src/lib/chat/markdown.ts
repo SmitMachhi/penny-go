@@ -14,11 +14,21 @@ marked.setOptions({
 marked.use({
 	renderer: {
 		link({ href, title, text }) {
-			const titleAttr = title ? ` title="${title}"` : '';
-			return `<a href="${href}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+			const safeHref = escapeHtmlAttribute(href ?? '');
+			const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+			return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
 		}
 	}
 });
+
+function escapeHtmlAttribute(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+}
 
 export function renderMarkdown(source: string): string {
 	if (!source.trim()) {

@@ -30,6 +30,10 @@ export function clearStreamingText(runId: string): void {
 	runStreamText.delete(runId);
 }
 
+export function clearAllStreamingText(): void {
+	runStreamText.clear();
+}
+
 export function resetStreamingTextForTests(): void {
 	runStreamText.clear();
 }

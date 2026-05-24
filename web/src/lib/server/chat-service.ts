@@ -53,7 +53,7 @@ function broadcastChat(payload: ChatEventPayload): void {
 		if (payload.state === 'delta') {
 			const cumulative = resolveStreamingText(payload);
 			if (cumulative) {
-				subscriber.send({ type: 'chat.delta', runId, text: cumulative });
+				safeSend(subscriber, { type: 'chat.delta', runId, text: cumulative });
 			}
 			continue;
 		}
@@ -61,13 +61,13 @@ function broadcastChat(payload: ChatEventPayload): void {
 		if (payload.state === 'final') {
 			clearStreamingText(runId);
 			const text = extractMessageText(payload.message);
-			subscriber.send({ type: 'chat.final', runId, text });
+			safeSend(subscriber, { type: 'chat.final', runId, text });
 			continue;
 		}
 
 		if (payload.state === 'error') {
 			clearStreamingText(runId);
-			subscriber.send({
+			safeSend(subscriber, {
 				type: 'chat.error',
 				runId,
 				message: payload.error ?? 'chat run failed'
@@ -77,7 +77,7 @@ function broadcastChat(payload: ChatEventPayload): void {
 
 		if (payload.state === 'aborted') {
 			clearStreamingText(runId);
-			subscriber.send({ type: 'chat.aborted', runId });
+			safeSend(subscriber, { type: 'chat.aborted', runId });
 		}
 	}
 }
@@ -97,11 +97,19 @@ function broadcastAgent(payload: AgentEventPayload): void {
 		if (subscriber.sessionKey !== sessionKey) {
 			continue;
 		}
-		subscriber.send({
+		safeSend(subscriber, {
 			type: done ? 'tool.done' : 'tool.start',
 			runId,
 			name: toolName
 		});
+	}
+}
+
+function safeSend(subscriber: StreamSubscriber, payload: SsePayload): void {
+	try {
+		subscriber.send(payload);
+	} catch {
+		subscribers.delete(subscriber);
 	}
 }
 

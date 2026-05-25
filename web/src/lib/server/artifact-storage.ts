@@ -12,6 +12,7 @@ import {
 
 import { parsePennySessionUuid } from '$lib/server/session-key.js';
 import { resolvePennyRepoRootFromEnv } from '$lib/server/penny-config.js';
+import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 
 export type ArtifactMeta = {
 	artifactId: string;
@@ -23,6 +24,16 @@ export type ArtifactMeta = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+export function toArtifactSummary(meta: ArtifactMeta): ArtifactSummary {
+	return {
+		artifactId: meta.artifactId,
+		title: meta.title,
+		programCount: meta.programCount,
+		version: meta.version,
+		updatedAt: meta.updatedAt
+	};
+}
 
 export async function listSessionArtifacts(sessionKey: string): Promise<ArtifactMeta[]> {
 	const sessionUuid = parsePennySessionUuid(sessionKey);

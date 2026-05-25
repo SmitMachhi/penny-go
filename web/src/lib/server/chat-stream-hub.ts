@@ -54,16 +54,35 @@ function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 	}
 }
 
+const ARTIFACT_SSE_MAX_ATTEMPTS = 3;
+const ARTIFACT_SSE_RETRY_MS = 150;
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
 async function emitArtifactEvent(
 	sessionKey: string,
 	runId: string,
 	toolName: string
 ): Promise<void> {
-	const artifactPayload = await buildArtifactSseForToolDone(sessionKey, toolName, runId);
-	if (!artifactPayload) {
-		return;
+	for (let attempt = 0; attempt < ARTIFACT_SSE_MAX_ATTEMPTS; attempt += 1) {
+		try {
+			const artifactPayload = await buildArtifactSseForToolDone(sessionKey, toolName, runId);
+			if (artifactPayload) {
+				broadcastToSession(sessionKey, artifactPayload);
+				return;
+			}
+		} catch (error) {
+			if (attempt === ARTIFACT_SSE_MAX_ATTEMPTS - 1) {
+				throw error;
+			}
+		}
+
+		await sleep(ARTIFACT_SSE_RETRY_MS * (attempt + 1));
 	}
-	broadcastToSession(sessionKey, artifactPayload);
 }
 
 function broadcastToSession(sessionKey: string, payload: SsePayload): void {

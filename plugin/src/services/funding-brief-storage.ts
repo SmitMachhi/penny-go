@@ -1,5 +1,6 @@
-import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import lockfile from 'proper-lockfile';
 
 import {
 	BRIEF_FILENAME,
@@ -143,33 +144,28 @@ export function createArtifactId(): string {
 
 const INDEX_LOCK_MAX_ATTEMPTS = 10;
 const INDEX_LOCK_RETRY_MS = 50;
+const INDEX_LOCK_STALE_MS = 30_000;
 
 async function withSessionIndexLock<T>(
 	indexPath: string,
 	action: () => Promise<T>
 ): Promise<T> {
-	const lockPath = `${indexPath}.lock`;
-
-	for (let attempt = 0; attempt < INDEX_LOCK_MAX_ATTEMPTS; attempt += 1) {
-		try {
-			const handle = await open(lockPath, 'wx');
-			try {
-				return await action();
-			} finally {
-				await handle.close();
-				await unlink(lockPath).catch(() => undefined);
+	let release: (() => Promise<void>) | undefined;
+	try {
+		release = await lockfile.lock(indexPath, {
+			stale: INDEX_LOCK_STALE_MS,
+			retries: {
+				retries: INDEX_LOCK_MAX_ATTEMPTS,
+				minTimeout: INDEX_LOCK_RETRY_MS,
+				maxTimeout: INDEX_LOCK_RETRY_MS * INDEX_LOCK_MAX_ATTEMPTS
 			}
-		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
-				throw error;
-			}
-			await new Promise((resolve) => {
-				setTimeout(resolve, INDEX_LOCK_RETRY_MS * (attempt + 1));
-			});
+		});
+		return await action();
+	} finally {
+		if (release) {
+			await release().catch(() => undefined);
 		}
 	}
-
-	throw new Error('artifact_index_lock_timeout');
 }
 
 async function upsertSessionArtifactIndex(
@@ -178,6 +174,12 @@ async function upsertSessionArtifactIndex(
 ): Promise<void> {
 	const indexPath = resolveSessionArtifactIndexPath(repoRoot, meta.sessionUuid);
 	await mkdir(resolveSessionArtifactsDir(repoRoot, meta.sessionUuid), { recursive: true });
+
+	try {
+		await readFile(indexPath, 'utf8');
+	} catch {
+		await writeFile(indexPath, '[]\n', 'utf8');
+	}
 
 	await withSessionIndexLock(indexPath, async () => {
 		let entries: ArtifactIndexEntry[] = [];

@@ -3,7 +3,8 @@ import { error } from '@sveltejs/kit';
 import { withApiCatch } from '$lib/server/api-handler.js';
 import {
 	getArtifactMeta,
-	readArtifactSlidesHtml
+	readArtifactSlidesHtml,
+	toArtifactSummary
 } from '$lib/server/artifact-storage.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
@@ -35,7 +36,7 @@ export async function GET(event) {
 			});
 		}
 
-		return new Response(JSON.stringify({ artifact: meta }), {
+		return new Response(JSON.stringify({ artifact: toArtifactSummary(meta) }), {
 			headers: {
 				'content-type': 'application/json; charset=utf-8'
 			}

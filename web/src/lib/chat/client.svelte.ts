@@ -15,6 +15,10 @@ type SendResponse = {
 	sessionKey: string;
 };
 
+const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
+const ARTIFACT_REFRESH_MAX_ATTEMPTS = 3;
+const ARTIFACT_REFRESH_DELAY_MS = 150;
+
 export type ChatClientState = {
 	connected: boolean;
 	loading: boolean;
@@ -228,6 +232,9 @@ export class ChatClient {
 				break;
 			case 'tool.done':
 				this.state.tools = upsertTool(this.state.tools, payload.name, 'done');
+				if (payload.name === CREATE_FUNDING_BRIEF_TOOL) {
+					void this.refreshArtifactsAfterBrief();
+				}
 				break;
 			case 'artifact.create':
 			case 'artifact.update':
@@ -264,6 +271,25 @@ export class ChatClient {
 				this.state.error = payload.message;
 				this.resetRun();
 				break;
+		}
+	}
+
+	private async refreshArtifactsAfterBrief(): Promise<void> {
+		for (let attempt = 0; attempt < ARTIFACT_REFRESH_MAX_ATTEMPTS; attempt += 1) {
+			await this.loadArtifacts();
+			const latest = this.state.artifacts[0];
+			if (latest) {
+				this.state.activeArtifactId = latest.artifactId;
+				this.state.artifactPanelOpen = true;
+				if (!this.pendingRunArtifactIds.includes(latest.artifactId)) {
+					this.pendingRunArtifactIds.push(latest.artifactId);
+				}
+				return;
+			}
+
+			await new Promise((resolve) => {
+				setTimeout(resolve, ARTIFACT_REFRESH_DELAY_MS * (attempt + 1));
+			});
 		}
 	}
 

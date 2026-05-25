@@ -26,3 +26,6 @@ __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# openclaw local workspace state
+workspace/.openclaw/

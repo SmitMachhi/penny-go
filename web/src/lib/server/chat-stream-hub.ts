@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
 import { mapAgentEventToSse, mapChatEventToSse } from '$lib/server/chat-event-mapper.js';
+import { buildArtifactSseForToolDone } from '$lib/server/artifact-sse-bridge.js';
 import { ensureGatewayEventBus } from '$lib/server/gateway-events-service.js';
 
 type StreamSubscriber = {
@@ -28,7 +29,7 @@ function ensureHub(): void {
 	});
 }
 
-function dispatchMappedEvent<T extends { sessionKey?: string }>(
+function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 	payload: T,
 	mapper: (payload: T) => SsePayload | null
 ): void {
@@ -38,15 +39,58 @@ function dispatchMappedEvent<T extends { sessionKey?: string }>(
 	}
 
 	const ssePayload = mapper(payload);
-	if (!ssePayload) {
-		return;
+	if (ssePayload) {
+		broadcastToSession(sessionKey, ssePayload);
 	}
 
+	if (
+		ssePayload?.type === 'tool.done' &&
+		payload.runId &&
+		ssePayload.name === 'create_funding_brief'
+	) {
+		void emitArtifactEvent(sessionKey, payload.runId, ssePayload.name).catch((error) => {
+			console.error('artifact_sse_emit_failed', error);
+		});
+	}
+}
+
+const ARTIFACT_SSE_MAX_ATTEMPTS = 3;
+const ARTIFACT_SSE_RETRY_MS = 150;
+
+function sleep(ms: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
+}
+
+async function emitArtifactEvent(
+	sessionKey: string,
+	runId: string,
+	toolName: string
+): Promise<void> {
+	for (let attempt = 0; attempt < ARTIFACT_SSE_MAX_ATTEMPTS; attempt += 1) {
+		try {
+			const artifactPayload = await buildArtifactSseForToolDone(sessionKey, toolName, runId);
+			if (artifactPayload) {
+				broadcastToSession(sessionKey, artifactPayload);
+				return;
+			}
+		} catch (error) {
+			if (attempt === ARTIFACT_SSE_MAX_ATTEMPTS - 1) {
+				throw error;
+			}
+		}
+
+		await sleep(ARTIFACT_SSE_RETRY_MS * (attempt + 1));
+	}
+}
+
+function broadcastToSession(sessionKey: string, payload: SsePayload): void {
 	for (const subscriber of subscribers) {
 		if (subscriber.sessionKey !== sessionKey) {
 			continue;
 		}
-		safeSend(subscriber, ssePayload);
+		safeSend(subscriber, payload);
 	}
 }
 

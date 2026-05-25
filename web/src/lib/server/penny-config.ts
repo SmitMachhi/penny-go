@@ -3,7 +3,7 @@ import { env } from '$env/dynamic/private';
 
 export function resolvePennyRepoRootFromEnv(): string {
 	return resolvePennyRepoRoot({
-		envRoot: env.PENNY_REPO_ROOT,
+		envRoot: env.PENNY_REPO_ROOT ?? process.env.PENNY_REPO_ROOT,
 		allowCwdInference: true
 	});
 }

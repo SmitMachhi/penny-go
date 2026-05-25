@@ -5,6 +5,7 @@ export type ChatMessage = {
 	role: ChatRole;
 	text: string;
 	timestamp?: number;
+	artifactIds?: string[];
 };
 
 export type ToolActivity = {
@@ -80,6 +81,8 @@ export function toolLabel(name: string): string {
 			return 'Verifying official source';
 		case 'web_search':
 			return 'Searching the web (Exa)';
+		case 'create_funding_brief':
+			return 'Building funding brief';
 		default:
 			return name;
 	}

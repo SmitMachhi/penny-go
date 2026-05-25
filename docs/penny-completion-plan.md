@@ -45,7 +45,7 @@ Decision: _________ (embedded / gateway).
 4. **`openclaw plugins install /ABSOLUTE_PATH_TO/penny-go/plugin`** (use your real checkout path).
 5. **`openclaw plugins inspect penny-tools --runtime`** — plugin loads without errors.
 
-**Gate:** Inspect shows expected tools (**`search_corpus`**, **`read_official_source`**).
+**Gate:** Inspect shows expected tools (**`search_corpus`**, **`read_official_source`**, **`create_funding_brief`**).
 
 ---
 
@@ -54,9 +54,9 @@ Decision: _________ (embedded / gateway).
 Copy fields from **`config/openclaw.penny.example.json5`** into **`~/.openclaw/openclaw.json`**:
 
 - **`agents.defaults.workspace`** → **`/…/penny-go/workspace`** (absolute).
-- **`agents.defaults.skills`** includes **`penny-funding`**.
+- **`agents.defaults.skills`** includes **`penny-funding`** and **`penny-artifacts`**.
 - **`agents.defaults.model.primary`** → **`deepseek/deepseek-v4-flash`** (or override after auth works).
-- **`tools`** — **minimal profile + explicit `allow`** (corpus tool, reader, `web_search` only; **`web.fetch` disabled**).
+- **`tools`** — **minimal profile + explicit `allow`** (corpus tools, reader, **`create_funding_brief`**, `web_search` only; **`web.fetch` disabled**).
 - **`plugins.entries`** — **`exa` enabled**; **`penny-tools` enabled** with **`corpusPath`**, **`pythonPath`**, **`repoRoot`** set to absolute paths **or** rely on **`PENNY_*`** env in `~/.openclaw/.env`.
 
 Restart **gateway** (if using daemon): **`openclaw gateway restart`** (or follow install output).
@@ -74,8 +74,11 @@ Restart **gateway** (if using daemon): **`openclaw gateway restart`** (or follow
 | E3 — reader smoke | stdin HTML + PDF (setup doc §3) | **`success: true`**, non-empty content |
 | E4 — Path A | **`openclaw agent --local`** Ontario SaaS prompt (setup doc §6d) | **`search_corpus` before web search**; **`read_official_source`** per recommendation |
 | E5 — Path B | **`openclaw agent --local`** Inuvik tourism prompt (setup doc §6e) | Corpus-first; weak hits → **`web_search`** → **`read_official_source`** |
+| A1 — artifacts | **`./scripts/verify_penny_artifacts.sh`** | Shared, plugin, web tests pass; brief HTML + PDF smoke (or `--skip-pdf`) |
 
 **Recording:** Paste or save **`--json`** outputs / gateway logs for regressions later.
+
+See **`docs/penny-artifacts.md`** for artifact panel, API, and cross-device persistence notes.
 
 ---
 

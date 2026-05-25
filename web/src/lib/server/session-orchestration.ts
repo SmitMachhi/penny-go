@@ -12,6 +12,7 @@ import {
 	patchGatewaySession
 } from '$lib/server/gateway-session-service.js';
 import { deleteEngagementMemory } from '$lib/server/penny-engagement-storage.js';
+import { deleteSessionArtifacts } from '$lib/server/artifact-storage.js';
 import { parseOptionalSessionLabel, parseSessionLabel } from '$lib/server/session-label.js';
 import {
 	buildPennySessionKey,
@@ -98,4 +99,5 @@ export async function deletePennySession(key: string): Promise<void> {
 
 	await deleteGatewaySession({ key: sessionKey, deleteTranscript: true });
 	await deleteEngagementMemory(sessionKey);
+	await deleteSessionArtifacts(sessionKey);
 }

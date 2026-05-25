@@ -11,6 +11,7 @@ import {
 	fetchChatHistory,
 	sendChatMessage
 } from '$lib/server/gateway-chat-service.js';
+import { listSessionArtifacts } from '$lib/server/artifact-storage.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
 const CHAT_DELIVER = false;
@@ -60,4 +61,10 @@ export function subscribeToChatStream(
 ): () => void {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
 	return subscribeToStream(sessionKey, send);
+}
+
+export async function getSessionArtifacts(sessionKeyRaw: string | null | undefined) {
+	const sessionKey = resolveSessionKey(sessionKeyRaw);
+	const artifacts = await listSessionArtifacts(sessionKey);
+	return { sessionKey, artifacts };
 }

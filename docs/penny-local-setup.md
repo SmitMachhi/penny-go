@@ -18,7 +18,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | Path | Role |
 | ---- | ---- |
 | `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skill) |
-| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`) |
+| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `create_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
 | `database/data/funding/curated/verified-programs.jsonl` | Corpus |
 | `config/openclaw.penny.example.json5` | Example gateway merge snippet |
@@ -223,11 +223,14 @@ npm install && npm run dev
 
 Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
 
+**Artifacts:** after verified recommendations, Penny can create a funding brief slideshow in the right panel (preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `create_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+
 Regression ladder (offline + optional live agent runs):
 
 ```bash
 ./scripts/verify_penny_phase1.sh --skip-reader
 ./scripts/verify_penny_phase1.sh --live
+./scripts/verify_penny_artifacts.sh
 ```
 
 ## What we deliberately skip here

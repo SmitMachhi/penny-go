@@ -18,6 +18,7 @@ Tools must run in this order unless the conversation is purely intake (no progra
 2. `read_official_source` — for every official URL you might recommend (corpus `source_urls` or URLs from search).
 3. `web_search` — **only** when `search_corpus` returns no relevant rows for the user situation.
 4. After `web_search`, every candidate URL still needs `read_official_source` before recommendation.
+5. `create_funding_brief` — after verified recommendations when the deliverable belongs in the artifact panel (see `penny-artifacts` skill).
 
 Do **not** recommend a program from corpus text, Exa snippets, or memory alone. Live page content overrides stale corpus fields.
 

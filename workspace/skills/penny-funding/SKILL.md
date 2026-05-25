@@ -27,3 +27,5 @@ Align with the curation protocol: business-only, official government source, cle
 ## Output
 
 Ranked list (max five), each with Verified live or Newly discovered label, official link, and next steps.
+
+When the list is substantial, call `create_funding_brief` per the `penny-artifacts` skill instead of dumping the full table into chat.

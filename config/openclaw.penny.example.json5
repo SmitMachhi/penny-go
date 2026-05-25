@@ -3,7 +3,7 @@
     "defaults": {
       "model": { "primary": "deepseek/deepseek-v4-flash" },
       "workspace": "/ABSOLUTE_PATH_TO_REPO/workspace",
-      "skills": ["penny-funding"],
+      "skills": ["penny-funding", "penny-artifacts"],
       // Keep memory search scoped to workspace Markdown only — do NOT add "sessions"
       // and do NOT enable experimental.sessionMemory (cross-session transcript indexing).
       "memorySearch": {
@@ -12,7 +12,7 @@
     }
   },
   "tools": {
-    "allow": ["search_corpus", "read_official_source", "web_search"],
+    "allow": ["search_corpus", "read_official_source", "create_funding_brief", "web_search"],
     "web": {
       "search": { "provider": "exa" },
       "fetch": { "enabled": false }

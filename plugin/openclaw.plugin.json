@@ -27,7 +27,8 @@
   "contracts": {
     "tools": [
       "search_corpus",
-      "read_official_source"
+      "read_official_source",
+      "create_funding_brief"
     ]
   }
 }

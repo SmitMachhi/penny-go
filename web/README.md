@@ -34,7 +34,17 @@ API routes:
 - `GET /api/sessions` — list penny sessions (plus legacy **Previous chat** when applicable)
 - `POST /api/sessions` — create session
 - `PATCH /api/sessions/:key` — rename
-- `DELETE /api/sessions/:key` — delete transcript + engagement memory file
+- `DELETE /api/sessions/:key` — delete transcript + engagement memory file + session artifacts
+
+## Artifacts
+
+Funding brief slideshows (preview + PDF download) persist under `workspace/artifacts/<sessionUuid>/`. See **`../docs/penny-artifacts.md`**.
+
+- `GET /api/artifacts?sessionKey=` — list artifacts
+- `GET /api/artifacts/:id?sessionKey=&preview=html` — slideshow preview
+- `GET /api/artifacts/:id/download?sessionKey=&format=pdf` — PDF download
+
+SSE: `artifact.create` / `artifact.update` after `create_funding_brief` tool completes.
 
 ## Run
 

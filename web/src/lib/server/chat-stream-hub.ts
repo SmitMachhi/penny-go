@@ -48,7 +48,9 @@ function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 		payload.runId &&
 		ssePayload.name === 'create_funding_brief'
 	) {
-		void emitArtifactEvent(sessionKey, payload.runId, ssePayload.name);
+		void emitArtifactEvent(sessionKey, payload.runId, ssePayload.name).catch((error) => {
+			console.error('artifact_sse_emit_failed', error);
+		});
 	}
 }
 

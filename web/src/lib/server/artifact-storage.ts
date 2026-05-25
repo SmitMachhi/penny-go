@@ -1,9 +1,10 @@
-import { readFile, rm, stat } from 'node:fs/promises';
+import { readFile, readdir, rm, stat } from 'node:fs/promises';
 
 import {
 	META_FILENAME,
 	PDF_FILENAME,
 	SLIDES_FILENAME,
+	isValidArtifactId,
 	resolveArtifactFilePath,
 	resolveSessionArtifactIndexPath,
 	resolveSessionArtifactsDir
@@ -80,8 +81,36 @@ export async function artifactPdfExists(sessionKey: string, artifactId: string):
 }
 
 export async function getLatestSessionArtifact(sessionKey: string): Promise<ArtifactMeta | null> {
-	const artifacts = await listSessionArtifacts(sessionKey);
-	return artifacts[0] ?? null;
+	const sessionUuid = parsePennySessionUuid(sessionKey);
+	if (!sessionUuid) {
+		return null;
+	}
+
+	const repoRoot = resolvePennyRepoRootFromEnv();
+	const sessionDir = resolveSessionArtifactsDir(repoRoot, sessionUuid);
+
+	let artifactDirs: string[] = [];
+	try {
+		const entries = await readdir(sessionDir, { withFileTypes: true });
+		artifactDirs = entries
+			.filter((entry) => entry.isDirectory() && isValidArtifactId(entry.name))
+			.map((entry) => entry.name);
+	} catch {
+		return null;
+	}
+
+	let latest: ArtifactMeta | null = null;
+	for (const artifactId of artifactDirs) {
+		const meta = await readArtifactMetaFile(sessionKey, artifactId);
+		if (!meta) {
+			continue;
+		}
+		if (!latest || meta.updatedAt > latest.updatedAt) {
+			latest = meta;
+		}
+	}
+
+	return latest;
 }
 
 export async function deleteSessionArtifacts(sessionKey: string): Promise<void> {

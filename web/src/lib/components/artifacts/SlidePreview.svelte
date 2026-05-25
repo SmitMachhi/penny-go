@@ -15,5 +15,5 @@
 	title="Funding brief slideshow preview"
 	src={previewSrc}
 	class="h-full w-full flex-1 border-0 bg-background"
-	sandbox="allow-scripts allow-same-origin"
+	sandbox="allow-scripts"
 ></iframe>

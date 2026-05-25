@@ -15,6 +15,11 @@ export async function GET(event) {
 			throw error(400, 'artifact id required');
 		}
 
+		const meta = await getArtifactMeta(sessionKey, artifactId);
+		if (!meta) {
+			throw error(404, 'artifact not found');
+		}
+
 		const accept = event.request.headers.get('accept') ?? '';
 		const wantsHtml =
 			event.url.searchParams.get('preview') === 'html' ||
@@ -30,12 +35,7 @@ export async function GET(event) {
 			});
 		}
 
-		const meta = await getArtifactMeta(sessionKey, artifactId);
-		if (!meta) {
-			throw error(404, 'artifact not found');
-		}
-
-		return new Response(JSON.stringify({ sessionKey, artifact: meta }), {
+		return new Response(JSON.stringify({ artifact: meta }), {
 			headers: {
 				'content-type': 'application/json; charset=utf-8'
 			}

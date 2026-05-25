@@ -1,10 +1,6 @@
-export type ArtifactSummary = {
-	artifactId: string;
-	title: string;
-	programCount: number;
-	version: number;
-	updatedAt: string;
-};
+export type { ArtifactSummary } from '$lib/chat/artifacts.js';
+
+import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 
 export type SsePayload =
 	| { type: 'chat.delta'; runId: string; text: string; replace?: boolean }

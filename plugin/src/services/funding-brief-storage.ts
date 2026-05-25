@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 import {
@@ -141,6 +141,37 @@ export function createArtifactId(): string {
 	return randomUUID();
 }
 
+const INDEX_LOCK_MAX_ATTEMPTS = 10;
+const INDEX_LOCK_RETRY_MS = 50;
+
+async function withSessionIndexLock<T>(
+	indexPath: string,
+	action: () => Promise<T>
+): Promise<T> {
+	const lockPath = `${indexPath}.lock`;
+
+	for (let attempt = 0; attempt < INDEX_LOCK_MAX_ATTEMPTS; attempt += 1) {
+		try {
+			const handle = await open(lockPath, 'wx');
+			try {
+				return await action();
+			} finally {
+				await handle.close();
+				await unlink(lockPath).catch(() => undefined);
+			}
+		} catch (error) {
+			if ((error as NodeJS.ErrnoException).code !== 'EEXIST') {
+				throw error;
+			}
+			await new Promise((resolve) => {
+				setTimeout(resolve, INDEX_LOCK_RETRY_MS * (attempt + 1));
+			});
+		}
+	}
+
+	throw new Error('artifact_index_lock_timeout');
+}
+
 async function upsertSessionArtifactIndex(
 	repoRoot: string,
 	meta: ArtifactMeta
@@ -148,15 +179,20 @@ async function upsertSessionArtifactIndex(
 	const indexPath = resolveSessionArtifactIndexPath(repoRoot, meta.sessionUuid);
 	await mkdir(resolveSessionArtifactsDir(repoRoot, meta.sessionUuid), { recursive: true });
 
-	let entries: ArtifactIndexEntry[] = [];
-	try {
-		const raw = await readFile(indexPath, 'utf8');
-		entries = JSON.parse(raw) as ArtifactIndexEntry[];
-	} catch {
-		entries = [];
-	}
+	await withSessionIndexLock(indexPath, async () => {
+		let entries: ArtifactIndexEntry[] = [];
+		try {
+			const raw = await readFile(indexPath, 'utf8');
+			entries = JSON.parse(raw) as ArtifactIndexEntry[];
+		} catch {
+			entries = [];
+		}
 
-	const withoutCurrent = entries.filter((entry) => entry.artifactId !== meta.artifactId);
-	withoutCurrent.unshift(meta);
-	await writeFile(indexPath, `${JSON.stringify(withoutCurrent, null, 2)}\n`, 'utf8');
+		const withoutCurrent = entries.filter((entry) => entry.artifactId !== meta.artifactId);
+		withoutCurrent.unshift(meta);
+
+		const tmpPath = `${indexPath}.tmp-${randomUUID()}`;
+		await writeFile(tmpPath, `${JSON.stringify(withoutCurrent, null, 2)}\n`, 'utf8');
+		await rename(tmpPath, indexPath);
+	});
 }

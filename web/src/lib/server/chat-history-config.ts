@@ -1,0 +1,2 @@
+export const CHAT_HISTORY_LIMIT = 200;
+export const CHAT_HISTORY_MAX_CHARS = 120_000;

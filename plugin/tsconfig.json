@@ -12,7 +12,11 @@
     "outDir": "dist",
     "rootDir": "src",
     "declaration": false,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "paths": {
+      "@penny/shared/*": ["../shared/*"]
+    }
   },
   "include": ["src/**/*.ts"]
 }

@@ -1,0 +1,14 @@
+{
+  "regex": "\\bloan\\b|loan[- ]guarantee|low[- ]cost financing|low interest rate|(?<!non-)repayable contribution|(?<!non-)repayable royalty|(?<!non-)repayable tax deferral",
+  "auditFields": [
+    "program_name",
+    "provider",
+    "program_type",
+    "eligible_applicants",
+    "eligible_projects",
+    "funding_amount",
+    "deadline_or_intake",
+    "status"
+  ],
+  "includeEvidence": true
+}

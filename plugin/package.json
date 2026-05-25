@@ -12,6 +12,7 @@
     "test": "npm run build && node --test dist/search-corpus.test.js"
   },
   "dependencies": {
+    "@penny/shared": "file:../shared",
     "@sinclair/typebox": "^0.34.15"
   },
   "peerDependencies": {

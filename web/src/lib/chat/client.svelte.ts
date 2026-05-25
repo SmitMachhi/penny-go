@@ -1,5 +1,6 @@
 import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
 import { apiJson } from '$lib/chat/api-client.js';
+import { formatClientError } from '$lib/chat/format-error.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 type HistoryResponse = {
@@ -62,7 +63,7 @@ export class ChatClient {
 			}
 		} catch (error) {
 			this.state.connected = false;
-			this.state.error = error instanceof Error ? error.message : 'OpenClaw gateway is unavailable';
+			this.state.error = formatClientError(error, 'OpenClaw gateway is unavailable');
 		}
 	}
 
@@ -98,7 +99,7 @@ export class ChatClient {
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.error = null;
 		} catch (error) {
-			this.state.error = error instanceof Error ? error.message : 'failed to load chat history';
+			this.state.error = formatClientError(error, 'failed to load chat history');
 		} finally {
 			this.state.loading = false;
 		}
@@ -132,7 +133,7 @@ export class ChatClient {
 			this.activeRunId = payload.runId;
 		} catch (error) {
 			this.state.sending = false;
-			this.state.error = error instanceof Error ? error.message : 'failed to send message';
+			this.state.error = formatClientError(error, 'failed to send message');
 		}
 	}
 
@@ -140,7 +141,7 @@ export class ChatClient {
 		if (!this.activeRunId || !this.state.sessionKey) {
 			return;
 		}
-		await fetch('/api/chat/abort', {
+		await apiJson('/api/chat/abort', {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
 			body: JSON.stringify({ sessionKey: this.state.sessionKey, runId: this.activeRunId })

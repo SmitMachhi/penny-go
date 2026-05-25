@@ -29,6 +29,7 @@
 	},
 	"dependencies": {
 		"@lucide/svelte": "^1.16.0",
+		"@penny/shared": "file:../shared",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
 		"isomorphic-dompurify": "^3.14.0",

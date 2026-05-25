@@ -1,6 +1,10 @@
 import { normalizeHistoryMessages } from '$lib/chat/messages.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 import { ValidationError } from '$lib/server/api-error.js';
+import {
+	CHAT_HISTORY_LIMIT,
+	CHAT_HISTORY_MAX_CHARS
+} from '$lib/server/chat-history-config.js';
 import { subscribeToStream } from '$lib/server/chat-stream-hub.js';
 import {
 	abortChatRun,
@@ -9,8 +13,6 @@ import {
 } from '$lib/server/gateway-chat-service.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
-const CHAT_HISTORY_LIMIT = 200;
-const CHAT_HISTORY_MAX_CHARS = 120_000;
 const CHAT_DELIVER = false;
 
 export async function getChatHistory(sessionKeyRaw: string | null | undefined) {

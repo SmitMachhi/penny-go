@@ -1,28 +1,17 @@
-import { json } from '@sveltejs/kit';
-
-import { toApiErrorResponse } from '$lib/server/api-error.js';
+import { withApiJson } from '$lib/server/api-handler.js';
 import {
 	createPennySession,
 	listPennySessions
 } from '$lib/server/session-orchestration.js';
 
 export async function GET() {
-	try {
-		const sessions = await listPennySessions();
-		return json({ sessions });
-	} catch (error) {
-		const { body, status } = toApiErrorResponse(error, 'failed to list sessions');
-		return json(body, { status });
-	}
+	return withApiJson(async () => ({ sessions: await listPennySessions() }), 'failed to list sessions');
 }
 
 export async function POST({ request }) {
-	try {
+	return withApiJson(async () => {
 		const body = (await request.json().catch(() => ({}))) as { label?: string };
 		const session = await createPennySession(body.label);
-		return json({ session }, { status: 201 });
-	} catch (error) {
-		const { body, status } = toApiErrorResponse(error, 'failed to create session');
-		return json(body, { status });
-	}
+		return { body: { session }, status: 201 };
+	}, 'failed to create session');
 }

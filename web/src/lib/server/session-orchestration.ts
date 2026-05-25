@@ -1,5 +1,9 @@
 import { randomUUID } from 'node:crypto';
 
+import {
+	CHAT_HISTORY_LIMIT,
+	CHAT_HISTORY_MAX_CHARS
+} from '$lib/server/chat-history-config.js';
 import { fetchChatHistory } from '$lib/server/gateway-chat-service.js';
 import {
 	createGatewaySession,
@@ -20,8 +24,6 @@ import type { PennySessionView } from '$lib/types/penny-session.js';
 
 export type { PennySessionView };
 
-const CHAT_HISTORY_LIMIT = 200;
-const CHAT_HISTORY_MAX_CHARS = 120_000;
 const PENNY_MAIN_AGENT_ID = 'main';
 const SESSION_LIST_LIMIT = 50;
 

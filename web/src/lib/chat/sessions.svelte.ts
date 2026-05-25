@@ -5,6 +5,7 @@ import {
 	writeActiveSessionKey
 } from '$lib/chat/active-session.js';
 import { apiJson } from '$lib/chat/api-client.js';
+import { formatClientError } from '$lib/chat/format-error.js';
 import type { ChatClient } from '$lib/chat/client.svelte.js';
 import type { PennySessionView } from '$lib/types/penny-session.js';
 
@@ -68,7 +69,7 @@ export class SessionClient {
 			this.state.sessions = payload.sessions ?? [];
 			this.state.error = null;
 		} catch (error) {
-			this.state.error = error instanceof Error ? error.message : 'failed to load sessions';
+			this.state.error = formatClientError(error, 'failed to load sessions');
 		} finally {
 			this.state.loading = false;
 		}
@@ -91,7 +92,7 @@ export class SessionClient {
 			}
 			return session;
 		} catch (error) {
-			this.state.error = error instanceof Error ? error.message : 'failed to create session';
+			this.state.error = formatClientError(error, 'failed to create session');
 			return null;
 		}
 	}
@@ -112,7 +113,7 @@ export class SessionClient {
 			await this.refresh();
 			return true;
 		} catch (error) {
-			this.state.error = error instanceof Error ? error.message : 'failed to rename session';
+			this.state.error = formatClientError(error, 'failed to rename session');
 			return false;
 		}
 	}
@@ -126,7 +127,7 @@ export class SessionClient {
 			await this.refresh();
 			return true;
 		} catch (error) {
-			this.state.error = error instanceof Error ? error.message : 'failed to delete session';
+			this.state.error = formatClientError(error, 'failed to delete session');
 			return false;
 		}
 	}

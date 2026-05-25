@@ -1,4 +1,4 @@
-import { getGatewayClient } from '$lib/server/gateway-client.js';
+import { getGatewayRpc } from '$lib/server/gateway-rpc.js';
 
 export type GatewaySessionRow = {
 	key: string;
@@ -6,10 +6,6 @@ export type GatewaySessionRow = {
 	derivedTitle?: string;
 	lastMessagePreview?: string;
 	updatedAt: number | null;
-};
-
-type SessionsListResult = {
-	sessions?: GatewaySessionRow[];
 };
 
 export type ListGatewaySessionsInput = {
@@ -24,10 +20,7 @@ export type ListGatewaySessionsInput = {
 export async function listGatewaySessions(
 	input: ListGatewaySessionsInput
 ): Promise<GatewaySessionRow[]> {
-	const client = getGatewayClient();
-	const payload = (await client.request('sessions.list', input)) as SessionsListResult;
-
-	return payload.sessions ?? [];
+	return getGatewayRpc().sessionsList(input);
 }
 
 export async function createGatewaySession(input: {
@@ -35,29 +28,19 @@ export async function createGatewaySession(input: {
 	agentId: string;
 	label?: string;
 }): Promise<void> {
-	const client = getGatewayClient();
-	await client.request('sessions.create', {
-		key: input.key,
-		agentId: input.agentId,
-		...(input.label ? { label: input.label } : {})
-	});
+	await getGatewayRpc().sessionsCreate(input);
 }
 
 export async function patchGatewaySession(input: {
 	key: string;
 	label: string;
 }): Promise<void> {
-	const client = getGatewayClient();
-	await client.request('sessions.patch', { key: input.key, label: input.label });
+	await getGatewayRpc().sessionsPatch(input);
 }
 
 export async function deleteGatewaySession(input: {
 	key: string;
 	deleteTranscript: boolean;
 }): Promise<void> {
-	const client = getGatewayClient();
-	await client.request('sessions.delete', {
-		key: input.key,
-		deleteTranscript: input.deleteTranscript
-	});
+	await getGatewayRpc().sessionsDelete(input);
 }

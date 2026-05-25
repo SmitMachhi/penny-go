@@ -8,6 +8,11 @@ import re
 import sys
 from pathlib import Path
 
+SHARED_DIR = Path(__file__).resolve().parents[2] / "shared"
+sys.path.insert(0, str(SHARED_DIR))
+
+from load_loan_heuristic import load_loan_heuristic, loanlike_pattern
+
 DEFAULT_JSONL_PATH = Path("data/funding/curated/verified-programs.jsonl")
 DEFAULT_JSON_PATH = Path("data/funding/curated/verified-programs.json")
 DEFAULT_SUMMARY_PATH = Path("data/funding/curated/coverage-summary.md")
@@ -18,15 +23,8 @@ EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXPECTED_JURISDICTION_COUNT = 14
 SUMMARY_COUNT_PATTERN = re.compile(r"^- (?P<label>[^:]+): (?P<count>\d+)$")
-LOANLIKE_PATTERN = re.compile(
-    r"\bloan\b|"
-    r"loan[- ]guarantee|"
-    r"low[- ]cost financing|"
-    r"low interest rate|"
-    r"(?<!non-)repayable contribution|"
-    r"(?<!non-)repayable royalty|"
-    r"(?<!non-)repayable tax deferral"
-)
+_LOAN_HEURISTIC = load_loan_heuristic()
+LOANLIKE_PATTERN = loanlike_pattern()
 REQUIRED_FIELDS = {
     "program_name",
     "jurisdiction",
@@ -42,16 +40,7 @@ REQUIRED_FIELDS = {
     "evidence",
     "confidence",
 }
-TEXT_FIELDS_FOR_LOAN_AUDIT = (
-    "program_name",
-    "provider",
-    "program_type",
-    "eligible_applicants",
-    "eligible_projects",
-    "funding_amount",
-    "deadline_or_intake",
-    "status",
-)
+TEXT_FIELDS_FOR_LOAN_AUDIT = tuple(_LOAN_HEURISTIC["auditFields"])
 
 JsonObject = dict[str, object]
 

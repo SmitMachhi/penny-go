@@ -11,14 +11,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+SHARED_DIR = Path(__file__).resolve().parents[1] / "shared"
+sys.path.insert(0, str(SHARED_DIR))
+
+from load_loan_heuristic import loanlike_pattern
+
 Scenario = Literal["path-a", "path-b"]
 
-LOANLIKE_RE = re.compile(
-    r"\bloan\b|loan[- ]guarantee|low[- ]cost financing|low interest rate|"
-    r"(?<!non-)repayable contribution|(?<!non-)repayable royalty|"
-    r"(?<!non-)repayable tax deferral",
-    re.IGNORECASE,
-)
+LOANLIKE_RE = loanlike_pattern()
 RECOMMENDATION_HEADING_RE = re.compile(r"^#{2,3}\s+\d+\.", re.MULTILINE)
 VERIFIED_LABEL_RE = re.compile(r"\*\*Verified live\*\*|\*\*Newly discovered\*\*", re.IGNORECASE)
 MAX_RECOMMENDATIONS = 5

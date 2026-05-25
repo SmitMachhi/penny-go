@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 
+import { withApiJson, withApiJsonEvent } from '$lib/server/api-handler.js';
 import { checkPennyHealth } from '$lib/server/health-orchestration.js';
 import { toApiErrorResponse } from '$lib/server/api-error.js';
 

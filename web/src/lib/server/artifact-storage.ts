@@ -58,6 +58,10 @@ export async function getArtifactMeta(
 	sessionKey: string,
 	artifactId: string
 ): Promise<ArtifactMeta | null> {
+	if (!isValidArtifactId(artifactId)) {
+		return null;
+	}
+
 	const fromList = (await listSessionArtifacts(sessionKey)).find(
 		(entry) => entry.artifactId === artifactId
 	);
@@ -129,13 +133,13 @@ export async function readArtifactMetaFile(
 	artifactId: string
 ): Promise<ArtifactMeta | null> {
 	const sessionUuid = parsePennySessionUuid(sessionKey);
-	if (!sessionUuid) {
+	if (!sessionUuid || !isValidArtifactId(artifactId)) {
 		return null;
 	}
 
 	const repoRoot = resolvePennyRepoRootFromEnv();
-	const metaPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, META_FILENAME);
 	try {
+		const metaPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, META_FILENAME);
 		const raw = await readFile(metaPath, 'utf8');
 		return JSON.parse(raw) as ArtifactMeta;
 	} catch {

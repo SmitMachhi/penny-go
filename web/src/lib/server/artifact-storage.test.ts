@@ -94,4 +94,9 @@ describe('artifact storage', () => {
 		const meta = await getArtifactMeta(SESSION_KEY, ARTIFACT_ID);
 		expect(meta?.title).toBe('Test brief');
 	});
+
+	it('getArtifactMeta returns null for invalid artifact ids', async () => {
+		const meta = await getArtifactMeta(SESSION_KEY, 'not-a-valid-uuid');
+		expect(meta).toBeNull();
+	});
 });

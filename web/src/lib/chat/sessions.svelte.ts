@@ -40,6 +40,11 @@ export function createInitialSessionState(): SessionClientState {
 	};
 }
 
+function upsertSession(sessions: PennySession[], session: PennySession): PennySession[] {
+	const withoutSession = sessions.filter((entry) => entry.key !== session.key);
+	return [session, ...withoutSession];
+}
+
 export class SessionClient {
 	state = $state<SessionClientState>(createInitialSessionState());
 
@@ -90,8 +95,12 @@ export class SessionClient {
 			if (!response.ok || !payload.session) {
 				throw new Error(payload.error ?? 'failed to create session');
 			}
+			const session = payload.session;
 			await this.refresh();
-			return payload.session;
+			if (!this.state.sessions.some((entry) => entry.key === session.key)) {
+				this.state.sessions = upsertSession(this.state.sessions, session);
+			}
+			return session;
 		} catch (error) {
 			this.state.error = error instanceof Error ? error.message : 'failed to create session';
 			return null;

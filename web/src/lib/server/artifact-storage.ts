@@ -43,20 +43,29 @@ export async function listSessionArtifacts(sessionKey: string): Promise<Artifact
 
 	const repoRoot = resolvePennyRepoRootFromEnv();
 	const indexPath = resolveSessionArtifactIndexPath(repoRoot, sessionUuid);
+	let indexEntries: ArtifactMeta[] = [];
 	try {
 		const raw = await readFile(indexPath, 'utf8');
-		return JSON.parse(raw) as ArtifactMeta[];
+		indexEntries = JSON.parse(raw) as ArtifactMeta[];
 	} catch {
-		return [];
+		indexEntries = [];
 	}
+
+	return mergeArtifactMetas(indexEntries, await scanSessionArtifactMetas(sessionKey));
 }
 
 export async function getArtifactMeta(
 	sessionKey: string,
 	artifactId: string
 ): Promise<ArtifactMeta | null> {
-	const artifacts = await listSessionArtifacts(sessionKey);
-	return artifacts.find((entry) => entry.artifactId === artifactId) ?? null;
+	const fromList = (await listSessionArtifacts(sessionKey)).find(
+		(entry) => entry.artifactId === artifactId
+	);
+	if (fromList) {
+		return fromList;
+	}
+
+	return readArtifactMetaFile(sessionKey, artifactId);
 }
 
 export async function readArtifactSlidesHtml(
@@ -92,36 +101,8 @@ export async function artifactPdfExists(sessionKey: string, artifactId: string):
 }
 
 export async function getLatestSessionArtifact(sessionKey: string): Promise<ArtifactMeta | null> {
-	const sessionUuid = parsePennySessionUuid(sessionKey);
-	if (!sessionUuid) {
-		return null;
-	}
-
-	const repoRoot = resolvePennyRepoRootFromEnv();
-	const sessionDir = resolveSessionArtifactsDir(repoRoot, sessionUuid);
-
-	let artifactDirs: string[] = [];
-	try {
-		const entries = await readdir(sessionDir, { withFileTypes: true });
-		artifactDirs = entries
-			.filter((entry) => entry.isDirectory() && isValidArtifactId(entry.name))
-			.map((entry) => entry.name);
-	} catch {
-		return null;
-	}
-
-	let latest: ArtifactMeta | null = null;
-	for (const artifactId of artifactDirs) {
-		const meta = await readArtifactMetaFile(sessionKey, artifactId);
-		if (!meta) {
-			continue;
-		}
-		if (!latest || meta.updatedAt > latest.updatedAt) {
-			latest = meta;
-		}
-	}
-
-	return latest;
+	const artifacts = await listSessionArtifacts(sessionKey);
+	return artifacts[0] ?? null;
 }
 
 export async function deleteSessionArtifacts(sessionKey: string): Promise<void> {
@@ -160,4 +141,43 @@ export async function readArtifactMetaFile(
 	} catch {
 		return null;
 	}
+}
+
+async function scanSessionArtifactMetas(sessionKey: string): Promise<ArtifactMeta[]> {
+	const sessionUuid = parsePennySessionUuid(sessionKey);
+	if (!sessionUuid) {
+		return [];
+	}
+
+	const repoRoot = resolvePennyRepoRootFromEnv();
+	const sessionDir = resolveSessionArtifactsDir(repoRoot, sessionUuid);
+	let artifactDirs: string[] = [];
+	try {
+		const entries = await readdir(sessionDir, { withFileTypes: true });
+		artifactDirs = entries
+			.filter((entry) => entry.isDirectory() && isValidArtifactId(entry.name))
+			.map((entry) => entry.name);
+	} catch {
+		return [];
+	}
+
+	const metas: ArtifactMeta[] = [];
+	for (const artifactId of artifactDirs) {
+		const meta = await readArtifactMetaFile(sessionKey, artifactId);
+		if (meta) {
+			metas.push(meta);
+		}
+	}
+	return metas;
+}
+
+function mergeArtifactMetas(indexEntries: ArtifactMeta[], diskEntries: ArtifactMeta[]): ArtifactMeta[] {
+	const byId = new Map<string, ArtifactMeta>();
+	for (const entry of diskEntries) {
+		byId.set(entry.artifactId, entry);
+	}
+	for (const entry of indexEntries) {
+		byId.set(entry.artifactId, entry);
+	}
+	return [...byId.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }

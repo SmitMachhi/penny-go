@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -12,7 +12,7 @@ import {
 } from '@penny/shared/penny-paths';
 
 import { buildArtifactSseForToolDone } from './artifact-sse-bridge.js';
-import { listSessionArtifacts } from './artifact-storage.js';
+import { getArtifactMeta, listSessionArtifacts } from './artifact-storage.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
 const SESSION_UUID = '550e8400-e29b-41d4-a716-446655440000';
@@ -76,5 +76,22 @@ describe('artifact storage', () => {
 			throw new Error('expected artifact.create payload');
 		}
 		expect(payload.artifact.artifactId).toBe(ARTIFACT_ID);
+	});
+
+	it('lists artifacts from disk when index.json is missing', async () => {
+		const indexPath = resolveSessionArtifactIndexPath(repoRoot, SESSION_UUID);
+		await rm(indexPath);
+
+		const artifacts = await listSessionArtifacts(SESSION_KEY);
+		expect(artifacts).toHaveLength(1);
+		expect(artifacts[0]?.artifactId).toBe(ARTIFACT_ID);
+	});
+
+	it('getArtifactMeta falls back to meta.json when index is empty', async () => {
+		const indexPath = resolveSessionArtifactIndexPath(repoRoot, SESSION_UUID);
+		await rm(indexPath);
+
+		const meta = await getArtifactMeta(SESSION_KEY, ARTIFACT_ID);
+		expect(meta?.title).toBe('Test brief');
 	});
 });

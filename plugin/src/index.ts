@@ -1,11 +1,11 @@
-import path from "node:path";
-
 import { Type } from "@sinclair/typebox";
 import { defineToolPlugin } from "openclaw/plugin-sdk/tool-plugin";
 
-import { CORPUS_SEGMENTS_RELATIVE } from "./constants.js";
-import { filterAndRankPrograms, loadProgramsFromFile } from "./search-corpus.js";
-import { readOfficialPageContent, type PennyToolsConfigShape } from "./read-official-source.js";
+import {
+  readOfficialSourceAction,
+  searchCorpusAction,
+} from "./actions/penny-tools.js";
+import type { PennyToolsConfigShape } from "./penny-config.js";
 
 const configSchema = Type.Object(
   {
@@ -19,37 +19,6 @@ const configSchema = Type.Object(
   },
   { additionalProperties: false },
 );
-
-function resolveRepoRoot(config: PennyToolsConfigShape): string {
-  const fromConfig = config.repoRoot?.trim();
-  const fromEnv = process.env.PENNY_REPO_ROOT?.trim();
-
-  if (fromConfig) {
-    return path.resolve(fromConfig);
-  }
-
-  if (fromEnv) {
-    return path.resolve(fromEnv);
-  }
-
-  throw new Error("missing_repo_root: set repoRoot plugin config or PENNY_REPO_ROOT");
-}
-
-function resolveCorpusPath(config: PennyToolsConfigShape): string {
-  const fromConfig = config.corpusPath?.trim();
-  const fromEnv = process.env.PENNY_CORPUS_PATH?.trim();
-
-  if (fromConfig) {
-    return path.resolve(fromConfig);
-  }
-
-  if (fromEnv) {
-    return path.resolve(fromEnv);
-  }
-
-  const repoRoot = resolveRepoRoot(config);
-  return path.join(repoRoot, ...CORPUS_SEGMENTS_RELATIVE);
-}
 
 export default defineToolPlugin({
   id: "penny-tools",
@@ -72,23 +41,13 @@ export default defineToolPlugin({
         program_type: Type.Optional(Type.String()),
         include_federal: Type.Optional(Type.Boolean()),
       }),
-      execute: async (params, cfg) => {
-        const corpusFile = resolveCorpusPath(cfg);
-        const programs = await loadProgramsFromFile(corpusFile);
-
-        const matches = filterAndRankPrograms(programs, {
+      execute: async (params, cfg) =>
+        searchCorpusAction(cfg as PennyToolsConfigShape, {
           jurisdiction: params.jurisdiction,
           keywords: params.keywords,
           program_type: params.program_type,
           include_federal: params.include_federal,
-        });
-
-        return {
-          corpus_path: corpusFile,
-          match_count: matches.length,
-          programs: matches,
-        };
-      },
+        }),
     }),
     tool({
       name: "read_official_source",
@@ -100,23 +59,8 @@ export default defineToolPlugin({
           description: "Official https URL from corpus source_urls or web_search",
         }),
       }),
-      execute: async (params, cfg, runtime) => {
-        const mergedConfig: PennyToolsConfigShape = cfg;
-        const outcome = await readOfficialPageContent(
-          mergedConfig,
-          params.url.trim(),
-          runtime.signal,
-        );
-
-        if (!outcome.parsed) {
-          return {
-            success: false,
-            error: outcome.stderr || "empty_or_invalid_stdout",
-          };
-        }
-
-        return outcome.parsed;
-      },
+      execute: async (params, cfg, runtime) =>
+        readOfficialSourceAction(cfg as PennyToolsConfigShape, params.url.trim(), runtime.signal),
     }),
   ],
 });

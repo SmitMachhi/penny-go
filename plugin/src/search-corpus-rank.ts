@@ -1,7 +1,12 @@
 import { MAX_CORPUS_RESULTS } from "./constants.js";
 import type { ProgramProfile, SearchCorpusResultRow } from "./corpus-types.js";
+import {
+  collectProgramTextFields,
+  PROGRAM_LOAN_AUDIT_FIELDS,
+} from "./domain/program-fields.js";
 import { textLooksLoanBacked } from "./loan-filter.js";
 import { corpusKeywordOverlapScore, sanitizeKeywords } from "./search-corpus-keywords.js";
+import { normalizeToken } from "./services/text-normalize.js";
 
 export type SearchCorpusParams = {
   jurisdiction?: string | undefined;
@@ -9,20 +14,6 @@ export type SearchCorpusParams = {
   program_type?: string | undefined;
   include_federal?: boolean | undefined;
 };
-
-const LOAN_FIELDS: readonly string[] = [
-  "program_type",
-  "program_name",
-  "eligible_applicants",
-  "eligible_projects",
-  "funding_amount",
-  "deadline_or_intake",
-  "status",
-];
-
-function normalizeToken(value: string): string {
-  return value.trim().toLowerCase();
-}
 
 function jurisdictionMatches(
   row: ProgramProfile,
@@ -38,20 +29,8 @@ function jurisdictionMatches(
   return includeFederal && jurisdiction === "federal";
 }
 
-function coerceText(value: unknown): string {
-  if (value === undefined || value === null) {
-    return "";
-  }
-
-  return String(value).replace(/\s+/g, " ").trim();
-}
-
 function looksLoanBackedRow(row: ProgramProfile): boolean {
-  const blobs = LOAN_FIELDS.map((key) =>
-    coerceText(row[key as keyof ProgramProfile]),
-  ).filter(Boolean);
-
-  return textLooksLoanBacked(blobs);
+  return textLooksLoanBacked(collectProgramTextFields(row, PROGRAM_LOAN_AUDIT_FIELDS));
 }
 
 function coerceSourceUrls(program: ProgramProfile): string[] {

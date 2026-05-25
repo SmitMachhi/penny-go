@@ -1,8 +1,9 @@
 import type { ProgramProfile } from "./corpus-types.js";
-
-function normalizeToken(value: string): string {
-  return value.trim().toLowerCase();
-}
+import {
+  collectProgramTextFields,
+  PROGRAM_KEYWORD_HAYSTACK_FIELDS,
+} from "./domain/program-fields.js";
+import { joinNormalizedHaystack, normalizeToken } from "./services/text-normalize.js";
 
 export function sanitizeKeywords(words: readonly string[]): string[] {
   const sanitized: string[] = [];
@@ -27,25 +28,14 @@ function escapedWordRegex(token: string): RegExp {
   return RegExp(`\\b${escaped}\\b`, "gi");
 }
 
-function normalizeHaystack(parts: readonly (string | undefined)[]): string {
-  return normalizeToken(parts.filter(Boolean).join(" "));
-}
-
 export function corpusKeywordOverlapScore(row: ProgramProfile, keywords: readonly string[]): number {
   if (keywords.length === 0) {
     return 0;
   }
 
-  const haystack = normalizeHaystack([
-    row.program_name,
-    row.program_type,
-    row.eligible_applicants,
-    row.eligible_projects,
-    row.funding_amount,
-    row.deadline_or_intake,
-    row.status,
-    row.provider,
-  ]);
+  const haystack = joinNormalizedHaystack(
+    collectProgramTextFields(row, PROGRAM_KEYWORD_HAYSTACK_FIELDS),
+  );
 
   let hits = 0;
 

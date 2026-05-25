@@ -4,24 +4,18 @@ import {
 	readActiveSessionKey,
 	writeActiveSessionKey
 } from '$lib/chat/active-session.js';
+import { apiJson } from '$lib/chat/api-client.js';
 import type { ChatClient } from '$lib/chat/client.svelte.js';
+import type { PennySessionView } from '$lib/types/penny-session.js';
 
-export type PennySession = {
-	key: string;
-	title: string;
-	preview: string | null;
-	updatedAt: number | null;
-	isLegacy: boolean;
-};
+export type PennySession = PennySessionView;
 
 type SessionsResponse = {
 	sessions?: PennySession[];
-	error?: string;
 };
 
 type CreateSessionResponse = {
 	session?: PennySession;
-	error?: string;
 };
 
 export type SessionClientState = {
@@ -70,11 +64,7 @@ export class SessionClient {
 	async refresh(): Promise<void> {
 		this.state.loading = true;
 		try {
-			const response = await fetch('/api/sessions');
-			const payload = (await response.json()) as SessionsResponse;
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'failed to load sessions');
-			}
+			const payload = await apiJson<SessionsResponse>('/api/sessions');
 			this.state.sessions = payload.sessions ?? [];
 			this.state.error = null;
 		} catch (error) {
@@ -86,14 +76,13 @@ export class SessionClient {
 
 	async createSession(): Promise<PennySession | null> {
 		try {
-			const response = await fetch('/api/sessions', {
+			const payload = await apiJson<CreateSessionResponse>('/api/sessions', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({})
 			});
-			const payload = (await response.json()) as CreateSessionResponse;
-			if (!response.ok || !payload.session) {
-				throw new Error(payload.error ?? 'failed to create session');
+			if (!payload.session) {
+				throw new Error('failed to create session');
 			}
 			const session = payload.session;
 			await this.refresh();
@@ -115,15 +104,11 @@ export class SessionClient {
 
 	async renameSession(key: string, label: string): Promise<boolean> {
 		try {
-			const response = await fetch(`/api/sessions/${encodeURIComponent(key)}`, {
+			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
 				method: 'PATCH',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ label })
 			});
-			const payload = (await response.json()) as { error?: string };
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'failed to rename session');
-			}
 			await this.refresh();
 			return true;
 		} catch (error) {
@@ -134,13 +119,9 @@ export class SessionClient {
 
 	async deleteSession(key: string): Promise<boolean> {
 		try {
-			const response = await fetch(`/api/sessions/${encodeURIComponent(key)}`, {
+			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
 				method: 'DELETE'
 			});
-			const payload = (await response.json()) as { error?: string };
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'failed to delete session');
-			}
 			this.state.sessions = this.state.sessions.filter((session) => session.key !== key);
 			await this.refresh();
 			return true;

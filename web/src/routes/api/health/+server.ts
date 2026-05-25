@@ -1,13 +1,14 @@
 import { json } from '@sveltejs/kit';
 
-import { pingGateway } from '$lib/server/chat-service.js';
+import { checkPennyHealth } from '$lib/server/chat-orchestration.js';
+import { toApiErrorResponse } from '$lib/server/api-error.js';
 
 export async function GET() {
 	try {
-		const status = await pingGateway();
+		const status = await checkPennyHealth();
 		return json(status);
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'gateway unavailable';
-		return json({ ok: false, message }, { status: 503 });
+		const { body, status } = toApiErrorResponse(error, 'gateway unavailable');
+		return json({ ok: false, message: body.error }, { status });
 	}
 }

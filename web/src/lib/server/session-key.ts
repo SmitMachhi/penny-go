@@ -1,6 +1,4 @@
-import { relative, resolve } from 'node:path';
-
-import { resolveWorkspaceRoot } from '$lib/server/penny-config.js';
+import { classifyApiErrorStatus } from '$lib/server/api-error.js';
 
 export const LEGACY_SESSION_KEY = 'agent:main:main';
 export const PENNY_SESSION_PREFIX = 'agent:main:penny:';
@@ -45,22 +43,7 @@ export function buildPennySessionKey(uuid: string): string {
 	return `${PENNY_SESSION_PREFIX}${uuid}`;
 }
 
-export function engagementMemoryPath(sessionKey: string, workspaceRoot = resolveWorkspaceRoot()): string | null {
-	const uuid = parsePennySessionUuid(sessionKey);
-	if (!uuid) {
-		return null;
-	}
-
-	const engagementsDir = resolve(workspaceRoot, 'memory', 'engagements');
-	const target = resolve(engagementsDir, `${uuid}.md`);
-	const relativePath = relative(engagementsDir, target);
-	if (relativePath.startsWith('..') || relativePath.includes('..')) {
-		return null;
-	}
-
-	return target;
-}
-
+/** @deprecated Use classifyApiErrorStatus from api-error.ts */
 export function sessionKeyErrorStatus(error: unknown): number {
-	return error instanceof SessionKeyError ? 403 : 503;
+	return classifyApiErrorStatus(error);
 }

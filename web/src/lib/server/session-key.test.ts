@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	buildPennySessionKey,
-	engagementMemoryPath,
 	isAllowedSessionKey,
 	isPennySessionKey,
 	LEGACY_SESSION_KEY,
@@ -10,6 +9,7 @@ import {
 	resolveSessionKey,
 	SessionKeyError
 } from './session-key.js';
+import { engagementMemoryPath } from './penny-engagement-storage.js';
 
 const SAMPLE_UUID = '550e8400-e29b-41d4-a716-446655440000';
 const SAMPLE_KEY = buildPennySessionKey(SAMPLE_UUID);

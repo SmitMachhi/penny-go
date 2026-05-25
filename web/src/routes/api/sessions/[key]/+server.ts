@@ -1,35 +1,28 @@
 import { json } from '@sveltejs/kit';
 
+import { toApiErrorResponse } from '$lib/server/api-error.js';
 import {
 	deletePennySession,
 	renamePennySession
 } from '$lib/server/session-service.js';
-import { resolveSessionKey, sessionKeyErrorStatus } from '$lib/server/session-key.js';
 
 export async function PATCH({ params, request }) {
 	try {
-		const sessionKey = resolveSessionKey(params.key);
 		const body = (await request.json()) as { label?: string };
-		const label = body.label?.trim();
-		if (!label) {
-			return json({ error: 'label is required' }, { status: 400 });
-		}
-
-		const session = await renamePennySession(sessionKey, label);
+		const session = await renamePennySession(params.key, body.label ?? '');
 		return json({ session });
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'failed to rename session';
-		return json({ error: message }, { status: sessionKeyErrorStatus(error) });
+		const { body, status } = toApiErrorResponse(error, 'failed to rename session');
+		return json(body, { status });
 	}
 }
 
 export async function DELETE({ params }) {
 	try {
-		const sessionKey = resolveSessionKey(params.key);
-		await deletePennySession(sessionKey);
-		return json({ ok: true, key: sessionKey });
+		await deletePennySession(params.key);
+		return json({ ok: true, key: params.key });
 	} catch (error) {
-		const message = error instanceof Error ? error.message : 'failed to delete session';
-		return json({ error: message }, { status: sessionKeyErrorStatus(error) });
+		const { body, status } = toApiErrorResponse(error, 'failed to delete session');
+		return json(body, { status });
 	}
 }

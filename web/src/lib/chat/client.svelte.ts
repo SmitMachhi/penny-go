@@ -1,5 +1,5 @@
 import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
-import { applyStreamDelta } from '$lib/chat/stream-delta.js';
+import { apiJson } from '$lib/chat/api-client.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 type HistoryResponse = {
@@ -54,11 +54,15 @@ export class ChatClient {
 	}
 
 	async refreshHealth(): Promise<void> {
-		const response = await fetch('/api/health');
-		const payload = (await response.json()) as { ok?: boolean; message?: string };
-		this.state.connected = response.ok && payload.ok === true;
-		if (!this.state.connected) {
-			this.state.error = payload.message ?? 'OpenClaw gateway is unavailable';
+		try {
+			const payload = await apiJson<{ ok?: boolean; message?: string }>('/api/health');
+			this.state.connected = payload.ok === true;
+			if (!this.state.connected) {
+				this.state.error = payload.message ?? 'OpenClaw gateway is unavailable';
+			}
+		} catch (error) {
+			this.state.connected = false;
+			this.state.error = error instanceof Error ? error.message : 'OpenClaw gateway is unavailable';
 		}
 	}
 
@@ -87,13 +91,9 @@ export class ChatClient {
 
 		this.state.loading = true;
 		try {
-			const response = await fetch(
+			const payload = await apiJson<HistoryResponse>(
 				`/api/chat/history?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
 			);
-			const payload = (await response.json()) as HistoryResponse & { error?: string };
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'failed to load chat history');
-			}
 			this.state.messages = payload.messages;
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.error = null;
@@ -120,7 +120,7 @@ export class ChatClient {
 		];
 
 		try {
-			const response = await fetch('/api/chat/send', {
+			const payload = await apiJson<SendResponse>('/api/chat/send', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
@@ -129,10 +129,6 @@ export class ChatClient {
 					sessionId: this.state.sessionId
 				})
 			});
-			const payload = (await response.json()) as SendResponse & { error?: string };
-			if (!response.ok) {
-				throw new Error(payload.error ?? 'failed to send message');
-			}
 			this.activeRunId = payload.runId;
 		} catch (error) {
 			this.state.sending = false;
@@ -183,14 +179,9 @@ export class ChatClient {
 		}
 
 		switch (payload.type) {
-			case 'chat.delta': {
-				this.state.streamText = applyStreamDelta(
-					this.state.streamText,
-					payload.text,
-					payload.replace === true
-				);
+			case 'chat.delta':
+				this.state.streamText = payload.text;
 				break;
-			}
 			case 'tool.start':
 				this.state.tools = upsertTool(this.state.tools, payload.name, 'running');
 				break;

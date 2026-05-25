@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 
-import { sendChatMessage } from '$lib/server/chat-service.js';
-import { resolveSessionKey, sessionKeyErrorStatus } from '$lib/server/session-key.js';
+import { sendChat } from '$lib/server/chat-orchestration.js';
+import { toApiErrorResponse } from '$lib/server/api-error.js';
 
 export async function POST({ request }) {
 	try {
@@ -10,20 +10,10 @@ export async function POST({ request }) {
 			sessionKey?: string;
 			sessionId?: string;
 		};
-		const message = body.message?.trim();
-		if (!message) {
-			return json({ error: 'message is required' }, { status: 400 });
-		}
-
-		const sessionKey = resolveSessionKey(body.sessionKey);
-		const result = await sendChatMessage({
-			message,
-			sessionKey,
-			sessionId: body.sessionId
-		});
+		const result = await sendChat(body);
 		return json(result);
 	} catch (error) {
-		const detail = error instanceof Error ? error.message : 'failed to send message';
-		return json({ error: detail }, { status: sessionKeyErrorStatus(error) });
+		const { body, status } = toApiErrorResponse(error, 'failed to send message');
+		return json(body, { status });
 	}
 }

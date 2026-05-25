@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 
-import { checkPennyHealth } from '$lib/server/chat-orchestration.js';
+import { checkPennyHealth } from '$lib/server/health-orchestration.js';
 import { toApiErrorResponse } from '$lib/server/api-error.js';
 
 export async function GET() {

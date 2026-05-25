@@ -1,5 +1,3 @@
-import { classifyApiErrorStatus } from '$lib/server/api-error.js';
-
 export const LEGACY_SESSION_KEY = 'agent:main:main';
 export const PENNY_SESSION_PREFIX = 'agent:main:penny:';
 export const MAX_SESSION_LABEL_LENGTH = 60;
@@ -41,9 +39,4 @@ export function parsePennySessionUuid(sessionKey: string): string | null {
 
 export function buildPennySessionKey(uuid: string): string {
 	return `${PENNY_SESSION_PREFIX}${uuid}`;
-}
-
-/** @deprecated Use classifyApiErrorStatus from api-error.ts */
-export function sessionKeyErrorStatus(error: unknown): number {
-	return classifyApiErrorStatus(error);
 }

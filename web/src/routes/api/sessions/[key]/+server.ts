@@ -4,7 +4,7 @@ import { toApiErrorResponse } from '$lib/server/api-error.js';
 import {
 	deletePennySession,
 	renamePennySession
-} from '$lib/server/session-service.js';
+} from '$lib/server/session-orchestration.js';
 
 export async function PATCH({ params, request }) {
 	try {

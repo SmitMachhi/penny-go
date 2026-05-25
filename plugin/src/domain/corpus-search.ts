@@ -1,12 +1,12 @@
-import { MAX_CORPUS_RESULTS } from "./constants.js";
+import { MAX_CORPUS_RESULTS } from "../constants.js";
 import type { ProgramProfile, SearchCorpusResultRow } from "./corpus-types.js";
 import {
   collectProgramTextFields,
   PROGRAM_LOAN_AUDIT_FIELDS,
-} from "./domain/program-fields.js";
+} from "./program-fields.js";
 import { textLooksLoanBacked } from "./loan-filter.js";
-import { corpusKeywordOverlapScore, sanitizeKeywords } from "./search-corpus-keywords.js";
-import { normalizeToken } from "./services/text-normalize.js";
+import { corpusKeywordOverlapScore, sanitizeKeywords } from "../services/corpus-keywords.js";
+import { normalizeToken } from "../services/text-normalize.js";
 
 export type SearchCorpusParams = {
   jurisdiction?: string | undefined;
@@ -49,18 +49,16 @@ function activeStatusBoost(status: string): number {
   return normalizeToken(status).startsWith("active") ? 10 : 0;
 }
 
-/** Filter + rank programs for corpus tool. */
-export function filterAndRankPrograms(
+export function filterEligiblePrograms(
   rows: readonly ProgramProfile[],
   params: SearchCorpusParams,
-): SearchCorpusResultRow[] {
+): ProgramProfile[] {
   const jurisdictionalTarget = normalizeToken(params.jurisdiction ?? "");
   const programTypeWant = normalizeToken(params.program_type ?? "");
   const includeFederalMerged =
     jurisdictionalTarget === "" ? true : Boolean(params.include_federal ?? true);
-  const keywordsMerged = sanitizeKeywords(params.keywords ?? []);
 
-  const filtered = rows.filter((row) => {
+  return rows.filter((row) => {
     if (row.business_only !== true) {
       return false;
     }
@@ -85,8 +83,15 @@ export function filterAndRankPrograms(
 
     return true;
   });
+}
 
-  const scored = filtered.map((program) => {
+export function rankFilteredPrograms(
+  rows: readonly ProgramProfile[],
+  keywords: readonly string[],
+): SearchCorpusResultRow[] {
+  const keywordsMerged = sanitizeKeywords(keywords);
+
+  const scored = rows.map((program) => {
     const corpusKeywordScore = corpusKeywordOverlapScore(program, keywordsMerged);
     const urls = coerceSourceUrls(program);
 
@@ -125,7 +130,14 @@ export function filterAndRankPrograms(
     );
   });
 
-  const limited = scored.slice(0, MAX_CORPUS_RESULTS).map(({ rowOut }) => rowOut);
+  return scored.map(({ rowOut }) => rowOut);
+}
 
-  return limited;
+export function filterAndRankPrograms(
+  rows: readonly ProgramProfile[],
+  params: SearchCorpusParams,
+): SearchCorpusResultRow[] {
+  const filtered = filterEligiblePrograms(rows, params);
+  const ranked = rankFilteredPrograms(filtered, params.keywords ?? []);
+  return ranked.slice(0, MAX_CORPUS_RESULTS);
 }

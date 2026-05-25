@@ -1,9 +1,9 @@
-import type { ProgramProfile } from "./corpus-types.js";
+import type { ProgramProfile } from "../domain/corpus-types.js";
 import {
   collectProgramTextFields,
   PROGRAM_KEYWORD_HAYSTACK_FIELDS,
-} from "./domain/program-fields.js";
-import { joinNormalizedHaystack, normalizeToken } from "./services/text-normalize.js";
+} from "../domain/program-fields.js";
+import { joinNormalizedHaystack, normalizeToken } from "./text-normalize.js";
 
 export function sanitizeKeywords(words: readonly string[]): string[] {
   const sanitized: string[] = [];

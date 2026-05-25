@@ -1,8 +1,5 @@
 import { getGatewayClient } from '$lib/server/gateway-client.js';
 
-const SESSION_LIST_LIMIT = 50;
-export const MAIN_AGENT_ID = 'main';
-
 export type GatewaySessionRow = {
 	key: string;
 	label?: string;
@@ -15,28 +12,33 @@ type SessionsListResult = {
 	sessions?: GatewaySessionRow[];
 };
 
-export async function listGatewaySessions(): Promise<GatewaySessionRow[]> {
+export type ListGatewaySessionsInput = {
+	agentId: string;
+	limit: number;
+	includeDerivedTitles: boolean;
+	includeLastMessage: boolean;
+	includeGlobal: boolean;
+	includeUnknown: boolean;
+};
+
+export async function listGatewaySessions(
+	input: ListGatewaySessionsInput
+): Promise<GatewaySessionRow[]> {
 	const client = getGatewayClient();
-	const payload = (await client.request('sessions.list', {
-		agentId: MAIN_AGENT_ID,
-		includeDerivedTitles: true,
-		includeLastMessage: true,
-		limit: SESSION_LIST_LIMIT,
-		includeGlobal: false,
-		includeUnknown: false
-	})) as SessionsListResult;
+	const payload = (await client.request('sessions.list', input)) as SessionsListResult;
 
 	return payload.sessions ?? [];
 }
 
 export async function createGatewaySession(input: {
 	key: string;
+	agentId: string;
 	label?: string;
 }): Promise<void> {
 	const client = getGatewayClient();
 	await client.request('sessions.create', {
 		key: input.key,
-		agentId: MAIN_AGENT_ID,
+		agentId: input.agentId,
 		...(input.label ? { label: input.label } : {})
 	});
 }

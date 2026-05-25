@@ -1,14 +1,20 @@
-import { READ_OFFICIAL_SOURCE_TIMEOUT_MS } from "../constants.js";
+import { MAX_CORPUS_RESULTS, READ_OFFICIAL_SOURCE_TIMEOUT_MS } from "../constants.js";
+import {
+  filterEligiblePrograms,
+  rankFilteredPrograms,
+  type SearchCorpusParams,
+} from "../domain/corpus-search.js";
 import {
   type PennyToolsConfigShape,
   readerScriptPath,
   resolveCorpusPath,
   resolvePython,
   resolveRepoRoot,
-} from "../penny-config.js";
-import { filterAndRankPrograms, type SearchCorpusParams } from "../search-corpus-rank.js";
-import { loadProgramsFromFile } from "../search-corpus-load.js";
+} from "../services/penny-config.js";
+import { loadProgramsFromFile } from "../services/corpus-load.js";
 import { runJsonStdinSubprocess } from "../services/subprocess-json.js";
+
+export type { SearchCorpusParams };
 
 export async function searchCorpusAction(
   config: PennyToolsConfigShape,
@@ -16,7 +22,9 @@ export async function searchCorpusAction(
 ) {
   const corpusFile = resolveCorpusPath(config);
   const programs = await loadProgramsFromFile(corpusFile);
-  const matches = filterAndRankPrograms(programs, params);
+  const filtered = filterEligiblePrograms(programs, params);
+  const ranked = rankFilteredPrograms(filtered, params.keywords ?? []);
+  const matches = ranked.slice(0, MAX_CORPUS_RESULTS);
 
   return {
     corpus_path: corpusFile,

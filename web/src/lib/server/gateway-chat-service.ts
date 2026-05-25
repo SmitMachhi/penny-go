@@ -3,19 +3,20 @@ import { randomUUID } from 'node:crypto';
 import type { ChatSendResult } from '$lib/gateway/types.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
 
-const CHAT_HISTORY_LIMIT = 200;
-const CHAT_HISTORY_MAX_CHARS = 120_000;
-
-export async function fetchChatHistory(sessionKey: string) {
+export async function fetchChatHistory(input: {
+	sessionKey: string;
+	limit: number;
+	maxChars: number;
+}) {
 	const client = getGatewayClient();
 	const payload = (await client.request('chat.history', {
-		sessionKey,
-		limit: CHAT_HISTORY_LIMIT,
-		maxChars: CHAT_HISTORY_MAX_CHARS
+		sessionKey: input.sessionKey,
+		limit: input.limit,
+		maxChars: input.maxChars
 	})) as { messages?: unknown[]; sessionId?: string };
 
 	return {
-		sessionKey,
+		sessionKey: input.sessionKey,
 		sessionId: payload.sessionId,
 		messages: payload.messages ?? []
 	};
@@ -25,15 +26,17 @@ export async function sendChatMessage(input: {
 	message: string;
 	sessionKey: string;
 	sessionId?: string;
+	deliver: boolean;
+	idempotencyKey?: string;
 }) {
-	const idempotencyKey = randomUUID();
+	const idempotencyKey = input.idempotencyKey ?? randomUUID();
 	const client = getGatewayClient();
 
 	const response = (await client.request('chat.send', {
 		sessionKey: input.sessionKey,
 		...(input.sessionId ? { sessionId: input.sessionId } : {}),
 		message: input.message,
-		deliver: false,
+		deliver: input.deliver,
 		idempotencyKey
 	})) as ChatSendResult;
 

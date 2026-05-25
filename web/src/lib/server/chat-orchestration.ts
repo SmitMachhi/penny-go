@@ -1,16 +1,25 @@
 import { normalizeHistoryMessages } from '$lib/chat/messages.js';
+import type { SsePayload } from '$lib/chat/stream-events.js';
 import { ValidationError } from '$lib/server/api-error.js';
+import { subscribeToStream } from '$lib/server/chat-stream-hub.js';
 import {
 	abortChatRun,
 	fetchChatHistory,
-	pingGateway,
 	sendChatMessage
 } from '$lib/server/gateway-chat-service.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
+const CHAT_HISTORY_LIMIT = 200;
+const CHAT_HISTORY_MAX_CHARS = 120_000;
+const CHAT_DELIVER = false;
+
 export async function getChatHistory(sessionKeyRaw: string | null | undefined) {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
-	const history = await fetchChatHistory(sessionKey);
+	const history = await fetchChatHistory({
+		sessionKey,
+		limit: CHAT_HISTORY_LIMIT,
+		maxChars: CHAT_HISTORY_MAX_CHARS
+	});
 	return {
 		sessionKey: history.sessionKey,
 		sessionId: history.sessionId,
@@ -32,7 +41,8 @@ export async function sendChat(input: {
 	return sendChatMessage({
 		message,
 		sessionKey,
-		sessionId: input.sessionId
+		sessionId: input.sessionId,
+		deliver: CHAT_DELIVER
 	});
 }
 
@@ -42,6 +52,10 @@ export async function abortChat(input: { sessionKey?: string; runId?: string }) 
 	return { ok: true as const };
 }
 
-export async function checkPennyHealth() {
-	return pingGateway();
+export function subscribeToChatStream(
+	sessionKeyRaw: string | null | undefined,
+	send: (payload: SsePayload) => void
+): () => void {
+	const sessionKey = resolveSessionKey(sessionKeyRaw);
+	return subscribeToStream(sessionKey, send);
 }

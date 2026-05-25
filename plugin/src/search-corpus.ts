@@ -1,3 +1,7 @@
-export type { SearchCorpusParams } from "./search-corpus-rank.js";
-export { filterAndRankPrograms } from "./search-corpus-rank.js";
-export { loadProgramsFromFile, parseJsonlPrograms } from "./search-corpus-load.js";
+export type { SearchCorpusParams } from "./domain/corpus-search.js";
+export {
+  filterAndRankPrograms,
+  filterEligiblePrograms,
+  rankFilteredPrograms,
+} from "./domain/corpus-search.js";
+export { loadProgramsFromFile, parseJsonlPrograms } from "./services/corpus-load.js";

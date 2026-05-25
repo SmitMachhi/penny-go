@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { CORPUS_SEGMENTS_RELATIVE } from "./constants.js";
+import { CORPUS_SEGMENTS_RELATIVE } from "../constants.js";
 
 export type PennyToolsConfigShape = {
   corpusPath?: string | undefined;

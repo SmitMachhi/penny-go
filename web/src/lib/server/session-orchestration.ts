@@ -20,9 +20,18 @@ import type { PennySessionView } from '$lib/types/penny-session.js';
 
 export type { PennySessionView };
 
+const CHAT_HISTORY_LIMIT = 200;
+const CHAT_HISTORY_MAX_CHARS = 120_000;
+const PENNY_MAIN_AGENT_ID = 'main';
+const SESSION_LIST_LIMIT = 50;
+
 async function legacySessionHasHistory(): Promise<boolean> {
 	try {
-		const history = await fetchChatHistory(LEGACY_SESSION_KEY);
+		const history = await fetchChatHistory({
+			sessionKey: LEGACY_SESSION_KEY,
+			limit: CHAT_HISTORY_LIMIT,
+			maxChars: CHAT_HISTORY_MAX_CHARS
+		});
 		return history.messages.length > 0;
 	} catch {
 		return false;
@@ -30,7 +39,14 @@ async function legacySessionHasHistory(): Promise<boolean> {
 }
 
 export async function listPennySessions(): Promise<PennySessionView[]> {
-	const rows = await listGatewaySessions();
+	const rows = await listGatewaySessions({
+		agentId: PENNY_MAIN_AGENT_ID,
+		includeDerivedTitles: true,
+		includeLastMessage: true,
+		limit: SESSION_LIST_LIMIT,
+		includeGlobal: false,
+		includeUnknown: false
+	});
 	const pennyRows = rows
 		.filter((row) => isPennySessionKey(row.key))
 		.sort((left, right) => (right.updatedAt ?? 0) - (left.updatedAt ?? 0))
@@ -55,6 +71,7 @@ export async function createPennySession(label?: string): Promise<PennySessionVi
 
 	await createGatewaySession({
 		key,
+		agentId: PENNY_MAIN_AGENT_ID,
 		...(trimmedLabel ? { label: trimmedLabel } : {})
 	});
 

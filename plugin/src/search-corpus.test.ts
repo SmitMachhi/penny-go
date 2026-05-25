@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { ProgramProfile } from "./corpus-types.js";
-import { textLooksLoanBacked } from "./loan-filter.js";
+import type { ProgramProfile } from "./domain/corpus-types.js";
+import { textLooksLoanBacked } from "./domain/loan-filter.js";
 import { filterAndRankPrograms } from "./search-corpus.js";
-import { parseJsonlPrograms } from "./search-corpus-load.js";
+import { parseJsonlPrograms } from "./services/corpus-load.js";
 
 const ONTARIO_LOAN: ProgramProfile = {
   business_only: true,

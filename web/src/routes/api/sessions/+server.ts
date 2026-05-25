@@ -4,7 +4,7 @@ import { toApiErrorResponse } from '$lib/server/api-error.js';
 import {
 	createPennySession,
 	listPennySessions
-} from '$lib/server/session-service.js';
+} from '$lib/server/session-orchestration.js';
 
 export async function GET() {
 	try {

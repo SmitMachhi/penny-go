@@ -1,10 +1,7 @@
 import { json } from '@sveltejs/kit';
 
-import { abortChat, getChatHistory, sendChat } from '$lib/server/chat-orchestration.js';
-import { subscribeToStream } from '$lib/server/chat-stream-hub.js';
+import { getChatHistory } from '$lib/server/chat-orchestration.js';
 import { toApiErrorResponse } from '$lib/server/api-error.js';
-import { createSseResponse } from '$lib/server/sse-response.js';
-import { resolveSessionKey } from '$lib/server/session-key.js';
 
 export async function GET({ url }) {
 	try {

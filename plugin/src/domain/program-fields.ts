@@ -1,4 +1,4 @@
-import type { ProgramProfile } from "../corpus-types.js";
+import type { ProgramProfile } from "../domain/corpus-types.js";
 import { coerceSearchText } from "../services/text-normalize.js";
 
 export const PROGRAM_LOAN_AUDIT_FIELDS = [

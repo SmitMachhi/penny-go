@@ -20,10 +20,10 @@ vi.mock('$lib/server/gateway-chat-service.js', () => ({
 import {
 	createPennySession,
 	listPennySessions
-} from './session-service.js';
+} from './session-orchestration.js';
 import { LEGACY_SESSION_KEY } from './session-key.js';
 
-describe('session service', () => {
+describe('session orchestration', () => {
 	beforeEach(() => {
 		listGatewaySessions.mockReset();
 		createGatewaySession.mockReset();
@@ -75,6 +75,7 @@ describe('session service', () => {
 		expect(createGatewaySession).toHaveBeenCalledWith(
 			expect.objectContaining({
 				key: session.key,
+				agentId: 'main',
 				label: 'Ontario SaaS'
 			})
 		);

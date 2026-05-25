@@ -17,43 +17,27 @@ function ensureHub(): void {
 	ensureGatewayEventBus({
 		onEvent: (event, payload) => {
 			if (event === 'chat') {
-				dispatchChatEvent(payload as ChatEventPayload);
+				dispatchMappedEvent(payload as ChatEventPayload, mapChatEventToSse);
 				return;
 			}
 			if (event === 'agent' || event === 'session.tool') {
-				dispatchAgentEvent(payload as AgentEventPayload);
+				dispatchMappedEvent(payload as AgentEventPayload, mapAgentEventToSse);
 			}
 		},
 		shouldReconnect: () => subscribers.size > 0
 	});
 }
 
-function dispatchChatEvent(payload: ChatEventPayload): void {
+function dispatchMappedEvent<T extends { sessionKey?: string }>(
+	payload: T,
+	mapper: (payload: T) => SsePayload | null
+): void {
 	const sessionKey = payload.sessionKey;
 	if (!sessionKey) {
 		return;
 	}
 
-	const ssePayload = mapChatEventToSse(payload);
-	if (!ssePayload) {
-		return;
-	}
-
-	for (const subscriber of subscribers) {
-		if (subscriber.sessionKey !== sessionKey) {
-			continue;
-		}
-		safeSend(subscriber, ssePayload);
-	}
-}
-
-function dispatchAgentEvent(payload: AgentEventPayload): void {
-	const sessionKey = payload.sessionKey;
-	if (!sessionKey) {
-		return;
-	}
-
-	const ssePayload = mapAgentEventToSse(payload);
+	const ssePayload = mapper(payload);
 	if (!ssePayload) {
 		return;
 	}

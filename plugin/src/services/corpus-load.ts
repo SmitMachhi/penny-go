@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 
-import type { ProgramProfile } from "./corpus-types.js";
+import type { ProgramProfile } from "../domain/corpus-types.js";
 
 /** Parse JSON line records from verified-programs corpus. */
 export function parseJsonlPrograms(raw: string): ProgramProfile[] {

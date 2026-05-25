@@ -5,7 +5,7 @@ import {
   readOfficialSourceAction,
   searchCorpusAction,
 } from "./actions/penny-tools.js";
-import type { PennyToolsConfigShape } from "./penny-config.js";
+import type { PennyToolsConfigShape } from "./services/penny-config.js";
 
 const configSchema = Type.Object(
   {

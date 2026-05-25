@@ -2,45 +2,12 @@ import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 
 import type { GatewayConfig } from './config.js';
+import {
+	buildGatewayConnectParams,
+	parseGatewayFrame,
+	type PendingRequest
+} from './client-helpers.js';
 import type { GatewayEventListener, GatewayFrame } from './types.js';
-import { GATEWAY_PROTOCOL_VERSION } from './types.js';
-
-type PendingRequest = {
-	resolve: (value: unknown) => void;
-	reject: (error: Error) => void;
-	timer: NodeJS.Timeout;
-};
-
-const CLIENT_VERSION = 'penny-web/0.1.0';
-
-function parseFrame(raw: string): GatewayFrame | null {
-	try {
-		return JSON.parse(raw) as GatewayFrame;
-	} catch {
-		return null;
-	}
-}
-
-function buildConnectParams(token: string) {
-	return {
-		minProtocol: GATEWAY_PROTOCOL_VERSION,
-		maxProtocol: GATEWAY_PROTOCOL_VERSION,
-		client: {
-			id: 'gateway-client',
-			version: CLIENT_VERSION,
-			platform: 'node',
-			mode: 'backend'
-		},
-		role: 'operator',
-		scopes: ['operator.read', 'operator.write'],
-		caps: [],
-		commands: [],
-		permissions: {},
-		auth: { token },
-		locale: 'en-US',
-		userAgent: CLIENT_VERSION
-	};
-}
 
 export class GatewayClient {
 	private ws: WebSocket | null = null;
@@ -132,7 +99,7 @@ export class GatewayClient {
 		resolveConnect: () => void,
 		rejectConnect: (error: Error) => void
 	): void {
-		const frame = parseFrame(raw);
+		const frame = parseGatewayFrame(raw);
 		if (!frame) {
 			return;
 		}
@@ -184,7 +151,7 @@ export class GatewayClient {
 			timer
 		});
 
-		const params = buildConnectParams(this.config.token);
+		const params = buildGatewayConnectParams(this.config.token);
 		this.ws.send(
 			JSON.stringify({
 				type: 'req',

@@ -1,6 +1,6 @@
 import type { PennySessionView } from '$lib/types/penny-session.js';
 
-import type { GatewaySessionRow } from '$lib/server/gateway-session-service.js';
+import type { GatewaySessionRow } from '$lib/gateway/types.js';
 
 const PREVIEW_MAX_CHARS = 120;
 const DEFAULT_SESSION_TITLE = 'New chat';

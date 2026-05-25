@@ -1,4 +1,4 @@
-import { withApiJson, withApiJsonEvent } from '$lib/server/api-handler.js';
+import { withApiJson } from '$lib/server/api-handler.js';
 import { sendChat } from '$lib/server/chat-orchestration.js';
 
 export async function POST({ request }) {

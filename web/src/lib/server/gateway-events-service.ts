@@ -1,5 +1,5 @@
 import { clearAllStreamingText } from '$lib/server/chat-stream-text.js';
-import { getGatewayClient } from '$lib/server/gateway-client.js';
+import { getGatewayRpc } from '$lib/server/gateway-rpc.js';
 
 let eventBusInitialized = false;
 
@@ -12,13 +12,13 @@ export function ensureGatewayEventBus(options: {
 	}
 
 	eventBusInitialized = true;
-	const client = getGatewayClient();
-	void client.connect();
-	client.onEvent(options.onEvent);
-	client.onDisconnect(() => {
+	const rpc = getGatewayRpc();
+	void rpc.connect();
+	rpc.onEvent(options.onEvent);
+	rpc.onDisconnect(() => {
 		clearAllStreamingText();
 		if (options.shouldReconnect()) {
-			void getGatewayClient().connect();
+			void getGatewayRpc().connect();
 		}
 	});
 }

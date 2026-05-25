@@ -1,15 +1,6 @@
-import { json } from '@sveltejs/kit';
-
-import { withApiJson, withApiJsonEvent } from '$lib/server/api-handler.js';
-import { checkPennyHealth } from '$lib/server/health-orchestration.js';
-import { toApiErrorResponse } from '$lib/server/api-error.js';
+import { withApiJson } from '$lib/server/api-handler.js';
+import { pingGateway } from '$lib/server/gateway-chat-service.js';
 
 export async function GET() {
-	try {
-		const status = await checkPennyHealth();
-		return json(status);
-	} catch (error) {
-		const { body, status } = toApiErrorResponse(error, 'gateway unavailable');
-		return json({ ok: false, message: body.error }, { status });
-	}
+	return withApiJson(() => pingGateway(), 'gateway unavailable');
 }

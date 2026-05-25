@@ -7,7 +7,6 @@ export type ArtifactSummary = {
 };
 
 export type ArtifactsResponse = {
-	sessionKey: string;
 	artifacts: ArtifactSummary[];
 };
 

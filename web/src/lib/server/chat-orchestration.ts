@@ -66,5 +66,5 @@ export function subscribeToChatStream(
 export async function getSessionArtifacts(sessionKeyRaw: string | null | undefined) {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
 	const artifacts = (await listSessionArtifacts(sessionKey)).map(toArtifactSummary);
-	return { sessionKey, artifacts };
+	return { artifacts };
 }

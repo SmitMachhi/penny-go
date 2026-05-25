@@ -140,6 +140,7 @@ export class ChatClient {
 				`/api/artifacts?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
 			);
 			this.state.artifacts = payload.artifacts;
+			this.state.error = null;
 			if (!this.state.activeArtifactId && payload.artifacts[0]) {
 				this.state.activeArtifactId = payload.artifacts[0].artifactId;
 			}

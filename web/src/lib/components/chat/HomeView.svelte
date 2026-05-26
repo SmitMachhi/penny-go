@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
 	import { Send } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
@@ -10,6 +11,10 @@
 	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let starting = $state(false);
+
+	onMount(() => {
+		chat.clearSession();
+	});
 
 	async function handleSend() {
 		const message = draft.trim();
@@ -33,8 +38,8 @@
 				return;
 			}
 
-			await goto(path);
 			await chat.switchSession(created.key);
+			await goto(path);
 			await chat.sendMessage(message);
 		} finally {
 			starting = false;

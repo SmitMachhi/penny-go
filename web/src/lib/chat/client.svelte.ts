@@ -56,6 +56,7 @@ export class ChatClient {
 	private eventSource: EventSource | null = null;
 	private activeRunId: string | null = null;
 	private pendingRunArtifactIds: string[] = [];
+	private historyRequestId = 0;
 
 	async bootstrap(): Promise<void> {
 		await this.refreshHealth();
@@ -68,6 +69,7 @@ export class ChatClient {
 
 	clearSession(): void {
 		this.dispose();
+		this.historyRequestId += 1;
 		this.state.sessionKey = '';
 		this.state.sessionId = null;
 		this.state.messages = [];
@@ -110,6 +112,7 @@ export class ChatClient {
 		}
 
 		this.dispose();
+		this.historyRequestId += 1;
 		this.state.sessionKey = sessionKey;
 		this.state.sessionId = null;
 		this.state.messages = [];
@@ -131,18 +134,28 @@ export class ChatClient {
 			return;
 		}
 
+		const sessionKey = this.state.sessionKey;
+		const requestId = ++this.historyRequestId;
 		this.state.loading = true;
 		try {
 			const payload = await apiJson<HistoryResponse>(
-				`/api/chat/history?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
+				`/api/chat/history?sessionKey=${encodeURIComponent(sessionKey)}`
 			);
+			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
+				return;
+			}
 			this.state.messages = payload.messages;
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.error = null;
 		} catch (error) {
+			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
+				return;
+			}
 			this.state.error = formatClientError(error, 'failed to load chat history');
 		} finally {
-			this.state.loading = false;
+			if (requestId === this.historyRequestId && sessionKey === this.state.sessionKey) {
+				this.state.loading = false;
+			}
 		}
 	}
 
@@ -172,6 +185,9 @@ export class ChatClient {
 		}
 
 		await this.loadHistory();
+		if (this.state.error) {
+			return;
+		}
 
 		this.state.sending = true;
 		this.state.error = null;

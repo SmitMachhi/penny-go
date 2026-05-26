@@ -24,6 +24,7 @@
 
 	async function handleNewChat() {
 		closeSidebar();
+		chat.clearSession();
 		await goto('/');
 	}
 

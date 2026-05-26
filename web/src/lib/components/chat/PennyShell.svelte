@@ -32,13 +32,6 @@
 		wasSending = chat.state.sending;
 	});
 
-	$effect(() => {
-		if (page.params.id) {
-			return;
-		}
-		chat.clearSession();
-	});
-
 	onMount(() => {
 		void chat.bootstrap().then(() => sessions.initSidebar());
 

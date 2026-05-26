@@ -1,20 +1,21 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { Plus, X } from '@lucide/svelte';
 
-	import type { ChatClient } from '$lib/chat/client.svelte.js';
-	import type { SessionClient } from '$lib/chat/sessions.svelte.js';
+	import { getPennyContext } from '$lib/chat/penny-context.js';
+	import { chatPathFromSessionKey, routeIdFromSessionKey } from '$lib/chat/session-routes.js';
 	import DeleteSessionDialog from '$lib/components/chat/DeleteSessionDialog.svelte';
 	import SessionRow from '$lib/components/chat/SessionRow.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { cn } from '$lib/utils.js';
 
 	type Props = {
-		chat: ChatClient;
-		sessions: SessionClient;
+		activeRouteId: string | null;
 	};
 
-	let { chat, sessions }: Props = $props();
+	let { activeRouteId }: Props = $props();
 
+	const { chat, sessions } = getPennyContext();
 	let pendingDeleteKey = $state<string | null>(null);
 
 	function closeSidebar() {
@@ -22,10 +23,17 @@
 	}
 
 	async function handleNewChat() {
-		const created = await sessions.createSession();
-		if (created) {
-			await sessions.switchSession(chat, created.key);
+		closeSidebar();
+		await goto('/');
+	}
+
+	async function handleSelectSession(sessionKey: string) {
+		const path = chatPathFromSessionKey(sessionKey);
+		if (!path) {
+			return;
 		}
+		closeSidebar();
+		await goto(path);
 	}
 
 	async function confirmDelete() {
@@ -34,9 +42,14 @@
 		}
 		const deletedKey = pendingDeleteKey;
 		pendingDeleteKey = null;
+		const wasActive = routeIdFromSessionKey(deletedKey) === activeRouteId;
 		const ok = await sessions.deleteSession(deletedKey);
-		if (ok) {
-			await sessions.handleDeletedActiveSession(chat, deletedKey);
+		if (!ok) {
+			return;
+		}
+		if (wasActive) {
+			chat.clearSession();
+			await goto('/');
 		}
 	}
 </script>
@@ -79,8 +92,8 @@
 			{#each sessions.state.sessions as session (session.key)}
 				<SessionRow
 					{session}
-					active={chat.state.sessionKey === session.key}
-					onSelect={() => void sessions.switchSession(chat, session.key)}
+					active={routeIdFromSessionKey(session.key) === activeRouteId}
+					onSelect={() => void handleSelectSession(session.key)}
 					onRename={(label) => void sessions.renameSession(session.key, label)}
 					onDelete={() => {
 						pendingDeleteKey = session.key;

@@ -27,7 +27,17 @@ Optional:
 
 ## Sessions
 
-Each chat is a separate business engagement (`agent:main:penny:<uuid>`). The sidebar lists sessions from OpenClaw; the active session key is stored in browser `localStorage` (`penny:activeSessionKey`).
+Each chat is a separate business engagement (`agent:main:penny:<uuid>`). The sidebar lists sessions from OpenClaw.
+
+**Routes:**
+
+- `/` — home (empty state; no chat loaded)
+- `/c/{uuid}` — active penny chat
+- `/c/legacy` — previous single-chat history (`agent:main:main`) when shown
+
+The URL drives session identity. Chat history is always loaded from the OpenClaw gateway transcript, not browser storage.
+
+Merge the `session.reset` block from [`../config/openclaw.penny.example.json5`](../config/openclaw.penny.example.json5) into `~/.openclaw/openclaw.json` so daily transcript resets do not wipe chat history.
 
 API routes:
 

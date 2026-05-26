@@ -66,6 +66,22 @@ export class ChatClient {
 		this.eventSource = null;
 	}
 
+	clearSession(): void {
+		this.dispose();
+		this.state.sessionKey = '';
+		this.state.sessionId = null;
+		this.state.messages = [];
+		this.state.streamText = '';
+		this.state.tools = [];
+		this.state.artifacts = [];
+		this.state.artifactPanelOpen = false;
+		this.state.activeArtifactId = null;
+		this.state.sending = false;
+		this.state.loading = false;
+		this.activeRunId = null;
+		this.pendingRunArtifactIds = [];
+	}
+
 	openArtifact(artifactId: string): void {
 		this.state.activeArtifactId = artifactId;
 		this.state.artifactPanelOpen = true;
@@ -154,6 +170,8 @@ export class ChatClient {
 		if (!trimmed || this.state.sending || !this.state.sessionKey) {
 			return;
 		}
+
+		await this.loadHistory();
 
 		this.state.sending = true;
 		this.state.error = null;
@@ -262,6 +280,7 @@ export class ChatClient {
 						}
 					];
 				}
+				this.state.error = null;
 				this.resetRun();
 				break;
 			}

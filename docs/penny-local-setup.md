@@ -215,6 +215,10 @@ SvelteKit app in `web/` — browser chat against the OpenClaw gateway via a serv
 
 **Multi-session:** the web UI supports ChatGPT-style chats — one session per business engagement (`agent:main:penny:<uuid>`). User preferences stay in `USER.md`; business facts go in `workspace/memory/engagements/<uuid>.md`. A legacy single chat (`agent:main:main`) appears once as **Previous chat** if it has history and no penny sessions exist yet.
 
+**URLs:** `/` is the home screen (no chat loaded). Each chat opens at `/c/{uuid}` (legacy: `/c/legacy`). The agent receives the matching `sessionKey` on every send.
+
+**Transcript persistence:** merge the `session.reset` block from [`config/openclaw.penny.example.json5`](../config/openclaw.penny.example.json5) into `~/.openclaw/openclaw.json` and restart the gateway. OpenClaw defaults to a daily transcript reset at 4 AM; disabling idle/daily reset keeps conversation history across days.
+
 ```bash
 openclaw gateway
 cd web && cp .env.example .env   # set OPENCLAW_GATEWAY_TOKEN

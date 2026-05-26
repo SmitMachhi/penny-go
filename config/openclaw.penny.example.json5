@@ -1,4 +1,10 @@
 {
+  "session": {
+    "reset": { "mode": "idle", "idleMinutes": 0 },
+    "resetByType": {
+      "direct": { "mode": "idle", "idleMinutes": 0 }
+    }
+  },
   "agents": {
     "defaults": {
       "model": { "primary": "deepseek/deepseek-v4-flash" },

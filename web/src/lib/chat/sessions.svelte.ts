@@ -1,9 +1,3 @@
-import {
-	clearActiveSessionKey,
-	pickBootstrapSessionKey,
-	readActiveSessionKey,
-	writeActiveSessionKey
-} from '$lib/chat/active-session.js';
 import { apiJson } from '$lib/chat/api-client.js';
 import { formatClientError } from '$lib/chat/format-error.js';
 import type { ChatClient } from '$lib/chat/client.svelte.js';
@@ -43,23 +37,8 @@ function upsertSession(sessions: PennySession[], session: PennySession): PennySe
 export class SessionClient {
 	state = $state<SessionClientState>(createInitialSessionState());
 
-	async bootstrap(chat: ChatClient): Promise<string | null> {
+	async initSidebar(): Promise<void> {
 		await this.refresh();
-		let activeKey = pickBootstrapSessionKey(readActiveSessionKey(), this.state.sessions);
-
-		if (!activeKey && !this.state.error) {
-			const created = await this.createSession();
-			activeKey = created?.key ?? null;
-		}
-
-		if (activeKey) {
-			writeActiveSessionKey(activeKey);
-			await chat.switchSession(activeKey);
-		} else {
-			chat.state.loading = false;
-		}
-
-		return activeKey;
 	}
 
 	async refresh(): Promise<void> {
@@ -97,12 +76,6 @@ export class SessionClient {
 		}
 	}
 
-	async switchSession(chat: ChatClient, key: string): Promise<void> {
-		writeActiveSessionKey(key);
-		await chat.switchSession(key);
-		this.state.sidebarOpen = false;
-	}
-
 	async renameSession(key: string, label: string): Promise<boolean> {
 		try {
 			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
@@ -130,33 +103,5 @@ export class SessionClient {
 			this.state.error = formatClientError(error, 'failed to delete session');
 			return false;
 		}
-	}
-
-	async handleDeletedActiveSession(chat: ChatClient, deletedKey: string): Promise<void> {
-		if (chat.state.sessionKey !== deletedKey) {
-			return;
-		}
-
-		const fallback = this.state.sessions.find((session) => session.key !== deletedKey);
-		if (fallback) {
-			await this.switchSession(chat, fallback.key);
-			return;
-		}
-
-		const created = await this.createSession();
-		if (created) {
-			await this.switchSession(chat, created.key);
-			return;
-		}
-
-		chat.dispose();
-		clearActiveSessionKey();
-		chat.state.sessionKey = '';
-		chat.state.sessionId = null;
-		chat.state.messages = [];
-		chat.state.streamText = '';
-		chat.state.tools = [];
-		chat.state.loading = false;
-		chat.state.sending = false;
 	}
 }

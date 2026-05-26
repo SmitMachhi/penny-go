@@ -178,13 +178,15 @@ export class ChatClient {
 		}
 	}
 
-	async sendMessage(message: string): Promise<void> {
+	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<void> {
 		const trimmed = message.trim();
 		if (!trimmed || this.state.sending || !this.state.sessionKey) {
 			return;
 		}
 
-		await this.loadHistory();
+		if (!options?.skipHistoryReload) {
+			await this.loadHistory();
+		}
 		if (this.state.error) {
 			return;
 		}

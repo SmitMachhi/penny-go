@@ -13,7 +13,7 @@
 	let starting = $state(false);
 
 	onMount(() => {
-		chat.clearSession();
+		void chat.clearSession();
 	});
 
 	async function handleSend() {

@@ -24,7 +24,7 @@
 
 	async function handleNewChat() {
 		closeSidebar();
-		chat.clearSession();
+		await chat.clearSession();
 		await goto('/');
 	}
 
@@ -49,7 +49,7 @@
 			return;
 		}
 		if (wasActive) {
-			chat.clearSession();
+			await chat.clearSession();
 			await goto('/');
 		}
 	}

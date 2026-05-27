@@ -67,7 +67,8 @@ export class ChatClient {
 		this.eventSource = null;
 	}
 
-	clearSession(): void {
+	async clearSession(): Promise<void> {
+		await this.abortRunBeforeSessionReset();
 		this.dispose();
 		this.historyRequestId += 1;
 		this.state.sessionKey = '';
@@ -186,9 +187,9 @@ export class ChatClient {
 
 		if (!options?.skipHistoryReload) {
 			await this.loadHistory();
-		}
-		if (this.state.error) {
-			return;
+			if (this.state.error) {
+				return;
+			}
 		}
 
 		this.state.sending = true;
@@ -350,6 +351,17 @@ export class ChatClient {
 		this.state.tools = [];
 		this.activeRunId = null;
 		this.pendingRunArtifactIds = [];
+	}
+
+	private async abortRunBeforeSessionReset(): Promise<void> {
+		if (!this.activeRunId || !this.state.sessionKey) {
+			return;
+		}
+		try {
+			await this.abortActiveRun();
+		} catch (error) {
+			this.state.error = formatClientError(error, 'failed to abort active run');
+		}
 	}
 }
 

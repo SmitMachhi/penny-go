@@ -95,4 +95,26 @@ describe('ChatClient', () => {
 		);
 		expect(client.state.messages).toEqual([]);
 	});
+
+	it('reports no send when history reload fails', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			if (requestPath(input).startsWith('/api/chat/history')) {
+				return Response.json({ error: 'history unavailable' }, { status: 503 });
+			}
+			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+
+		const sent = await client.sendMessage(MESSAGE);
+
+		expect(sent).toBe(false);
+		expect(fetchMock).not.toHaveBeenCalledWith(
+			'/api/chat/send',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(client.state.messages).toEqual([]);
+	});
 });

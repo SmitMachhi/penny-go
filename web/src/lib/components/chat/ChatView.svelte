@@ -26,7 +26,10 @@
 	async function handleSend() {
 		const message = draft;
 		draft = '';
-		await chat.sendMessage(message);
+		const sent = await chat.sendMessage(message);
+		if (!sent) {
+			draft = message;
+		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {

@@ -179,17 +179,17 @@ export class ChatClient {
 		}
 	}
 
-	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<void> {
+	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<boolean> {
 		const trimmed = message.trim();
 		const sessionKey = this.state.sessionKey;
 		if (!trimmed || this.state.sending || !sessionKey) {
-			return;
+			return false;
 		}
 
 		if (!options?.skipHistoryReload) {
 			await this.loadHistory();
 			if (this.state.error || this.state.sessionKey !== sessionKey) {
-				return;
+				return false;
 			}
 		}
 
@@ -215,9 +215,11 @@ export class ChatClient {
 				})
 			});
 			this.activeRunId = payload.runId;
+			return true;
 		} catch (error) {
 			this.state.sending = false;
 			this.state.error = formatClientError(error, 'failed to send message');
+			return false;
 		}
 	}
 

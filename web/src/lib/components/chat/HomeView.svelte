@@ -40,8 +40,8 @@
 
 			await chat.switchSession(created.key);
 			await goto(path);
-			await chat.sendMessage(message, { skipHistoryReload: true });
-			if (chat.state.error) {
+			const sent = await chat.sendMessage(message, { skipHistoryReload: true });
+			if (!sent) {
 				draft = message;
 			}
 		} finally {

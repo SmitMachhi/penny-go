@@ -158,4 +158,17 @@ describe('ChatClient', () => {
 
 		expect(client.state.sessionKey).toBe(OTHER_SESSION_KEY);
 	});
+
+	it('does not reconnect when switching to the active session', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () => jsonResponse({}));
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+
+		await client.switchSession(SESSION_KEY);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(client.state.sessionKey).toBe(SESSION_KEY);
+	});
 });

@@ -111,6 +111,9 @@ export class ChatClient {
 	}
 
 	async switchSession(sessionKey: string): Promise<void> {
+		if (this.state.sessionKey === sessionKey) {
+			return;
+		}
 		if (this.state.sending) {
 			await this.abortActiveRun();
 		}

@@ -181,17 +181,19 @@ export class ChatClient {
 
 	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<void> {
 		const trimmed = message.trim();
-		if (!trimmed || this.state.sending || !this.state.sessionKey) {
+		const sessionKey = this.state.sessionKey;
+		if (!trimmed || this.state.sending || !sessionKey) {
 			return;
 		}
 
 		if (!options?.skipHistoryReload) {
 			await this.loadHistory();
-			if (this.state.error) {
+			if (this.state.error || this.state.sessionKey !== sessionKey) {
 				return;
 			}
 		}
 
+		const sessionId = this.state.sessionId;
 		this.state.sending = true;
 		this.state.error = null;
 		this.state.streamText = '';
@@ -208,8 +210,8 @@ export class ChatClient {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({
 					message: trimmed,
-					sessionKey: this.state.sessionKey,
-					sessionId: this.state.sessionId
+					sessionKey,
+					sessionId
 				})
 			});
 			this.activeRunId = payload.runId;

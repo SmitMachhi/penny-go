@@ -217,7 +217,7 @@ SvelteKit app in `web/` — browser chat against the OpenClaw gateway via a serv
 
 **URLs:** `/` is the home screen (no chat loaded). Each chat opens at `/c/{uuid}` (legacy: `/c/legacy`). The agent receives the matching `sessionKey` on every send.
 
-**Transcript persistence:** merge the `session.reset` block from [`config/openclaw.penny.example.json5`](../config/openclaw.penny.example.json5) into `~/.openclaw/openclaw.json` and restart the gateway. OpenClaw defaults to a daily transcript reset at 4 AM; disabling idle/daily reset keeps conversation history across days.
+**Transcript persistence:** merge the `session.reset` block from [`config/openclaw.penny.example.json5`](../config/openclaw.penny.example.json5) into `~/.openclaw/openclaw.json` and restart the gateway. OpenClaw defaults to a daily transcript reset at 4 AM; the example switches Penny to a valid one-week idle reset so active conversations survive across days.
 
 ```bash
 openclaw gateway

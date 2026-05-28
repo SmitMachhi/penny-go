@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChatClient } from './client.svelte.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
+const OTHER_SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const SESSION_ID = 'session-1';
 const RUN_ID = 'run-1';
 const MESSAGE = 'hello penny';
@@ -72,5 +73,26 @@ describe('ChatClient', () => {
 			})
 		);
 		expect(client.state.error).toBeNull();
+	});
+
+	it('does not send when the active session changes during history reload', async () => {
+		const client = new ChatClient();
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			if (requestPath(input).startsWith('/api/chat/history')) {
+				client.state.sessionKey = OTHER_SESSION_KEY;
+				return jsonResponse({ sessionKey: SESSION_KEY, messages: [] });
+			}
+			return jsonResponse({ runId: RUN_ID, sessionKey: OTHER_SESSION_KEY });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		client.state.sessionKey = SESSION_KEY;
+
+		await client.sendMessage(MESSAGE);
+
+		expect(fetchMock).not.toHaveBeenCalledWith(
+			'/api/chat/send',
+			expect.objectContaining({ method: 'POST' })
+		);
+		expect(client.state.messages).toEqual([]);
 	});
 });

@@ -1,9 +1,8 @@
 {
   "session": {
-    "reset": { "mode": "idle", "idleMinutes": 0 },
-    "resetByType": {
-      "direct": { "mode": "idle", "idleMinutes": 0 }
-    }
+    // Use idle reset instead of daily 4 AM reset so active Penny transcripts survive across days.
+    // OpenClaw requires a positive value here; 10080 minutes is one idle week.
+    "reset": { "mode": "idle", "idleMinutes": 10080 }
   },
   "agents": {
     "defaults": {

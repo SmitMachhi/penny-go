@@ -68,9 +68,12 @@ export class ChatClient {
 	}
 
 	async clearSession(): Promise<void> {
+		const requestId = ++this.historyRequestId;
 		await this.abortRunBeforeSessionReset();
+		if (requestId !== this.historyRequestId) {
+			return;
+		}
 		this.dispose();
-		this.historyRequestId += 1;
 		this.state.sessionKey = '';
 		this.state.sessionId = null;
 		this.state.messages = [];

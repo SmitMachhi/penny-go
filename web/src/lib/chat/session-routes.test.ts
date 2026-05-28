@@ -19,6 +19,15 @@ describe('session route helpers', () => {
 		expect(chatPathFromSessionKey(SAMPLE_KEY)).toBe(`/c/${SAMPLE_UUID}`);
 	});
 
+	it('accepts uppercase penny session uuids', () => {
+		const uppercaseUuid = SAMPLE_UUID.toUpperCase();
+		const uppercaseKey = buildPennySessionKey(uppercaseUuid);
+
+		expect(routeIdFromSessionKey(uppercaseKey)).toBe(uppercaseUuid);
+		expect(sessionKeyFromRouteId(uppercaseUuid)).toBe(uppercaseKey);
+		expect(chatPathFromSessionKey(uppercaseKey)).toBe(`/c/${uppercaseUuid}`);
+	});
+
 	it('maps legacy session to reserved slug', () => {
 		expect(routeIdFromSessionKey(LEGACY_SESSION_KEY)).toBe(LEGACY_ROUTE_ID);
 		expect(sessionKeyFromRouteId(LEGACY_ROUTE_ID)).toBe(LEGACY_SESSION_KEY);

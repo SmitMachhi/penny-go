@@ -7,6 +7,7 @@ const OTHER_SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001
 const SESSION_ID = 'session-1';
 const RUN_ID = 'run-1';
 const MESSAGE = 'hello penny';
+const FIRST_ABORT_REQUEST = 1;
 
 function jsonResponse(body: unknown): Response {
 	return Response.json(body);
@@ -116,5 +117,45 @@ describe('ChatClient', () => {
 			expect.objectContaining({ method: 'POST' })
 		);
 		expect(client.state.messages).toEqual([]);
+	});
+
+	it('does not let stale session clearing erase a newer session', async () => {
+		let abortRequests = 0;
+		let resolveFirstAbort: (() => void) | undefined;
+		const firstAbortResponse = new Promise<Response>((resolve) => {
+			resolveFirstAbort = () => resolve(jsonResponse({}));
+		});
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			if (path === '/api/chat/abort') {
+				abortRequests += 1;
+				return abortRequests === FIRST_ABORT_REQUEST ? firstAbortResponse : jsonResponse({});
+			}
+			if (path.startsWith('/api/chat/history')) {
+				return jsonResponse({ sessionKey: OTHER_SESSION_KEY, messages: [] });
+			}
+			if (path.startsWith('/api/artifacts')) {
+				return jsonResponse({ artifacts: [] });
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+
+		const clearPromise = client.clearSession();
+		await client.switchSession(OTHER_SESSION_KEY);
+		if (!resolveFirstAbort) {
+			throw new Error('first abort was not requested');
+		}
+		resolveFirstAbort();
+		await clearPromise;
+
+		expect(client.state.sessionKey).toBe(OTHER_SESSION_KEY);
 	});
 });

@@ -12,12 +12,17 @@
 
 	const { chat } = getPennyContext();
 	let draft = $state('');
+	let loadedRouteId = $state<string | null>(null);
 
 	const routeId = $derived(page.params.id ?? '');
 
 	$effect(() => {
+		if (loadedRouteId === routeId) {
+			return;
+		}
+		loadedRouteId = routeId;
 		const sessionKey = sessionKeyFromRouteId(routeId);
-		if (!sessionKey || chat.state.sessionKey === sessionKey) {
+		if (!sessionKey) {
 			return;
 		}
 		void chat.switchSession(sessionKey);

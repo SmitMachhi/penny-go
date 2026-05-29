@@ -1,55 +1,11 @@
-import type { ArtifactSummary, ArtifactsResponse } from '$lib/chat/artifacts.js';
-import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
-import { apiJson } from '$lib/chat/api-client.js';
+import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
+import { applyLoadedArtifacts, syncLatestArtifact } from '$lib/chat/client-artifact-state.js';
+import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessage } from '$lib/chat/client-api.js';
+import { appendAssistantMessage, appendUserMessage, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
+import { openChatEventSource } from '$lib/chat/client-stream.js';
+import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
-
-type HistoryResponse = {
-	sessionKey: string;
-	sessionId?: string;
-	messages: ChatMessage[];
-};
-
-type SendResponse = {
-	runId: string;
-	sessionKey: string;
-};
-
-const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
-const ARTIFACT_REFRESH_MAX_ATTEMPTS = 10;
-const ARTIFACT_REFRESH_DELAY_MS = 300;
-
-export type ChatClientState = {
-	connected: boolean;
-	loading: boolean;
-	sending: boolean;
-	sessionKey: string;
-	sessionId: string | null;
-	messages: ChatMessage[];
-	streamText: string;
-	tools: ToolActivity[];
-	artifacts: ArtifactSummary[];
-	artifactPanelOpen: boolean;
-	activeArtifactId: string | null;
-	error: string | null;
-};
-
-export function createInitialChatState(): ChatClientState {
-	return {
-		connected: false,
-		loading: true,
-		sending: false,
-		sessionKey: '',
-		sessionId: null,
-		messages: [],
-		streamText: '',
-		tools: [],
-		artifacts: [],
-		artifactPanelOpen: false,
-		activeArtifactId: null,
-		error: null
-	};
-}
 
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
@@ -61,12 +17,10 @@ export class ChatClient {
 	async bootstrap(): Promise<void> {
 		await this.refreshHealth();
 	}
-
 	dispose(): void {
 		this.eventSource?.close();
 		this.eventSource = null;
 	}
-
 	async clearSession(): Promise<void> {
 		const requestId = ++this.historyRequestId;
 		await this.abortRunBeforeSessionReset();
@@ -74,32 +28,20 @@ export class ChatClient {
 			return;
 		}
 		this.dispose();
-		this.state.sessionKey = '';
-		this.state.sessionId = null;
-		this.state.messages = [];
-		this.state.streamText = '';
-		this.state.tools = [];
-		this.state.artifacts = [];
-		this.state.artifactPanelOpen = false;
-		this.state.activeArtifactId = null;
-		this.state.sending = false;
-		this.state.loading = false;
+		clearChatSessionState(this.state);
 		this.activeRunId = null;
 		this.pendingRunArtifactIds = [];
 	}
-
 	openArtifact(artifactId: string): void {
 		this.state.activeArtifactId = artifactId;
 		this.state.artifactPanelOpen = true;
 	}
-
 	closeArtifactPanel(): void {
 		this.state.artifactPanelOpen = false;
 	}
-
 	async refreshHealth(): Promise<void> {
 		try {
-			const payload = await apiJson<{ ok?: boolean; message?: string }>('/api/health');
+			const payload = await fetchHealth();
 			this.state.connected = payload.ok === true;
 			if (!this.state.connected) {
 				this.state.error = payload.message ?? 'OpenClaw gateway is unavailable';
@@ -117,37 +59,23 @@ export class ChatClient {
 		if (this.state.sending) {
 			await this.abortActiveRun();
 		}
-
 		this.dispose();
 		this.historyRequestId += 1;
-		this.state.sessionKey = sessionKey;
-		this.state.sessionId = null;
-		this.state.messages = [];
-		this.state.streamText = '';
-		this.state.tools = [];
-		this.state.artifacts = [];
-		this.state.artifactPanelOpen = false;
-		this.state.activeArtifactId = null;
-		this.state.error = null;
+		prepareSessionSwitchState(this.state, sessionKey);
 		this.activeRunId = null;
 		this.pendingRunArtifactIds = [];
-
 		await Promise.all([this.loadHistory(), this.loadArtifacts()]);
 		this.connectStream();
 	}
-
 	async loadHistory(): Promise<void> {
 		if (!this.state.sessionKey) {
 			return;
 		}
-
 		const sessionKey = this.state.sessionKey;
 		const requestId = ++this.historyRequestId;
 		this.state.loading = true;
 		try {
-			const payload = await apiJson<HistoryResponse>(
-				`/api/chat/history?sessionKey=${encodeURIComponent(sessionKey)}`
-			);
+			const payload = await fetchHistory(sessionKey);
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
 				return;
 			}
@@ -170,19 +98,10 @@ export class ChatClient {
 		if (!this.state.sessionKey) {
 			return;
 		}
-
 		try {
-			const payload = await apiJson<ArtifactsResponse>(
-				`/api/artifacts?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
-			);
-			this.state.artifacts = payload.artifacts;
+			const payload = await fetchArtifacts(this.state.sessionKey);
+			applyLoadedArtifacts(this.state, payload.artifacts);
 			this.state.error = null;
-			if (payload.artifacts.length > 0) {
-				this.state.artifactPanelOpen = true;
-			}
-			if (!this.state.activeArtifactId && payload.artifacts[0]) {
-				this.state.activeArtifactId = payload.artifacts[0].artifactId;
-			}
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to load artifacts');
 		}
@@ -194,35 +113,18 @@ export class ChatClient {
 		if (!trimmed || this.state.sending || !sessionKey) {
 			return false;
 		}
-
 		if (!options?.skipHistoryReload) {
 			await this.loadHistory();
 			if (this.state.error || this.state.sessionKey !== sessionKey) {
 				return false;
 			}
 		}
-
 		const sessionId = this.state.sessionId;
-		this.state.sending = true;
-		this.state.error = null;
-		this.state.streamText = '';
-		this.state.tools = [];
+		startRunState(this.state);
 		this.pendingRunArtifactIds = [];
-		this.state.messages = [
-			...this.state.messages,
-			{ id: crypto.randomUUID(), role: 'user', text: trimmed }
-		];
-
+		appendUserMessage(this.state, trimmed);
 		try {
-			const payload = await apiJson<SendResponse>('/api/chat/send', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					message: trimmed,
-					sessionKey,
-					sessionId
-				})
-			});
+			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
 			this.activeRunId = payload.runId;
 			return true;
 		} catch (error) {
@@ -236,145 +138,51 @@ export class ChatClient {
 		if (!this.activeRunId || !this.state.sessionKey) {
 			return;
 		}
-		await apiJson('/api/chat/abort', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ sessionKey: this.state.sessionKey, runId: this.activeRunId })
-		});
+		await abortChatRun({ sessionKey: this.state.sessionKey, runId: this.activeRunId });
 	}
 
 	private connectStream(): void {
 		if (!this.state.sessionKey) {
 			return;
 		}
-
 		this.eventSource?.close();
-		const source = new EventSource(
-			`/api/chat/stream?sessionKey=${encodeURIComponent(this.state.sessionKey)}`
-		);
-		this.eventSource = source;
-
-		source.onmessage = (event) => {
-			const payload = JSON.parse(event.data) as SsePayload;
-			this.handleStreamEvent(payload);
-		};
-
-		source.onerror = () => {
-			this.state.connected = false;
-		};
+		this.eventSource = openChatEventSource(this.state.sessionKey, {
+			onError: () => {
+				this.state.connected = false;
+			},
+			onPayload: (payload) => this.handleStreamEvent(payload)
+		});
 	}
 
 	private handleStreamEvent(payload: SsePayload): void {
-		if (payload.type === 'connected') {
-			this.state.connected = true;
-			return;
-		}
-
-		if (this.activeRunId && 'runId' in payload && payload.runId !== this.activeRunId) {
-			return;
-		}
-
-		switch (payload.type) {
-			case 'chat.delta':
-				this.state.streamText = payload.text;
-				break;
-			case 'tool.start':
-				this.state.tools = upsertTool(this.state.tools, payload.name, 'running');
-				break;
-			case 'tool.done':
-				this.state.tools = upsertTool(this.state.tools, payload.name, 'done');
-				if (payload.name === CREATE_FUNDING_BRIEF_TOOL) {
-					void this.refreshArtifactsAfterBrief();
-				}
-				break;
-			case 'artifact.create':
-			case 'artifact.update':
-				this.upsertArtifact(payload.artifact);
-				this.state.activeArtifactId = payload.artifact.artifactId;
-				this.state.artifactPanelOpen = true;
-				if (!this.pendingRunArtifactIds.includes(payload.artifact.artifactId)) {
-					this.pendingRunArtifactIds.push(payload.artifact.artifactId);
-				}
-				break;
-			case 'chat.final':
-				void this.finalizeAssistantMessage(payload);
-				break;
-			case 'chat.aborted':
-				this.resetRun();
-				break;
-			case 'chat.error':
-				this.state.error = payload.message;
-				this.resetRun();
-				break;
-		}
+		applyStreamEvent(payload, {
+			activeRunId: this.activeRunId,
+			finalizeAssistantMessage: (event) => this.finalizeAssistantMessage(event),
+			pendingRunArtifactIds: this.pendingRunArtifactIds,
+			refreshArtifactsAfterBrief: () => this.refreshArtifactsAfterBrief(),
+			resetRun: () => this.resetRun(),
+			state: this.state
+		});
 	}
 
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
 		await this.loadArtifacts();
-		this.syncPendingArtifactsFromList();
-
-		const text = payload.text || this.state.streamText;
-		if (text.trim()) {
-			const messageId = crypto.randomUUID();
-			this.state.messages = [
-				...this.state.messages,
-				{
-					id: messageId,
-					role: 'assistant',
-					text,
-					...(this.pendingRunArtifactIds.length > 0
-						? { artifactIds: [...this.pendingRunArtifactIds] }
-						: {})
-				}
-			];
-		}
+		syncLatestArtifact(this.state, this.pendingRunArtifactIds);
+		appendAssistantMessage(this.state, payload.text || this.state.streamText, this.pendingRunArtifactIds);
 		this.state.error = null;
 		this.resetRun();
 	}
 
-	private syncPendingArtifactsFromList(): void {
-		const latest = this.state.artifacts[0];
-		if (!latest) {
-			return;
-		}
-		this.state.artifactPanelOpen = true;
-		this.state.activeArtifactId = latest.artifactId;
-		if (!this.pendingRunArtifactIds.includes(latest.artifactId)) {
-			this.pendingRunArtifactIds.push(latest.artifactId);
-		}
-	}
-
 	private async refreshArtifactsAfterBrief(): Promise<void> {
-		for (let attempt = 0; attempt < ARTIFACT_REFRESH_MAX_ATTEMPTS; attempt += 1) {
-			await this.loadArtifacts();
-			if (this.state.artifacts[0]) {
-				this.syncPendingArtifactsFromList();
-				return;
-			}
-
-			await new Promise((resolve) => {
-				setTimeout(resolve, ARTIFACT_REFRESH_DELAY_MS * (attempt + 1));
-			});
-		}
-	}
-
-	private upsertArtifact(artifact: ArtifactSummary): void {
-		const existingIndex = this.state.artifacts.findIndex(
-			(entry) => entry.artifactId === artifact.artifactId
-		);
-		if (existingIndex >= 0) {
-			this.state.artifacts = this.state.artifacts.map((entry, index) =>
-				index === existingIndex ? artifact : entry
-			);
-			return;
-		}
-		this.state.artifacts = [artifact, ...this.state.artifacts];
+		await refreshArtifactsUntilReady({
+			hasArtifacts: () => this.state.artifacts[0] !== undefined,
+			loadArtifacts: () => this.loadArtifacts(),
+			syncLatestArtifact: () => syncLatestArtifact(this.state, this.pendingRunArtifactIds)
+		});
 	}
 
 	private resetRun(): void {
-		this.state.sending = false;
-		this.state.streamText = '';
-		this.state.tools = [];
+		resetRunState(this.state);
 		this.activeRunId = null;
 		this.pendingRunArtifactIds = [];
 	}
@@ -389,12 +197,4 @@ export class ChatClient {
 			this.state.error = formatClientError(error, 'failed to abort active run');
 		}
 	}
-}
-
-function upsertTool(tools: ToolActivity[], name: string, phase: ToolActivity['phase']): ToolActivity[] {
-	const existing = tools.find((tool) => tool.name === name);
-	if (existing) {
-		return tools.map((tool) => (tool.name === name ? { ...tool, phase } : tool));
-	}
-	return [...tools, { id: crypto.randomUUID(), name, phase }];
 }

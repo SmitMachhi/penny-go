@@ -1,0 +1,95 @@
+import type { ArtifactSummary } from '$lib/chat/artifacts.js';
+import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
+
+export type ChatClientState = {
+	connected: boolean;
+	loading: boolean;
+	sending: boolean;
+	sessionKey: string;
+	sessionId: string | null;
+	messages: ChatMessage[];
+	streamText: string;
+	tools: ToolActivity[];
+	artifacts: ArtifactSummary[];
+	artifactPanelOpen: boolean;
+	activeArtifactId: string | null;
+	error: string | null;
+};
+
+export function createInitialChatState(): ChatClientState {
+	return {
+		connected: false,
+		loading: true,
+		sending: false,
+		sessionKey: '',
+		sessionId: null,
+		messages: [],
+		streamText: '',
+		tools: [],
+		artifacts: [],
+		artifactPanelOpen: false,
+		activeArtifactId: null,
+		error: null
+	};
+}
+
+export function clearChatSessionState(state: ChatClientState): void {
+	state.sessionKey = '';
+	state.sessionId = null;
+	state.messages = [];
+	state.loading = false;
+	state.error = null;
+	resetRunState(state);
+	resetArtifactState(state);
+}
+
+export function prepareSessionSwitchState(state: ChatClientState, sessionKey: string): void {
+	state.sessionKey = sessionKey;
+	state.sessionId = null;
+	state.messages = [];
+	state.error = null;
+	resetRunState(state);
+	resetArtifactState(state);
+}
+
+export function appendUserMessage(state: ChatClientState, text: string): void {
+	state.messages = [...state.messages, { id: crypto.randomUUID(), role: 'user', text }];
+}
+
+export function appendAssistantMessage(
+	state: ChatClientState,
+	text: string,
+	artifactIds: readonly string[]
+): void {
+	if (!text.trim()) {
+		return;
+	}
+	state.messages = [
+		...state.messages,
+		{
+			id: crypto.randomUUID(),
+			role: 'assistant',
+			text,
+			...(artifactIds.length > 0 ? { artifactIds: [...artifactIds] } : {})
+		}
+	];
+}
+
+export function resetRunState(state: ChatClientState): void {
+	state.sending = false;
+	state.streamText = '';
+	state.tools = [];
+}
+
+export function startRunState(state: ChatClientState): void {
+	state.sending = true;
+	state.error = null;
+	state.streamText = '';
+	state.tools = [];
+}
+
+function resetArtifactState(state: ChatClientState): void {
+	state.artifacts = [];
+	state.artifactPanelOpen = false;
+	state.activeArtifactId = null;
+}

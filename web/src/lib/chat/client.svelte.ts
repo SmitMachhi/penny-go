@@ -6,7 +6,6 @@ import { openChatEventSource } from '$lib/chat/client-stream.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
-
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
 	private eventSource: EventSource | null = null;
@@ -123,7 +122,7 @@ export class ChatClient {
 				return false;
 			}
 		}
-		const sessionId = this.state.sessionId;
+		const sessionId = this.state.sessionId, previousMessages = this.state.messages;
 		startRunState(this.state);
 		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
 		this.pendingRunArtifactIds = [];
@@ -133,6 +132,7 @@ export class ChatClient {
 			this.activeRunId = payload.runId;
 			return true;
 		} catch (error) {
+			this.state.messages = previousMessages;
 			this.state.sending = false;
 			this.state.error = formatClientError(error, 'failed to send message');
 			return false;
@@ -154,7 +154,7 @@ export class ChatClient {
 				this.state.connected = false;
 			},
 			onPayload: (payload) => this.handleStreamEvent(payload)
-			});
+		});
 	}
 	private handleStreamEvent(payload: SsePayload): void {
 		applyStreamEvent(payload, {
@@ -164,7 +164,7 @@ export class ChatClient {
 			refreshArtifactsAfterBrief: () => this.refreshArtifactsAfterBrief(),
 			resetRun: () => this.resetRun(),
 			state: this.state
-			});
+		});
 	}
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
 		await this.loadArtifacts();
@@ -179,7 +179,7 @@ export class ChatClient {
 			loadArtifacts: () => this.loadArtifacts(),
 			syncLatestArtifact: () =>
 				syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot)
-			});
+		});
 	}
 	private resetRun(): void {
 		resetRunState(this.state);

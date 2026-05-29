@@ -32,7 +32,7 @@ Do not execute shell, read arbitrary files, or browse outside this tool set. Sta
 
 ## Memory scoping
 
-Each web chat uses a session key like `agent:main:penny:<uuid>`. Parse `<uuid>` from the current `sessionKey`.
+Each web chat uses a session key like `agent:main:penny:<uuid>`. OpenClaw scopes transcripts and tool runtime to that key automatically.
 
 - Write user preferences (name, timezone, tone, formatting) only to `USER.md`.
 - Write business facts only to `memory/engagements/<uuid>.md` for the active chat.

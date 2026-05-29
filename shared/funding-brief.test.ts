@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { MAX_FUNDING_BRIEF_PROGRAMS, validateFundingBriefInput } from './funding-brief.ts';
+import { MAX_FUNDING_BRIEF_PROGRAMS, validateFundingBriefContent, validateFundingBriefInput } from './funding-brief.ts';
 
 const SESSION_UUID = '550e8400-e29b-41d4-a716-446655440000';
 
@@ -35,6 +35,20 @@ function buildValidBrief(programCount = 1) {
 		}
 	};
 }
+
+function buildValidBriefContent(programCount = 1) {
+	const brief = buildValidBrief(programCount);
+	const { sessionUuid: _sessionUuid, ...content } = brief;
+	return content;
+}
+
+test('validateFundingBriefContent accepts agent-facing brief without sessionUuid', () => {
+	const result = validateFundingBriefContent(buildValidBriefContent(2));
+	assert.equal(result.ok, true);
+	if (result.ok) {
+		assert.equal(result.value.programs.length, 2);
+	}
+});
 
 test('validateFundingBriefInput accepts a valid brief', () => {
 	const result = validateFundingBriefInput(buildValidBrief(2));

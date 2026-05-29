@@ -3,11 +3,15 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "imports": {
+    "#session-key": "./session-key.ts"
+  },
   "scripts": {
-    "test": "node --experimental-strip-types --test loan-heuristic.test.ts funding-brief.test.ts artifact-paths.test.ts"
+    "test": "node --experimental-strip-types --test loan-heuristic.test.ts funding-brief.test.ts artifact-paths.test.ts session-key.test.ts"
   },
   "exports": {
     "./penny-paths": "./penny-paths.ts",
+    "./session-key": "./session-key.ts",
     "./funding-brief": "./funding-brief.ts",
     "./penny-brand": "./penny-brand.ts",
     "./loan-heuristic.json": "./loan-heuristic.json"

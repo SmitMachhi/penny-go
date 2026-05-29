@@ -42,13 +42,16 @@ export type FundingBriefVerification = {
 	notes?: string;
 };
 
-export type FundingBriefInput = {
-	sessionUuid: string;
+export type FundingBriefContent = {
 	title: string;
 	triggerReason: FundingBriefTriggerReason;
 	business: FundingBriefBusiness;
 	programs: FundingBriefProgram[];
 	verification: FundingBriefVerification;
+};
+
+export type FundingBriefInput = FundingBriefContent & {
+	sessionUuid: string;
 };
 
 export type FundingBriefRecord = FundingBriefInput & {
@@ -65,6 +68,10 @@ export type FundingBriefValidationError = {
 
 export type FundingBriefValidationResult =
 	| { ok: true; value: FundingBriefInput }
+	| { ok: false; errors: FundingBriefValidationError[] };
+
+export type FundingBriefContentValidationResult =
+	| { ok: true; value: FundingBriefContent }
 	| { ok: false; errors: FundingBriefValidationError[] };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -191,17 +198,10 @@ function parseVerification(value: unknown, errors: FundingBriefValidationError[]
 	};
 }
 
-export function validateFundingBriefInput(input: unknown): FundingBriefValidationResult {
-	const errors: FundingBriefValidationError[] = [];
-	if (!isRecord(input)) {
-		return { ok: false, errors: [{ field: 'root', message: 'required object' }] };
-	}
-
-	const sessionUuid = readString(input.sessionUuid, 'sessionUuid', errors);
-	if (sessionUuid && !SESSION_UUID_PATTERN.test(sessionUuid)) {
-		errors.push({ field: 'sessionUuid', message: 'must be UUID v4' });
-	}
-
+function parseFundingBriefContent(
+	input: Record<string, unknown>,
+	errors: FundingBriefValidationError[]
+): FundingBriefContent | null {
 	const title = readString(input.title, 'title', errors);
 
 	const triggerReasonRaw = readString(input.triggerReason, 'triggerReason', errors);
@@ -239,7 +239,46 @@ export function validateFundingBriefInput(input: unknown): FundingBriefValidatio
 
 	const verification = parseVerification(input.verification, errors);
 
-	if (errors.length > 0 || !sessionUuid || !title || !triggerReason || !verification) {
+	if (!title || !triggerReason || !verification) {
+		return null;
+	}
+
+	return {
+		title,
+		triggerReason,
+		business,
+		programs,
+		verification
+	};
+}
+
+export function validateFundingBriefContent(input: unknown): FundingBriefContentValidationResult {
+	const errors: FundingBriefValidationError[] = [];
+	if (!isRecord(input)) {
+		return { ok: false, errors: [{ field: 'root', message: 'required object' }] };
+	}
+
+	const content = parseFundingBriefContent(input, errors);
+	if (errors.length > 0 || !content) {
+		return { ok: false, errors };
+	}
+
+	return { ok: true, value: content };
+}
+
+export function validateFundingBriefInput(input: unknown): FundingBriefValidationResult {
+	const errors: FundingBriefValidationError[] = [];
+	if (!isRecord(input)) {
+		return { ok: false, errors: [{ field: 'root', message: 'required object' }] };
+	}
+
+	const sessionUuid = readString(input.sessionUuid, 'sessionUuid', errors);
+	if (sessionUuid && !SESSION_UUID_PATTERN.test(sessionUuid)) {
+		errors.push({ field: 'sessionUuid', message: 'must be UUID v4' });
+	}
+
+	const content = parseFundingBriefContent(input, errors);
+	if (errors.length > 0 || !sessionUuid || !content) {
 		return { ok: false, errors };
 	}
 
@@ -247,11 +286,7 @@ export function validateFundingBriefInput(input: unknown): FundingBriefValidatio
 		ok: true,
 		value: {
 			sessionUuid,
-			title,
-			triggerReason,
-			business,
-			programs,
-			verification
+			...content
 		}
 	};
 }

@@ -8,33 +8,37 @@
 	import { cn } from '$lib/utils.js';
 
 	type Props = {
-		open: boolean;
 		artifacts: ArtifactSummary[];
 		activeArtifactId: string | null;
 		sessionKey: string;
+		mobileOpen: boolean;
 		onClose: () => void;
 		onSelect: (artifactId: string) => void;
 	};
 
-	let { open, artifacts, activeArtifactId, sessionKey, onClose, onSelect }: Props = $props();
+	let { artifacts, activeArtifactId, sessionKey, mobileOpen, onClose, onSelect }: Props = $props();
 
 	const activeArtifact = $derived(
 		artifacts.find((artifact) => artifact.artifactId === activeArtifactId) ?? artifacts[0] ?? null
 	);
 </script>
 
-{#if open && activeArtifact}
-	<button
-		type="button"
-		class="fixed inset-0 z-40 bg-black/40 lg:hidden"
-		aria-label="Close artifact panel"
-		onclick={onClose}
-	></button>
+{#if activeArtifact}
+	{#if mobileOpen}
+		<button
+			type="button"
+			class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+			aria-label="Close artifact panel"
+			onclick={onClose}
+		></button>
+	{/if}
 
 	<aside
 		class={cn(
-			'z-50 flex h-full w-full shrink-0 flex-col border-border bg-card/95 lg:w-[min(520px,42vw)] lg:border-l',
-			open ? 'fixed inset-y-0 right-0 shadow-xl lg:static lg:shadow-none' : 'hidden lg:flex'
+			'z-50 flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-border bg-card/95 lg:w-[min(520px,42vw)] lg:border-l',
+			mobileOpen
+				? 'fixed inset-y-0 right-0 flex shadow-xl lg:static lg:shadow-none'
+				: 'hidden lg:flex'
 		)}
 	>
 		<div class="flex items-center justify-between border-b border-border px-4 py-3">
@@ -42,7 +46,13 @@
 				<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Artifact</p>
 				<p class="text-sm font-semibold">Funding brief</p>
 			</div>
-			<Button variant="ghost" size="icon" onclick={onClose} aria-label="Close artifact panel">
+			<Button
+				variant="ghost"
+				size="icon"
+				class="lg:hidden"
+				onclick={onClose}
+				aria-label="Close artifact panel"
+			>
 				<X class="h-4 w-4" />
 			</Button>
 		</div>
@@ -62,6 +72,8 @@
 		{/if}
 
 		<ArtifactToolbar artifact={activeArtifact} {sessionKey} />
-		<SlidePreview artifactId={activeArtifact.artifactId} {sessionKey} />
+		<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/10">
+			<SlidePreview artifactId={activeArtifact.artifactId} {sessionKey} />
+		</div>
 	</aside>
 {/if}

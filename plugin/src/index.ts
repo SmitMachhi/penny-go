@@ -1,29 +1,13 @@
-import { Type } from "@sinclair/typebox";
 import { defineToolPlugin } from "openclaw/plugin-sdk/tool-plugin";
+import type { AnyAgentTool } from "openclaw/plugin-sdk/plugin-entry";
+import { Type } from "@sinclair/typebox";
 
-import { createFundingBriefAction } from "./actions/funding-brief-tools.js";
 import {
   readOfficialSourceAction,
   searchCorpusAction,
 } from "./actions/penny-tools.js";
 import type { PennyToolsConfigShape } from "./services/penny-config.js";
-
-const confidenceSchema = Type.Union([
-  Type.Literal("verified_live"),
-  Type.Literal("newly_discovered"),
-  Type.Literal("could_not_verify"),
-]);
-
-const programSchema = Type.Object({
-  name: Type.String(),
-  whyFit: Type.String(),
-  whyNot: Type.String(),
-  benefitType: Type.String(),
-  intakeStatus: Type.String(),
-  officialUrl: Type.String(),
-  confidence: confidenceSchema,
-  nextStep: Type.String(),
-});
+import { createFundingBriefTool, createFundingBriefToolDefinition } from "./tools/create-funding-brief-tool.js";
 
 const configSchema = Type.Object(
   {
@@ -81,33 +65,12 @@ export default defineToolPlugin({
         readOfficialSourceAction(cfg as PennyToolsConfigShape, params.url.trim(), runtime.signal),
     }),
     tool({
-      name: "create_funding_brief",
-      label: "Create funding brief artifact",
-      description:
-        "Create or update a branded funding brief slideshow and PDF artifact for the active session.",
-      parameters: Type.Object({
-        sessionUuid: Type.String({ description: "UUID from agent:main:penny:<uuid> session key" }),
-        title: Type.String(),
-        triggerReason: Type.Union([Type.Literal("auto"), Type.Literal("user_requested")]),
-        artifactId: Type.Optional(
-          Type.String({ description: "Existing artifact UUID to update in place" }),
-        ),
-        business: Type.Object({
-          name: Type.Optional(Type.String()),
-          province: Type.Optional(Type.String()),
-          sector: Type.Optional(Type.String()),
-          employees: Type.Optional(Type.String()),
-          projectSummary: Type.Optional(Type.String()),
-        }),
-        programs: Type.Array(programSchema),
-        verification: Type.Object({
-          verifiedAt: Type.String(),
-          urlsChecked: Type.Array(Type.String()),
-          notes: Type.Optional(Type.String()),
-        }),
-      }),
-      execute: async (params, cfg, runtime) =>
-        createFundingBriefAction(cfg as PennyToolsConfigShape, params, runtime.signal),
+      ...createFundingBriefToolDefinition,
+      factory: ({ config, toolContext }) =>
+        createFundingBriefTool(
+          config as PennyToolsConfigShape,
+          toolContext.sessionKey,
+        ) as unknown as AnyAgentTool,
     }),
   ],
 });

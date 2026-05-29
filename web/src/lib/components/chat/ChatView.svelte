@@ -45,7 +45,7 @@
 	}
 </script>
 
-<div class="flex min-h-0 flex-1">
+<div class="flex min-h-0 flex-1 overflow-hidden">
 	<div class="flex min-h-0 min-w-0 flex-1 flex-col px-4 py-6">
 		<section
 			class="mx-auto flex min-h-[60vh] w-full max-w-3xl flex-1 flex-col gap-4 overflow-y-auto rounded-2xl border border-border bg-card/40 p-4"
@@ -129,10 +129,10 @@
 	</div>
 
 	<ArtifactPanel
-		open={chat.state.artifactPanelOpen && chat.state.artifacts.length > 0}
 		artifacts={chat.state.artifacts}
 		activeArtifactId={chat.state.activeArtifactId}
 		sessionKey={chat.state.sessionKey}
+		mobileOpen={chat.state.artifactPanelOpen}
 		onClose={() => chat.closeArtifactPanel()}
 		onSelect={(artifactId) => chat.openArtifact(artifactId)}
 	/>

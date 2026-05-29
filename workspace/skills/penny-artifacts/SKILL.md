@@ -28,13 +28,14 @@ Use `triggerReason: "user_requested"` when the user explicitly asked for an expo
 
 ## How to call the tool
 
-1. Parse `sessionUuid` from the current `sessionKey` (`agent:main:penny:<uuid>`).
-2. After all `read_official_source` calls for recommended programs, call `create_funding_brief` with:
-   - `sessionUuid`, `title`, `triggerReason`
+1. After all `read_official_source` calls for recommended programs, call `create_funding_brief` with:
+   - `title`, `triggerReason`
    - `business` snapshot from the engagement
    - `programs[]` (max five) with all required fields and confidence labels
    - `verification.verifiedAt` (ISO timestamp), `verification.urlsChecked[]`
-3. To update an existing brief, pass the same `artifactId` from the prior tool result.
+2. To update an existing brief, pass the same `artifactId` from the prior tool result.
+
+The tool binds to the active Penny web chat session automatically — do not pass a session id.
 
 ## Chat vs artifact split
 

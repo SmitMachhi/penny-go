@@ -60,6 +60,8 @@ Requires Playwright browsers for PDF step (same as Crawl4AI setup). Use `--skip-
 
 `create_funding_brief` — registered in `penny-tools`, allowed in `config/openclaw.penny.example.json5`.
 
+The tool binds to the active OpenClaw session key at runtime (`agent:main:penny:<uuid>`). The agent does not pass a session id.
+
 Returns:
 
 ```json

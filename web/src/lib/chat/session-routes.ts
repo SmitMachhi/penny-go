@@ -1,16 +1,20 @@
-export const LEGACY_ROUTE_ID = 'legacy';
-export const LEGACY_SESSION_KEY = 'agent:main:main';
-export const PENNY_SESSION_PREFIX = 'agent:main:penny:';
+import {
+	buildPennySessionKey,
+	isValidSessionUuid,
+	LEGACY_SESSION_KEY,
+	PENNY_SESSION_PREFIX
+} from '@penny/shared/session-key';
 
-const PENNY_SESSION_UUID_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+export const LEGACY_ROUTE_ID = 'legacy';
+
+export {
+	buildPennySessionKey,
+	LEGACY_SESSION_KEY,
+	PENNY_SESSION_PREFIX
+};
 
 export function isPennySessionUuid(value: string): boolean {
-	return PENNY_SESSION_UUID_PATTERN.test(value);
-}
-
-export function buildPennySessionKey(uuid: string): string {
-	return `${PENNY_SESSION_PREFIX}${uuid}`;
+	return isValidSessionUuid(value);
 }
 
 export function isValidChatRouteId(routeId: string): boolean {

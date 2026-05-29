@@ -16,8 +16,8 @@ type SendResponse = {
 };
 
 const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
-const ARTIFACT_REFRESH_MAX_ATTEMPTS = 3;
-const ARTIFACT_REFRESH_DELAY_MS = 150;
+const ARTIFACT_REFRESH_MAX_ATTEMPTS = 10;
+const ARTIFACT_REFRESH_DELAY_MS = 300;
 
 export type ChatClientState = {
 	connected: boolean;
@@ -177,6 +177,9 @@ export class ChatClient {
 			);
 			this.state.artifacts = payload.artifacts;
 			this.state.error = null;
+			if (payload.artifacts.length > 0) {
+				this.state.artifactPanelOpen = true;
+			}
 			if (!this.state.activeArtifactId && payload.artifacts[0]) {
 				this.state.activeArtifactId = payload.artifacts[0].artifactId;
 			}
@@ -293,26 +296,9 @@ export class ChatClient {
 					this.pendingRunArtifactIds.push(payload.artifact.artifactId);
 				}
 				break;
-			case 'chat.final': {
-				const text = payload.text || this.state.streamText;
-				if (text.trim()) {
-					const messageId = crypto.randomUUID();
-					this.state.messages = [
-						...this.state.messages,
-						{
-							id: messageId,
-							role: 'assistant',
-							text,
-							...(this.pendingRunArtifactIds.length > 0
-								? { artifactIds: [...this.pendingRunArtifactIds] }
-								: {})
-						}
-					];
-				}
-				this.state.error = null;
-				this.resetRun();
+			case 'chat.final':
+				void this.finalizeAssistantMessage(payload);
 				break;
-			}
 			case 'chat.aborted':
 				this.resetRun();
 				break;
@@ -323,16 +309,46 @@ export class ChatClient {
 		}
 	}
 
+	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
+		await this.loadArtifacts();
+		this.syncPendingArtifactsFromList();
+
+		const text = payload.text || this.state.streamText;
+		if (text.trim()) {
+			const messageId = crypto.randomUUID();
+			this.state.messages = [
+				...this.state.messages,
+				{
+					id: messageId,
+					role: 'assistant',
+					text,
+					...(this.pendingRunArtifactIds.length > 0
+						? { artifactIds: [...this.pendingRunArtifactIds] }
+						: {})
+				}
+			];
+		}
+		this.state.error = null;
+		this.resetRun();
+	}
+
+	private syncPendingArtifactsFromList(): void {
+		const latest = this.state.artifacts[0];
+		if (!latest) {
+			return;
+		}
+		this.state.artifactPanelOpen = true;
+		this.state.activeArtifactId = latest.artifactId;
+		if (!this.pendingRunArtifactIds.includes(latest.artifactId)) {
+			this.pendingRunArtifactIds.push(latest.artifactId);
+		}
+	}
+
 	private async refreshArtifactsAfterBrief(): Promise<void> {
 		for (let attempt = 0; attempt < ARTIFACT_REFRESH_MAX_ATTEMPTS; attempt += 1) {
 			await this.loadArtifacts();
-			const latest = this.state.artifacts[0];
-			if (latest) {
-				this.state.activeArtifactId = latest.artifactId;
-				this.state.artifactPanelOpen = true;
-				if (!this.pendingRunArtifactIds.includes(latest.artifactId)) {
-					this.pendingRunArtifactIds.push(latest.artifactId);
-				}
+			if (this.state.artifacts[0]) {
+				this.syncPendingArtifactsFromList();
 				return;
 			}
 

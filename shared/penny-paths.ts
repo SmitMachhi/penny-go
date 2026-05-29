@@ -1,6 +1,8 @@
 import { existsSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 
+import { isValidSessionUuid } from '#session-key';
+
 export const WORKSPACE_SEGMENT = 'workspace';
 
 export type ResolvePennyRepoRootOptions = {
@@ -45,15 +47,10 @@ export const PDF_FILENAME = 'brief.pdf';
 export const META_FILENAME = 'meta.json';
 export const INDEX_FILENAME = 'index.json';
 
-const SESSION_UUID_PATTERN =
-	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-
 const ARTIFACT_ID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-export function isValidSessionUuid(value: string): boolean {
-	return SESSION_UUID_PATTERN.test(value);
-}
+export { isValidSessionUuid } from '#session-key';
 
 export function isValidArtifactId(value: string): boolean {
 	return ARTIFACT_ID_PATTERN.test(value);

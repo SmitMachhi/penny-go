@@ -1,6 +1,7 @@
 import { error } from '@sveltejs/kit';
 
 import { withApiCatch } from '$lib/server/api-handler.js';
+import { injectEmbeddedPreviewStyles } from '$lib/server/artifact-preview.js';
 import {
 	getArtifactMeta,
 	readArtifactSlidesHtml,
@@ -28,7 +29,9 @@ export async function GET(event) {
 
 		if (wantsHtml) {
 			const html = await readArtifactSlidesHtml(sessionKey, artifactId);
-			return new Response(html, {
+			const embedded = event.url.searchParams.get('embedded') === '1';
+			const body = embedded ? injectEmbeddedPreviewStyles(html) : html;
+			return new Response(body, {
 				headers: {
 					'content-type': 'text/html; charset=utf-8',
 					'cache-control': 'no-store'

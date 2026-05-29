@@ -51,10 +51,10 @@
 	});
 </script>
 
-<div class="flex min-h-screen">
+<div class="flex h-screen overflow-hidden">
 	<SessionSidebar {activeRouteId} />
 
-	<div class="flex min-h-screen min-w-0 flex-1 flex-col">
+	<div class="flex min-h-0 min-w-0 flex-1 flex-col">
 		<header class="flex items-center justify-between gap-4 border-b border-border px-4 py-4">
 			<div class="flex items-start gap-3">
 				<Button
@@ -88,7 +88,9 @@
 			</div>
 		</header>
 
-		{@render children?.()}
+		<div class="flex min-h-0 flex-1 flex-col">
+			{@render children?.()}
+		</div>
 
 		{#if chat.state.error}
 			<p class="mx-auto mt-3 w-full max-w-3xl px-4 text-sm text-destructive">{chat.state.error}</p>

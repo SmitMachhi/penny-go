@@ -88,4 +88,38 @@ describe('ChatClient send failures', () => {
 		expect(client.state.sessionKey).toBe(OTHER_SESSION_KEY);
 		expect(client.state.messages).toEqual([]);
 	});
+
+	it('accepts final stream events that arrive before send returns', async () => {
+		let resolveSend: (response: Response) => void = () => {};
+		const sendResponse = new Promise<Response>((resolve) => {
+			resolveSend = resolve;
+		});
+		vi.stubGlobal('EventSource', MockEventSource);
+		vi.stubGlobal(
+			'fetch',
+			vi.fn<typeof fetch>(async (input) => {
+				const path = String(input);
+				if (path === '/api/chat/send') {
+					return sendResponse;
+				}
+				if (path.startsWith('/api/chat/history')) {
+					return Response.json({ messages: [], sessionKey: SESSION_KEY });
+				}
+				return Response.json({ artifacts: [] });
+			})
+		);
+
+		const client = new ChatClient();
+		await client.switchSession(SESSION_KEY);
+		const sendPromise = client.sendMessage(MESSAGE, { skipHistoryReload: true });
+		MockEventSource.instances[0]?.emit({ runId: RUN_ID, text: 'fast final', type: 'chat.final' });
+		resolveSend(Response.json({ runId: RUN_ID, sessionKey: SESSION_KEY }));
+		await sendPromise;
+		await new Promise((resolve) => {
+			setTimeout(resolve, 0);
+		});
+
+		expect(client.state.sending).toBe(false);
+		expect(client.state.messages.at(-1)).toMatchObject({ role: 'assistant', text: 'fast final' });
+	});
 });

@@ -114,12 +114,15 @@ export class ChatClient {
 		}
 		const sessionId = this.state.sessionId, previousMessages = this.state.messages;
 		startRunState(this.state);
+		this.activeRunId = null;
 		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
 		this.pendingRunArtifactIds = [];
 		appendUserMessage(this.state, trimmed);
 		try {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
-			this.activeRunId = payload.runId;
+			if (this.state.sending) {
+				this.activeRunId = payload.runId;
+			}
 			return true;
 		} catch (error) {
 			this.state.messages = previousMessages;
@@ -158,11 +161,11 @@ export class ChatClient {
 	}
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
 		const sessionKey = this.state.sessionKey, runId = this.activeRunId;
-		if (!sessionKey || runId !== payload.runId) {
+		if (!sessionKey || (runId !== null && runId !== payload.runId)) {
 			return;
 		}
 		await this.loadArtifacts();
-		if (sessionKey !== this.state.sessionKey || runId !== this.activeRunId) {
+		if (sessionKey !== this.state.sessionKey || (this.activeRunId !== null && this.activeRunId !== payload.runId)) {
 			return;
 		}
 		syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);

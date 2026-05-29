@@ -14,13 +14,8 @@ export class ChatClient {
 	private pendingRunArtifactIds: string[] = [];
 	private historyRequestId = 0;
 
-	async bootstrap(): Promise<void> {
-		await this.refreshHealth();
-	}
-	dispose(): void {
-		this.eventSource?.close();
-		this.eventSource = null;
-	}
+	async bootstrap(): Promise<void> { await this.refreshHealth(); }
+	dispose(): void { this.eventSource?.close(); this.eventSource = null; }
 	async clearSession(): Promise<void> {
 		const requestId = ++this.historyRequestId;
 		await this.abortRunBeforeSessionReset();
@@ -33,13 +28,8 @@ export class ChatClient {
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 	}
-	openArtifact(artifactId: string): void {
-		this.state.activeArtifactId = artifactId;
-		this.state.artifactPanelOpen = true;
-	}
-	closeArtifactPanel(): void {
-		this.state.artifactPanelOpen = false;
-	}
+	openArtifact(artifactId: string): void { this.state.activeArtifactId = artifactId; this.state.artifactPanelOpen = true; }
+	closeArtifactPanel(): void { this.state.artifactPanelOpen = false; }
 	async refreshHealth(): Promise<void> {
 		try {
 			const payload = await fetchHealth();
@@ -167,7 +157,14 @@ export class ChatClient {
 		});
 	}
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
+		const sessionKey = this.state.sessionKey, runId = this.activeRunId;
+		if (!sessionKey || runId !== payload.runId) {
+			return;
+		}
 		await this.loadArtifacts();
+		if (sessionKey !== this.state.sessionKey || runId !== this.activeRunId) {
+			return;
+		}
 		syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
 		appendAssistantMessage(this.state, payload.text || this.state.streamText, this.pendingRunArtifactIds);
 		this.state.error = null;

@@ -1,6 +1,6 @@
 ## Code Rules
 1. Strict TS: no `any`, unchecked casts, `var`, unused vars, or unsorted imports; default to `const`. 
-2. Keep files ≤200 LOC, functions ≤50 LOC, complexity ≤10, nesting ≤3, and logic DRY.
+2. Keep files ≤500 LOC, functions ≤50 LOC, complexity ≤10, nesting ≤3, and logic DRY.
 3. No secrets in code, logs, or commits; validate external input at boundaries.
 4. No magic numbers: name every numeric literal with a semantic constant.
 5. Penny stays agentic: reasoning, context, evidence, tools, and model output drives decisions; deterministic code only frames tools, safety gates, and evidence constraints.

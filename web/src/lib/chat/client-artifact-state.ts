@@ -2,6 +2,8 @@ import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 
 import type { ChatClientState } from './client-state.js';
 
+export type ArtifactVersionSnapshot = ReadonlyMap<string, number>;
+
 export function applyLoadedArtifacts(state: ChatClientState, artifacts: ArtifactSummary[]): void {
 	state.artifacts = artifacts;
 	if (artifacts.length > 0) {
@@ -18,9 +20,17 @@ export function rememberArtifactId(artifactIds: string[], artifactId: string): v
 	}
 }
 
-export function syncLatestArtifact(state: ChatClientState, artifactIds: string[]): void {
+export function snapshotArtifactVersions(artifacts: readonly ArtifactSummary[]): ArtifactVersionSnapshot {
+	return new Map(artifacts.map((artifact) => [artifact.artifactId, artifact.version]));
+}
+
+export function syncChangedLatestArtifact(
+	state: ChatClientState,
+	artifactIds: string[],
+	snapshot: ArtifactVersionSnapshot
+): void {
 	const latest = state.artifacts[0];
-	if (!latest) {
+	if (!latest || snapshot.get(latest.artifactId) === latest.version) {
 		return;
 	}
 	state.artifactPanelOpen = true;

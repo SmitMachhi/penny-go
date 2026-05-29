@@ -1,5 +1,5 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
-import { applyLoadedArtifacts, syncLatestArtifact } from '$lib/chat/client-artifact-state.js';
+import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessage } from '$lib/chat/client-api.js';
 import { appendAssistantMessage, appendUserMessage, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
 import { openChatEventSource } from '$lib/chat/client-stream.js';
@@ -11,6 +11,7 @@ export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
 	private eventSource: EventSource | null = null;
 	private activeRunId: string | null = null;
+	private artifactVersionSnapshot: ArtifactVersionSnapshot = new Map();
 	private pendingRunArtifactIds: string[] = [];
 	private historyRequestId = 0;
 
@@ -30,6 +31,7 @@ export class ChatClient {
 		this.dispose();
 		clearChatSessionState(this.state);
 		this.activeRunId = null;
+		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 	}
 	openArtifact(artifactId: string): void {
@@ -51,7 +53,6 @@ export class ChatClient {
 			this.state.error = formatClientError(error, 'OpenClaw gateway is unavailable');
 		}
 	}
-
 	async switchSession(sessionKey: string): Promise<void> {
 		if (this.state.sessionKey === sessionKey) {
 			return;
@@ -63,6 +64,7 @@ export class ChatClient {
 		this.historyRequestId += 1;
 		prepareSessionSwitchState(this.state, sessionKey);
 		this.activeRunId = null;
+		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 		await Promise.all([this.loadHistory(), this.loadArtifacts()]);
 		this.connectStream();
@@ -93,20 +95,22 @@ export class ChatClient {
 			}
 		}
 	}
-
 	async loadArtifacts(): Promise<void> {
 		if (!this.state.sessionKey) {
 			return;
 		}
+		const sessionKey = this.state.sessionKey;
 		try {
-			const payload = await fetchArtifacts(this.state.sessionKey);
+			const payload = await fetchArtifacts(sessionKey);
+			if (sessionKey !== this.state.sessionKey) {
+				return;
+			}
 			applyLoadedArtifacts(this.state, payload.artifacts);
 			this.state.error = null;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to load artifacts');
 		}
 	}
-
 	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<boolean> {
 		const trimmed = message.trim();
 		const sessionKey = this.state.sessionKey;
@@ -121,6 +125,7 @@ export class ChatClient {
 		}
 		const sessionId = this.state.sessionId;
 		startRunState(this.state);
+		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
 		this.pendingRunArtifactIds = [];
 		appendUserMessage(this.state, trimmed);
 		try {
@@ -133,14 +138,12 @@ export class ChatClient {
 			return false;
 		}
 	}
-
 	async abortActiveRun(): Promise<void> {
 		if (!this.activeRunId || !this.state.sessionKey) {
 			return;
 		}
 		await abortChatRun({ sessionKey: this.state.sessionKey, runId: this.activeRunId });
 	}
-
 	private connectStream(): void {
 		if (!this.state.sessionKey) {
 			return;
@@ -151,9 +154,8 @@ export class ChatClient {
 				this.state.connected = false;
 			},
 			onPayload: (payload) => this.handleStreamEvent(payload)
-		});
+			});
 	}
-
 	private handleStreamEvent(payload: SsePayload): void {
 		applyStreamEvent(payload, {
 			activeRunId: this.activeRunId,
@@ -162,31 +164,29 @@ export class ChatClient {
 			refreshArtifactsAfterBrief: () => this.refreshArtifactsAfterBrief(),
 			resetRun: () => this.resetRun(),
 			state: this.state
-		});
+			});
 	}
-
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
 		await this.loadArtifacts();
-		syncLatestArtifact(this.state, this.pendingRunArtifactIds);
+		syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
 		appendAssistantMessage(this.state, payload.text || this.state.streamText, this.pendingRunArtifactIds);
 		this.state.error = null;
 		this.resetRun();
 	}
-
 	private async refreshArtifactsAfterBrief(): Promise<void> {
 		await refreshArtifactsUntilReady({
 			hasArtifacts: () => this.state.artifacts[0] !== undefined,
 			loadArtifacts: () => this.loadArtifacts(),
-			syncLatestArtifact: () => syncLatestArtifact(this.state, this.pendingRunArtifactIds)
-		});
+			syncLatestArtifact: () =>
+				syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot)
+			});
 	}
-
 	private resetRun(): void {
 		resetRunState(this.state);
 		this.activeRunId = null;
+		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 	}
-
 	private async abortRunBeforeSessionReset(): Promise<void> {
 		if (!this.activeRunId || !this.state.sessionKey) {
 			return;

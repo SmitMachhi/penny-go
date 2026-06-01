@@ -1,6 +1,13 @@
+import { titleFromFirstMessage } from '@penny/shared/session-title';
+
 import { apiJson } from '$lib/chat/api-client.js';
 import { formatClientError } from '$lib/chat/format-error.js';
-import type { ChatClient } from '$lib/chat/client.svelte.js';
+import {
+	bumpSessionInList,
+	mergeSessionListFromServer,
+	replaceSessionView,
+	upsertSessionView
+} from '$lib/chat/session-list-patch.js';
 import type { PennySessionView } from '$lib/types/penny-session.js';
 
 export type PennySession = PennySessionView;
@@ -13,12 +20,24 @@ type CreateSessionResponse = {
 	session?: PennySession;
 };
 
+type GenerateTitleResponse = {
+	session?: PennySession;
+};
+
 export type SessionClientState = {
 	sessions: PennySession[];
 	loading: boolean;
 	error: string | null;
 	sidebarOpen: boolean;
 };
+
+type RefreshOptions = {
+	silent?: boolean;
+	backfillTitles?: boolean;
+};
+
+const TITLE_BACKFILL_LIMIT = 5;
+const DEFAULT_SESSION_TITLE = 'New chat';
 
 export function createInitialSessionState(): SessionClientState {
 	return {
@@ -29,28 +48,111 @@ export function createInitialSessionState(): SessionClientState {
 	};
 }
 
-function upsertSession(sessions: PennySession[], session: PennySession): PennySession[] {
-	const withoutSession = sessions.filter((entry) => entry.key !== session.key);
-	return [session, ...withoutSession];
-}
-
 export class SessionClient {
 	state = $state<SessionClientState>(createInitialSessionState());
+	private titledSessions = new Set<string>();
 
 	async initSidebar(): Promise<void> {
-		await this.refresh();
+		await this.refresh({ backfillTitles: true });
 	}
 
-	async refresh(): Promise<void> {
-		this.state.loading = true;
+	async refresh(options?: RefreshOptions): Promise<void> {
+		const silent = options?.silent === true;
+		const priorSessions = this.state.sessions;
+		if (!silent) {
+			this.state.loading = true;
+		}
 		try {
 			const payload = await apiJson<SessionsResponse>('/api/sessions');
-			this.state.sessions = payload.sessions ?? [];
+			this.state.sessions = mergeSessionListFromServer(payload.sessions ?? [], priorSessions);
 			this.state.error = null;
+			if (options?.backfillTitles) {
+				this.backfillPendingTitles();
+			}
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to load sessions');
 		} finally {
-			this.state.loading = false;
+			if (!silent) {
+				this.state.loading = false;
+			}
+		}
+	}
+
+	bumpActiveSession(key: string): void {
+		this.state.sessions = bumpSessionInList(this.state.sessions, key);
+	}
+
+	setTitleFromFirstMessage(key: string, firstMessage: string): void {
+		const trimmed = firstMessage.trim();
+		if (!trimmed || this.titledSessions.has(key)) {
+			return;
+		}
+
+		const session = this.state.sessions.find((entry) => entry.key === key);
+		if (session && session.title !== DEFAULT_SESSION_TITLE) {
+			return;
+		}
+
+		const title = titleFromFirstMessage(trimmed);
+		this.titledSessions.add(key);
+		this.state.sessions = upsertSessionView(this.state.sessions, {
+			key,
+			title,
+			titleStatus: 'ready',
+			updatedAt: Date.now(),
+			isLegacy: session?.isLegacy ?? false
+		});
+		void this.persistTitle(key, title);
+	}
+
+	private async persistTitle(key: string, title: string): Promise<void> {
+		try {
+			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
+				method: 'PATCH',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ label: title })
+			});
+			this.state.error = null;
+		} catch (error) {
+			this.titledSessions.delete(key);
+			this.state.error = formatClientError(error, 'failed to save session title');
+		}
+	}
+
+	private backfillPendingTitles(): void {
+		const pending = this.state.sessions
+			.filter(
+				(session) =>
+					session.title === DEFAULT_SESSION_TITLE &&
+					!session.isLegacy &&
+					!this.titledSessions.has(session.key)
+			)
+			.slice(0, TITLE_BACKFILL_LIMIT);
+		for (const session of pending) {
+			void this.backfillTitleFromHistory(session.key);
+		}
+	}
+
+	private async backfillTitleFromHistory(key: string): Promise<void> {
+		if (this.titledSessions.has(key)) {
+			return;
+		}
+		try {
+			const payload = await apiJson<GenerateTitleResponse>(
+				`/api/sessions/${encodeURIComponent(key)}/generate-title`,
+				{
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({})
+				}
+			);
+			if (!payload.session || payload.session.title === DEFAULT_SESSION_TITLE) {
+				return;
+			}
+			this.titledSessions.add(key);
+			this.state.sessions = replaceSessionView(this.state.sessions, payload.session);
+		} catch {
+			// Backfill is best-effort for older untitled chats.
 		}
 	}
 
@@ -65,9 +167,9 @@ export class SessionClient {
 				throw new Error('failed to create session');
 			}
 			const session = payload.session;
-			await this.refresh();
+			await this.refresh({ silent: true });
 			if (!this.state.sessions.some((entry) => entry.key === session.key)) {
-				this.state.sessions = upsertSession(this.state.sessions, session);
+				this.state.sessions = upsertSessionView(this.state.sessions, session);
 			}
 			return session;
 		} catch (error) {
@@ -83,7 +185,8 @@ export class SessionClient {
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ label })
 			});
-			await this.refresh();
+			this.titledSessions.add(key);
+			await this.refresh({ silent: true });
 			return true;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to rename session');
@@ -97,7 +200,8 @@ export class SessionClient {
 				method: 'DELETE'
 			});
 			this.state.sessions = this.state.sessions.filter((session) => session.key !== key);
-			await this.refresh();
+			this.titledSessions.delete(key);
+			await this.refresh({ silent: true });
 			return true;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to delete session');

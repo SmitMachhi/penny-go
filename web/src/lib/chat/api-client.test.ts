@@ -13,13 +13,13 @@ describe('apiJson', () => {
 	it('applies timeout when the caller provides an abort signal', async () => {
 		vi.useFakeTimers();
 		const caller = new AbortController();
-		let requestSignal: AbortSignal | null = null;
+		const requestSignals: AbortSignal[] = [];
 		const fetchMock = vi.fn<typeof fetch>((_input, init) => {
 			const signal = init?.signal;
 			if (!(signal instanceof AbortSignal)) {
 				throw new Error('request signal is required');
 			}
-			requestSignal = signal;
+			requestSignals.push(signal);
 			return new Promise<Response>(() => {});
 		});
 		vi.stubGlobal('fetch', fetchMock);
@@ -30,6 +30,6 @@ describe('apiJson', () => {
 		});
 		await vi.advanceTimersByTimeAsync(TIMEOUT_MS);
 
-		expect(requestSignal?.aborted).toBe(true);
+		expect(requestSignals[0]?.aborted).toBe(true);
 	});
 });

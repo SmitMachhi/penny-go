@@ -10,7 +10,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === 'object' && !Array.isArray(value);
 }
 
-async function readGenerateTitleBody(request: Request): Promise<GenerateTitleRequestBody> {
+export async function readGenerateTitleBody(request: Request): Promise<GenerateTitleRequestBody> {
 	const body: unknown = await request.json().catch(() => ({}));
 	if (!isRecord(body)) {
 		throw new ValidationError('request body must be an object');

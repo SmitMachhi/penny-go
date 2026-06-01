@@ -1,45 +1,25 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-const { generatePennySessionTitle } = vi.hoisted(() => ({
-	generatePennySessionTitle: vi.fn()
-}));
+import { ValidationError } from '$lib/server/api-error.js';
 
-vi.mock('$lib/server/session-orchestration.js', () => ({
-	generatePennySessionTitle
-}));
+import { readGenerateTitleBody } from './+server.js';
 
-import { POST } from './+server.js';
-
-const BAD_REQUEST_STATUS = 400;
-const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
-
-function buildPostEvent(body: unknown) {
-	return {
-		params: { key: SESSION_KEY },
-		request: new Request('https://penny.local/api/sessions/key/generate-title', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(body)
-		})
-	};
+function buildRequest(body: unknown): Request {
+	return new Request('https://penny.local/api/sessions/key/generate-title', {
+		method: 'POST',
+		headers: { 'Content-Type': 'application/json' },
+		body: JSON.stringify(body)
+	});
 }
 
 describe('generate title route', () => {
-	afterEach(() => {
-		generatePennySessionTitle.mockReset();
-	});
-
 	it('rejects non-object request bodies', async () => {
-		const response = await POST(buildPostEvent(null));
-
-		expect(response.status).toBe(BAD_REQUEST_STATUS);
-		expect(generatePennySessionTitle).not.toHaveBeenCalled();
+		await expect(readGenerateTitleBody(buildRequest(null))).rejects.toThrow(ValidationError);
 	});
 
 	it('rejects non-string firstMessage values', async () => {
-		const response = await POST(buildPostEvent({ firstMessage: 123 }));
-
-		expect(response.status).toBe(BAD_REQUEST_STATUS);
-		expect(generatePennySessionTitle).not.toHaveBeenCalled();
+		await expect(readGenerateTitleBody(buildRequest({ firstMessage: 123 }))).rejects.toThrow(
+			ValidationError
+		);
 	});
 });

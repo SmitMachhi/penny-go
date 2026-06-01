@@ -80,4 +80,31 @@ describe('client artifact state', () => {
 		expect(client.state.artifacts.map((entry) => entry.artifactId)).toEqual(['session-b']);
 		vi.unstubAllGlobals();
 	});
+
+	it('ignores stale artifact failures after the active session changes', async () => {
+		let rejectFirstLoad: (error: Error) => void = () => {};
+		const firstLoad = new Promise<Response>((_resolve, reject) => {
+			rejectFirstLoad = reject;
+		});
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = String(input);
+			if (path.includes(encodeURIComponent(SESSION_A))) {
+				return firstLoad;
+			}
+			return Response.json({ artifacts: [artifact('session-b', 1)] });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_A;
+		const staleLoad = client.loadArtifacts();
+		client.state.sessionKey = SESSION_B;
+		await client.loadArtifacts();
+		rejectFirstLoad(new Error('old session offline'));
+		await staleLoad;
+
+		expect(client.state.operationError).toBeNull();
+		expect(client.state.artifacts.map((entry) => entry.artifactId)).toEqual(['session-b']);
+		vi.unstubAllGlobals();
+	});
 });

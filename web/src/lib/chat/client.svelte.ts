@@ -149,6 +149,9 @@ export class ChatClient {
 			applyLoadedArtifacts(this.state, payload.artifacts);
 			this.state.operationError = null;
 		} catch (error) {
+			if (sessionKey !== this.state.sessionKey) {
+				return;
+			}
 			this.state.operationError = formatClientError(error, 'failed to load artifacts');
 		}
 	}

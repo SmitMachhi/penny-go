@@ -44,6 +44,7 @@ API routes:
 - `GET /api/sessions` — list penny sessions (plus legacy **Previous chat** when applicable)
 - `POST /api/sessions` — create session
 - `PATCH /api/sessions/:key` — rename
+- `POST /api/sessions/:key/generate-title` — backfill title from first user message in transcript
 - `DELETE /api/sessions/:key` — delete transcript + engagement memory file + session artifacts
 
 ## Artifacts

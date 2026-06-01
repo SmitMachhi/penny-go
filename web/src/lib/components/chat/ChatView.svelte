@@ -10,7 +10,7 @@
 	import Button from '$lib/components/ui/button.svelte';
 	import Textarea from '$lib/components/ui/textarea.svelte';
 
-	const { chat } = getPennyContext();
+	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let loadedRouteId = $state<string | null>(null);
 
@@ -30,10 +30,16 @@
 
 	async function handleSend() {
 		const message = draft;
+		const trimmed = message.trim();
+		const isFirstMessage = chat.state.messages.length === 0;
 		draft = '';
 		const sent = await chat.sendMessage(message);
 		if (!sent) {
 			draft = message;
+			return;
+		}
+		if (isFirstMessage && chat.state.sessionKey && trimmed) {
+			sessions.setTitleFromFirstMessage(chat.state.sessionKey, trimmed);
 		}
 	}
 

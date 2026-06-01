@@ -51,7 +51,7 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			handlers.resetRun();
 			break;
 		case 'chat.error':
-			handlers.state.error = payload.message;
+			handlers.state.operationError = payload.message;
 			handlers.resetRun();
 			break;
 	}

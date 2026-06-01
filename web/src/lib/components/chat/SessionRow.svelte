@@ -85,9 +85,6 @@
 			ondblclick={startRename}
 		>
 			<p class="truncate text-sm font-medium">{session.title}</p>
-			{#if session.preview}
-				<p class="truncate text-xs text-muted-foreground">{session.preview}</p>
-			{/if}
 		</button>
 	{/if}
 

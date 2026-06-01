@@ -2,17 +2,8 @@ import type { PennySessionView } from '$lib/types/penny-session.js';
 
 import type { GatewaySessionRow } from '$lib/server/gateway-session-service.js';
 
-const PREVIEW_MAX_CHARS = 120;
-const DEFAULT_SESSION_TITLE = 'New chat';
+export const DEFAULT_SESSION_TITLE = 'New chat';
 export const LEGACY_SESSION_TITLE = 'Previous chat';
-
-function truncatePreview(text: string): string {
-	const oneLine = text.replace(/\s+/g, ' ').trim();
-	if (oneLine.length <= PREVIEW_MAX_CHARS) {
-		return oneLine;
-	}
-	return `${oneLine.slice(0, PREVIEW_MAX_CHARS - 1)}…`;
-}
 
 function resolveSessionTitle(row: GatewaySessionRow, isLegacy: boolean): string {
 	if (isLegacy) {
@@ -22,21 +13,14 @@ function resolveSessionTitle(row: GatewaySessionRow, isLegacy: boolean): string 
 	if (label) {
 		return label;
 	}
-	const derived = row.derivedTitle?.trim();
-	if (derived) {
-		return derived;
-	}
 	return DEFAULT_SESSION_TITLE;
 }
 
 export function toPennySessionView(row: GatewaySessionRow, isLegacy = false): PennySessionView {
-	const preview = row.lastMessagePreview?.trim()
-		? truncatePreview(row.lastMessagePreview)
-		: null;
 	return {
 		key: row.key,
 		title: resolveSessionTitle(row, isLegacy),
-		preview,
+		titleStatus: 'ready',
 		updatedAt: row.updatedAt,
 		isLegacy
 	};
@@ -47,10 +31,11 @@ export function buildCreatedSessionView(input: {
 	label?: string;
 	isLegacy?: boolean;
 }): PennySessionView {
+	const label = input.label?.trim();
 	return {
 		key: input.key,
-		title: input.label ?? DEFAULT_SESSION_TITLE,
-		preview: null,
+		title: label ?? DEFAULT_SESSION_TITLE,
+		titleStatus: 'ready',
 		updatedAt: Date.now(),
 		isLegacy: input.isLegacy ?? false
 	};

@@ -13,7 +13,8 @@ export type ChatClientState = {
 	artifacts: ArtifactSummary[];
 	artifactPanelOpen: boolean;
 	activeArtifactId: string | null;
-	error: string | null;
+	connectionError: string | null;
+	operationError: string | null;
 };
 
 export function createInitialChatState(): ChatClientState {
@@ -29,7 +30,8 @@ export function createInitialChatState(): ChatClientState {
 		artifacts: [],
 		artifactPanelOpen: false,
 		activeArtifactId: null,
-		error: null
+		connectionError: null,
+		operationError: null
 	};
 }
 
@@ -38,7 +40,7 @@ export function clearChatSessionState(state: ChatClientState): void {
 	state.sessionId = null;
 	state.messages = [];
 	state.loading = false;
-	state.error = null;
+	state.operationError = null;
 	resetRunState(state);
 	resetArtifactState(state);
 }
@@ -47,7 +49,7 @@ export function prepareSessionSwitchState(state: ChatClientState, sessionKey: st
 	state.sessionKey = sessionKey;
 	state.sessionId = null;
 	state.messages = [];
-	state.error = null;
+	state.operationError = null;
 	resetRunState(state);
 	resetArtifactState(state);
 }
@@ -83,7 +85,7 @@ export function resetRunState(state: ChatClientState): void {
 
 export function startRunState(state: ChatClientState): void {
 	state.sending = true;
-	state.error = null;
+	state.operationError = null;
 	state.streamText = '';
 	state.tools = [];
 }

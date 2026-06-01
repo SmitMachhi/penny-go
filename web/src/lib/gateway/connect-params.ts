@@ -13,7 +13,7 @@ export function buildConnectParams(token: string) {
 			mode: 'backend'
 		},
 		role: 'operator',
-		scopes: ['operator.read', 'operator.write'],
+		scopes: ['operator.admin', 'operator.read', 'operator.write'],
 		caps: [],
 		commands: [],
 		permissions: {},

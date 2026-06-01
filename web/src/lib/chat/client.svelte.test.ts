@@ -62,7 +62,7 @@ describe('ChatClient', () => {
 
 		const client = new ChatClient();
 		client.state.sessionKey = SESSION_KEY;
-		client.state.error = 'failed to load artifacts';
+		client.state.operationError = 'failed to load artifacts';
 
 		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
 
@@ -73,7 +73,32 @@ describe('ChatClient', () => {
 				body: JSON.stringify({ message: MESSAGE, sessionKey: SESSION_KEY, sessionId: null })
 			})
 		);
-		expect(client.state.error).toBeNull();
+		expect(client.state.operationError).toBeNull();
+	});
+
+	it('skips history reload before send when sessionId is already known', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			if (requestPath(input).startsWith('/api/chat/history')) {
+				throw new Error('history should not reload');
+			}
+			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+
+		await client.sendMessage(MESSAGE);
+
+		expect(fetchMock).not.toHaveBeenCalledWith(
+			expect.stringContaining('/api/chat/history'),
+			expect.anything()
+		);
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/chat/send',
+			expect.objectContaining({ method: 'POST' })
+		);
 	});
 
 	it('does not send when the active session changes during history reload', async () => {

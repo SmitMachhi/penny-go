@@ -41,7 +41,9 @@
 			await chat.switchSession(created.key);
 			await goto(path);
 			const sent = await chat.sendMessage(message, { skipHistoryReload: true });
-			if (!sent) {
+			if (sent) {
+				sessions.setTitleFromFirstMessage(created.key, message);
+			} else {
 				draft = message;
 			}
 		} finally {

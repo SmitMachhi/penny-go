@@ -7,11 +7,12 @@
     "#session-key": "./session-key.ts"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test loan-heuristic.test.ts funding-brief.test.ts artifact-paths.test.ts session-key.test.ts"
+    "test": "node --experimental-strip-types --test loan-heuristic.test.ts funding-brief.test.ts artifact-paths.test.ts session-key.test.ts session-title.test.ts"
   },
   "exports": {
     "./penny-paths": "./penny-paths.ts",
     "./session-key": "./session-key.ts",
+    "./session-title": "./session-title.ts",
     "./funding-brief": "./funding-brief.ts",
     "./penny-brand": "./penny-brand.ts",
     "./loan-heuristic.json": "./loan-heuristic.json"

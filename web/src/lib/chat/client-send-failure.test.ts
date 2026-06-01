@@ -44,7 +44,7 @@ describe('ChatClient send failures', () => {
 
 		expect(sent).toBe(false);
 		expect(client.state.messages).toEqual([]);
-		expect(client.state.error).toBe('gateway unavailable');
+		expect(client.state.operationError).toBe('gateway unavailable');
 	});
 
 	it('ignores final messages from a run after the session changes', async () => {

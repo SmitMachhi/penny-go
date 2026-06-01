@@ -1,3 +1,5 @@
+import { formatRequestError } from '$lib/chat/request-error.js';
+
 export function formatClientError(error: unknown, fallback: string): string {
-	return error instanceof Error ? error.message : fallback;
+	return formatRequestError(error, fallback);
 }

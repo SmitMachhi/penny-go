@@ -1,7 +1,9 @@
+export type SessionTitleStatus = 'loading' | 'ready';
+
 export type PennySessionView = {
 	key: string;
 	title: string;
-	preview: string | null;
+	titleStatus: SessionTitleStatus;
 	updatedAt: number | null;
 	isLegacy: boolean;
 };

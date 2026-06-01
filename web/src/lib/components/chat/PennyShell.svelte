@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
-	import { Menu } from '@lucide/svelte';
+	import { Menu, X } from '@lucide/svelte';
 
 	import { ChatClient } from '$lib/chat/client.svelte.js';
 	import { setPennyContext } from '$lib/chat/penny-context.js';
@@ -20,25 +20,48 @@
 	const chat = new ChatClient();
 	const sessions = new SessionClient();
 	let wasSending = $state(false);
+	let bannerDismissed = $state(false);
 
 	const activeRouteId = $derived(page.params.id ?? null);
+	const bannerError = $derived(chat.state.operationError ?? sessions.state.error);
 
 	setPennyContext({ chat, sessions });
 
 	$effect(() => {
-		if (wasSending && !chat.state.sending) {
-			void sessions.refresh();
+		if (bannerError) {
+			bannerDismissed = false;
+		}
+	});
+
+	$effect(() => {
+		if (wasSending && !chat.state.sending && chat.state.sessionKey) {
+			const firstUserMessage = chat.state.messages.find((message) => message.role === 'user');
+			if (firstUserMessage?.text) {
+				sessions.setTitleFromFirstMessage(chat.state.sessionKey, firstUserMessage.text);
+			}
+			sessions.bumpActiveSession(chat.state.sessionKey);
+			void sessions.refresh({ silent: true });
 		}
 		wasSending = chat.state.sending;
 	});
 
+	function dismissBanner(): void {
+		bannerDismissed = true;
+		chat.state.operationError = null;
+		sessions.state.error = null;
+	}
+
 	onMount(() => {
-		void chat.bootstrap().then(() => sessions.initSidebar());
+		void Promise.all([chat.bootstrap(), sessions.initSidebar()]);
+		chat.startHealthPolling(() => {
+			void sessions.refresh({ silent: true });
+		});
 
 		const onVisibilityChange = () => {
 			if (document.visibilityState !== 'visible' || !page.params.id || !chat.state.sessionKey) {
 				return;
 			}
+			void chat.refreshHealth();
 			void chat.loadHistory();
 		};
 
@@ -47,6 +70,7 @@
 	});
 
 	onDestroy(() => {
+		chat.stopHealthPolling();
 		chat.dispose();
 	});
 </script>
@@ -81,6 +105,7 @@
 							? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
 							: 'bg-destructive/15 text-destructive'
 					)}
+					title={chat.state.connectionError ?? undefined}
 				>
 					{chat.state.connected ? 'Gateway connected' : 'Gateway offline'}
 				</span>
@@ -92,13 +117,15 @@
 			{@render children?.()}
 		</div>
 
-		{#if chat.state.error}
-			<p class="mx-auto mt-3 w-full max-w-3xl px-4 text-sm text-destructive">{chat.state.error}</p>
-		{/if}
-		{#if sessions.state.error}
-			<p class="mx-auto mt-3 w-full max-w-3xl px-4 text-sm text-destructive">
-				{sessions.state.error}
-			</p>
+		{#if bannerError && !bannerDismissed}
+			<div
+				class="mx-auto mt-3 flex w-full max-w-3xl items-start justify-between gap-3 px-4 text-sm text-destructive"
+			>
+				<p>{bannerError}</p>
+				<Button variant="ghost" size="icon" onclick={dismissBanner} aria-label="Dismiss error">
+					<X class="h-4 w-4" />
+				</Button>
+			</div>
 		{/if}
 	</div>
 </div>

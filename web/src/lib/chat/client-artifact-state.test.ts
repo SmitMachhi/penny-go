@@ -23,6 +23,15 @@ function artifact(artifactId: string, version: number): ArtifactSummary {
 }
 
 describe('client artifact state', () => {
+	it('does not open the artifact panel when loading existing artifacts', () => {
+		const state = createInitialChatState();
+
+		applyLoadedArtifacts(state, [artifact('existing', 1)]);
+
+		expect(state.artifactPanelOpen).toBe(false);
+		expect(state.activeArtifactId).toBe('existing');
+	});
+
 	it('does not link an unchanged existing artifact to a new reply', () => {
 		const state = createInitialChatState();
 		applyLoadedArtifacts(state, [artifact('existing', 1)]);

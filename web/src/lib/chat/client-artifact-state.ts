@@ -6,9 +6,6 @@ export type ArtifactVersionSnapshot = ReadonlyMap<string, number>;
 
 export function applyLoadedArtifacts(state: ChatClientState, artifacts: ArtifactSummary[]): void {
 	state.artifacts = artifacts;
-	if (artifacts.length > 0) {
-		state.artifactPanelOpen = true;
-	}
 	if (!state.activeArtifactId && artifacts[0]) {
 		state.activeArtifactId = artifacts[0].artifactId;
 	}

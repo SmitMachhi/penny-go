@@ -48,6 +48,20 @@ export function createInitialSessionState(): SessionClientState {
 	};
 }
 
+function revertOptimisticTitle(
+	sessions: PennySession[],
+	key: string,
+	title: string,
+	previousSession: PennySession | null
+): PennySession[] {
+	return sessions.flatMap((session) => {
+		if (session.key !== key || session.title !== title) {
+			return [session];
+		}
+		return previousSession ? [previousSession] : [];
+	});
+}
+
 export class SessionClient {
 	state = $state<SessionClientState>(createInitialSessionState());
 	private titledSessions = new Set<string>();
@@ -94,6 +108,7 @@ export class SessionClient {
 		}
 
 		const title = titleFromFirstMessage(trimmed);
+		const previousSession = session ?? null;
 		this.titledSessions.add(key);
 		this.state.sessions = upsertSessionView(this.state.sessions, {
 			key,
@@ -102,10 +117,14 @@ export class SessionClient {
 			updatedAt: Date.now(),
 			isLegacy: session?.isLegacy ?? false
 		});
-		void this.persistTitle(key, title);
+		void this.persistTitle(key, title, previousSession);
 	}
 
-	private async persistTitle(key: string, title: string): Promise<void> {
+	private async persistTitle(
+		key: string,
+		title: string,
+		previousSession: PennySession | null
+	): Promise<void> {
 		try {
 			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
 				method: 'PATCH',
@@ -115,6 +134,12 @@ export class SessionClient {
 			this.state.error = null;
 		} catch (error) {
 			this.titledSessions.delete(key);
+			this.state.sessions = revertOptimisticTitle(
+				this.state.sessions,
+				key,
+				title,
+				previousSession
+			);
 			this.state.error = formatClientError(error, 'failed to save session title');
 		}
 	}

@@ -37,5 +37,8 @@ export type AgentEventPayload = {
 		name?: string;
 		phase?: string;
 		status?: string;
+		text?: string;
+		delta?: string;
+		replace?: boolean;
 	};
 };

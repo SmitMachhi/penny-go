@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { Plus, X } from '@lucide/svelte';
+	import { ChevronRight, PanelLeftClose, SquarePen } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { chatPathFromSessionKey, routeIdFromSessionKey } from '$lib/chat/session-routes.js';
 	import DeleteSessionDialog from '$lib/components/chat/DeleteSessionDialog.svelte';
+	import PennyBrand from '$lib/components/chat/PennyBrand.svelte';
 	import SessionRow from '$lib/components/chat/SessionRow.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { cn } from '$lib/utils.js';
@@ -19,6 +20,11 @@
 	let pendingDeleteKey = $state<string | null>(null);
 
 	function closeSidebar() {
+		sessions.state.sidebarOpen = false;
+	}
+
+	function collapseSidebar() {
+		sessions.state.sidebarCollapsed = true;
 		sessions.state.sidebarOpen = false;
 	}
 
@@ -66,25 +72,43 @@
 
 <aside
 	class={cn(
-		'z-50 flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-card/95',
+		'z-50 flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-muted/40',
 		sessions.state.sidebarOpen
-			? 'fixed inset-y-0 left-0 shadow-xl md:static md:shadow-none'
-			: 'hidden md:flex'
+			? 'fixed inset-y-0 left-0 border-r border-border'
+			: 'hidden',
+		!sessions.state.sidebarCollapsed && 'md:static md:flex'
 	)}
 >
-	<div class="flex items-center justify-between border-b border-border p-3">
-		<p class="text-sm font-semibold">Chats</p>
-		<div class="flex items-center gap-1">
-			<Button variant="ghost" size="icon" onclick={() => void handleNewChat()} aria-label="New chat">
-				<Plus class="h-4 w-4" />
-			</Button>
-			<Button variant="ghost" size="icon" class="md:hidden" onclick={closeSidebar} aria-label="Close sidebar">
-				<X class="h-4 w-4" />
-			</Button>
-		</div>
+	<div class="flex items-center justify-between gap-2 px-3 py-3">
+		<PennyBrand />
+		<Button
+			variant="ghost"
+			size="icon"
+			class="h-8 w-8 shrink-0"
+			onclick={collapseSidebar}
+			aria-label="Close sidebar"
+		>
+			<PanelLeftClose class="h-4 w-4" />
+		</Button>
 	</div>
 
-	<div class="flex-1 space-y-1 overflow-y-auto p-2">
+	<div class="px-2 pb-2">
+		<Button
+			variant="ghost"
+			class="h-9 w-full justify-start gap-2 px-2 text-sm font-normal"
+			onclick={() => void handleNewChat()}
+		>
+			<SquarePen class="h-4 w-4" />
+			New chat
+		</Button>
+	</div>
+
+	<div class="flex items-center gap-0.5 px-3 pb-1 pt-1">
+		<span class="text-sm font-semibold text-foreground">Recents</span>
+		<ChevronRight class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
+	</div>
+
+	<div class="flex-1 space-y-1 overflow-y-auto px-2 pb-2 penny-overlay-scroll">
 		{#if sessions.state.loading}
 			<p class="px-2 py-3 text-sm text-muted-foreground">Loading chats…</p>
 		{:else if sessions.state.sessions.length === 0}

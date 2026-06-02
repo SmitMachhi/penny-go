@@ -1,6 +1,4 @@
 <script lang="ts">
-	import { X } from '@lucide/svelte';
-
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import ArtifactToolbar from '$lib/components/artifacts/ArtifactToolbar.svelte';
 	import SlidePreview from '$lib/components/artifacts/SlidePreview.svelte';
@@ -11,50 +9,35 @@
 		artifacts: ArtifactSummary[];
 		activeArtifactId: string | null;
 		sessionKey: string;
-		mobileOpen: boolean;
+		open: boolean;
 		onClose: () => void;
 		onSelect: (artifactId: string) => void;
 	};
 
-	let { artifacts, activeArtifactId, sessionKey, mobileOpen, onClose, onSelect }: Props = $props();
+	let { artifacts, activeArtifactId, sessionKey, open, onClose, onSelect }: Props = $props();
 
 	const activeArtifact = $derived(
 		artifacts.find((artifact) => artifact.artifactId === activeArtifactId) ?? artifacts[0] ?? null
 	);
 </script>
 
-{#if activeArtifact}
-	{#if mobileOpen}
-		<button
-			type="button"
-			class="fixed inset-0 z-40 bg-black/40 lg:hidden"
-			aria-label="Close artifact panel"
-			onclick={onClose}
-		></button>
-	{/if}
+{#if activeArtifact && open}
+	<button
+		type="button"
+		class="fixed inset-0 z-40 bg-black/40 lg:hidden"
+		aria-label="Close artifact panel"
+		onclick={onClose}
+	></button>
 
 	<aside
 		class={cn(
-			'z-50 flex min-h-0 w-full shrink-0 flex-col overflow-hidden border-border bg-card/95 lg:w-[min(520px,42vw)] lg:border-l',
-			mobileOpen
-				? 'fixed inset-y-0 right-0 flex shadow-xl lg:static lg:shadow-none'
-				: 'hidden lg:flex'
+			'z-50 flex h-full min-h-0 w-full shrink-0 flex-col self-stretch overflow-hidden border-border bg-card/95',
+			'fixed inset-y-0 right-0 border-l border-border lg:static lg:w-[min(520px,42vw)]'
 		)}
 	>
-		<div class="flex items-center justify-between border-b border-border px-4 py-3">
-			<div>
-				<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Artifact</p>
-				<p class="text-sm font-semibold">Funding brief</p>
-			</div>
-			<Button
-				variant="ghost"
-				size="icon"
-				class="lg:hidden"
-				onclick={onClose}
-				aria-label="Close artifact panel"
-			>
-				<X class="h-4 w-4" />
-			</Button>
+		<div class="border-b border-border px-4 py-3">
+			<p class="text-xs font-medium tracking-[0.2em] text-discovery uppercase">Brief</p>
+			<p class="text-sm font-semibold">Funding brief</p>
 		</div>
 
 		{#if artifacts.length > 1}

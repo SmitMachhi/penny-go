@@ -1,0 +1,72 @@
+<script lang="ts">
+	import { ArrowUp, Square } from '@lucide/svelte';
+
+	import { CHAT_DISCLAIMER, CHAT_PLACEHOLDER } from '$lib/chat/starter-prompts.js';
+	import { cn } from '$lib/utils.js';
+
+	type Props = {
+		draft?: string;
+		disabled?: boolean;
+		sending?: boolean;
+		onSubmit: () => void;
+		onStop?: () => void;
+		onKeydown?: (event: KeyboardEvent) => void;
+	};
+
+	let {
+		draft = $bindable(''),
+		disabled = false,
+		sending = false,
+		onSubmit,
+		onStop,
+		onKeydown
+	}: Props = $props();
+
+	const canSend = $derived(!disabled && draft.trim().length > 0);
+</script>
+
+<form
+	class="penny-chat-column w-full"
+	onsubmit={(event) => {
+		event.preventDefault();
+		onSubmit();
+	}}
+>
+	<div
+		class="flex items-end gap-2 rounded-[1.75rem] border border-border bg-background px-3 py-2"
+	>
+		<textarea
+			bind:value={draft}
+			placeholder={CHAT_PLACEHOLDER}
+			{disabled}
+			rows={1}
+			onkeydown={onKeydown}
+			class={cn(
+				'penny-overlay-scroll max-h-52 min-h-[2.75rem] flex-1 resize-none border-0 bg-transparent py-2.5',
+				'text-base leading-relaxed outline-none placeholder:text-muted-foreground/80'
+			)}
+		></textarea>
+		<div class="flex shrink-0 items-center pb-0.5">
+			{#if sending}
+				<button
+					type="button"
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+					aria-label="Stop response"
+					onclick={() => onStop?.()}
+				>
+					<Square class="h-4 w-4 fill-current" />
+				</button>
+			{:else}
+				<button
+					type="submit"
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-25"
+					disabled={!canSend}
+					aria-label="Send message"
+				>
+					<ArrowUp class="h-5 w-5" strokeWidth={2.25} />
+				</button>
+			{/if}
+		</div>
+	</div>
+	<p class="mt-2 text-center text-xs text-muted-foreground/80">{CHAT_DISCLAIMER}</p>
+</form>

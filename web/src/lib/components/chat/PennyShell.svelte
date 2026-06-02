@@ -1,11 +1,13 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
-	import { Menu, X } from '@lucide/svelte';
+	import { Menu, PanelLeft, PanelRight, PanelRightClose, X } from '@lucide/svelte';
 
 	import { ChatClient } from '$lib/chat/client.svelte.js';
 	import { setPennyContext } from '$lib/chat/penny-context.js';
+	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import { SessionClient } from '$lib/chat/sessions.svelte.js';
+	import PennyBrand from '$lib/components/chat/PennyBrand.svelte';
 	import SessionSidebar from '$lib/components/chat/SessionSidebar.svelte';
 	import ThemeToggle from '$lib/components/chat/ThemeToggle.svelte';
 	import Button from '$lib/components/ui/button.svelte';
@@ -22,8 +24,25 @@
 	let wasSending = $state(false);
 	let bannerDismissed = $state(false);
 
+	const APP_TITLE = 'Penny';
+	const DEFAULT_SESSION_TITLE = 'New chat';
+
 	const activeRouteId = $derived(page.params.id ?? null);
 	const bannerError = $derived(chat.state.operationError ?? sessions.state.error);
+	const activeSessionKey = $derived(
+		activeRouteId ? sessionKeyFromRouteId(activeRouteId) : null
+	);
+	const activeSession = $derived(
+		activeSessionKey
+			? sessions.state.sessions.find((session) => session.key === activeSessionKey)
+			: null
+	);
+	const browserTitle = $derived(
+		activeSession && activeSession.title !== DEFAULT_SESSION_TITLE
+			? `${activeSession.title} · ${APP_TITLE}`
+			: APP_TITLE
+	);
+	const showSidebarBrand = $derived(sessions.state.sidebarCollapsed);
 
 	setPennyContext({ chat, sessions });
 
@@ -51,6 +70,11 @@
 		sessions.state.error = null;
 	}
 
+	function openSidebar(): void {
+		sessions.state.sidebarCollapsed = false;
+		sessions.state.sidebarOpen = true;
+	}
+
 	onMount(() => {
 		void Promise.all([chat.bootstrap(), sessions.initSidebar()]);
 		chat.startHealthPolling(() => {
@@ -58,7 +82,12 @@
 		});
 
 		const onVisibilityChange = () => {
-			if (document.visibilityState !== 'visible' || !page.params.id || !chat.state.sessionKey) {
+			if (
+				document.visibilityState !== 'visible' ||
+				!page.params.id ||
+				!chat.state.sessionKey ||
+				chat.state.sending
+			) {
 				return;
 			}
 			void chat.refreshHealth();
@@ -75,39 +104,68 @@
 	});
 </script>
 
+<svelte:head>
+	<title>{browserTitle}</title>
+</svelte:head>
+
 <div class="flex h-screen overflow-hidden">
 	<SessionSidebar {activeRouteId} />
 
 	<div class="flex min-h-0 min-w-0 flex-1 flex-col">
-		<header class="flex items-center justify-between gap-4 border-b border-border px-4 py-4">
-			<div class="flex items-start gap-3">
+		<header
+			class="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border/70 px-3 md:px-4"
+		>
+			<div class="flex min-w-0 items-center gap-2">
+				{#if showSidebarBrand}
+					<Button
+						variant="ghost"
+						size="icon"
+						class="hidden h-8 w-8 md:inline-flex"
+						onclick={openSidebar}
+						aria-label="Open sidebar"
+					>
+						<PanelLeft class="h-4 w-4" />
+					</Button>
+					<PennyBrand class="hidden md:flex" />
+				{/if}
 				<Button
-					variant="outline"
+					variant="ghost"
 					size="icon"
-					class="md:hidden"
-					onclick={() => {
-						sessions.state.sidebarOpen = true;
-					}}
-					aria-label="Open chats"
+					class="h-8 w-8 md:hidden"
+					onclick={openSidebar}
+					aria-label="Open sidebar"
 				>
 					<Menu class="h-4 w-4" />
 				</Button>
-				<div>
-					<p class="text-xs uppercase tracking-[0.2em] text-muted-foreground">Penny</p>
-					<h1 class="text-xl font-semibold tracking-tight">Canadian funding consultant</h1>
-				</div>
 			</div>
-			<div class="flex items-center gap-3">
+
+			<div class="flex items-center gap-2 sm:gap-3">
+				{#if chat.state.artifacts.length > 0}
+					<Button
+						variant={chat.state.artifactPanelOpen ? 'default' : 'outline'}
+						class="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-[6.75rem] sm:px-3"
+						aria-expanded={chat.state.artifactPanelOpen}
+						aria-label="Toggle funding brief panel"
+						onclick={() => chat.toggleArtifactPanel()}
+					>
+						{#if chat.state.artifactPanelOpen}
+							<PanelRightClose class="h-4 w-4" />
+						{:else}
+							<PanelRight class="h-4 w-4" />
+						{/if}
+						<span class="hidden sm:inline">Brief</span>
+					</Button>
+				{/if}
 				<span
 					class={cn(
-						'rounded-full px-2 py-1 text-xs',
+						'rounded-full px-2 py-0.5 text-xs',
 						chat.state.connected
 							? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
 							: 'bg-destructive/15 text-destructive'
 					)}
 					title={chat.state.connectionError ?? undefined}
 				>
-					{chat.state.connected ? 'Gateway connected' : 'Gateway offline'}
+					{chat.state.connected ? 'Online' : 'Offline'}
 				</span>
 				<ThemeToggle />
 			</div>
@@ -119,7 +177,7 @@
 
 		{#if bannerError && !bannerDismissed}
 			<div
-				class="mx-auto mt-3 flex w-full max-w-3xl items-start justify-between gap-3 px-4 text-sm text-destructive"
+				class="penny-chat-column mt-3 flex w-full items-start justify-between gap-3 px-4 text-sm text-destructive"
 			>
 				<p>{bannerError}</p>
 				<Button variant="ghost" size="icon" onclick={dismissBanner} aria-label="Dismiss error">

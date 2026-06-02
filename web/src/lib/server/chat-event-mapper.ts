@@ -2,6 +2,7 @@ import { extractMessageText } from '$lib/chat/messages.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
 import { clearStreamingText, resolveStreamingText } from '$lib/server/chat-stream-text.js';
+import { clearThinkingStreamText, resolveThinkingStreamText } from '$lib/server/chat-stream-thinking.js';
 
 export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null {
 	const runId = payload.runId;
@@ -24,11 +25,13 @@ export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null 
 
 	if (payload.state === 'final') {
 		clearStreamingText(runId);
+		clearThinkingStreamText(runId);
 		return { type: 'chat.final', runId, text: extractMessageText(payload.message) };
 	}
 
 	if (payload.state === 'error') {
 		clearStreamingText(runId);
+		clearThinkingStreamText(runId);
 		return {
 			type: 'chat.error',
 			runId,
@@ -38,6 +41,7 @@ export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null 
 
 	if (payload.state === 'aborted') {
 		clearStreamingText(runId);
+		clearThinkingStreamText(runId);
 		return { type: 'chat.aborted', runId };
 	}
 
@@ -46,8 +50,25 @@ export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null 
 
 export function mapAgentEventToSse(payload: AgentEventPayload): SsePayload | null {
 	const runId = payload.runId;
+	if (!runId) {
+		return null;
+	}
+
+	if (payload.stream === 'thinking') {
+		const text = resolveThinkingStreamText(payload);
+		if (!text) {
+			return null;
+		}
+		return {
+			type: 'thinking.delta',
+			runId,
+			text,
+			...(payload.data?.replace ? { replace: true } : {})
+		};
+	}
+
 	const toolName = payload.data?.tool ?? payload.data?.name;
-	if (!runId || !toolName) {
+	if (!toolName) {
 		return null;
 	}
 

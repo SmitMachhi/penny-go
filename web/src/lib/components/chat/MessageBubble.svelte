@@ -1,9 +1,13 @@
 <script lang="ts">
+	import { Check, Copy } from '@lucide/svelte';
+
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import type { ChatMessage } from '$lib/chat/messages.js';
 	import { renderMarkdown } from '$lib/chat/markdown.js';
 	import ArtifactChip from '$lib/components/artifacts/ArtifactChip.svelte';
 	import { cn } from '$lib/utils.js';
+
+	const COPY_FEEDBACK_MS = 2000;
 
 	type Props = {
 		message: ChatMessage;
@@ -13,41 +17,84 @@
 
 	let { message, artifacts = [], onOpenArtifact }: Props = $props();
 
+	let copied = $state(false);
+
 	const html = $derived(
 		message.role === 'assistant' ? renderMarkdown(message.text) : ''
 	);
 
-	const hasTable = $derived(message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text));
+	const hasTable = $derived(
+		message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text)
+	);
 
 	const linkedArtifacts = $derived(
 		(message.artifactIds ?? [])
 			.map((artifactId) => artifacts.find((artifact) => artifact.artifactId === artifactId))
 			.filter((artifact): artifact is ArtifactSummary => artifact !== undefined)
 	);
+
+	async function copyMessageText(): Promise<void> {
+		try {
+			await navigator.clipboard.writeText(message.text);
+			copied = true;
+			window.setTimeout(() => {
+				copied = false;
+			}, COPY_FEEDBACK_MS);
+		} catch {
+			copied = false;
+		}
+	}
 </script>
 
-<div class={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}>
-	<div
-		class={cn(
-			'rounded-2xl px-4 py-3 text-sm leading-relaxed',
-			message.role === 'user'
-				? 'max-w-[85%] whitespace-pre-wrap bg-primary text-primary-foreground'
-				: hasTable
-					? 'w-full max-w-full border border-border bg-card text-card-foreground sm:max-w-[95%]'
-					: 'max-w-[85%] border border-border bg-card text-card-foreground'
-		)}
-	>
-		{#if message.role === 'assistant'}
-			<div class="penny-markdown">{@html html}</div>
-			{#if linkedArtifacts.length > 0 && onOpenArtifact}
-				<div class="mt-2 flex flex-col gap-2">
-					{#each linkedArtifacts as artifact (artifact.artifactId)}
-						<ArtifactChip {artifact} onOpen={onOpenArtifact} />
-					{/each}
-				</div>
+{#if message.role === 'user'}
+	<div class="group flex items-end justify-end gap-1.5">
+		<button
+			type="button"
+			class={cn(
+				'mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
+				'opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
+				'hover:bg-muted hover:text-foreground'
+			)}
+			aria-label={copied ? 'Copied' : 'Copy message'}
+			onclick={() => void copyMessageText()}
+		>
+			{#if copied}
+				<Check class="h-3.5 w-3.5" />
+			{:else}
+				<Copy class="h-3.5 w-3.5" />
 			{/if}
-		{:else}
+		</button>
+		<div
+			class="penny-user-bubble max-w-[85%] rounded-[1.25rem] px-4 py-2.5 text-[0.9375rem] leading-relaxed whitespace-pre-wrap"
+		>
 			{message.text}
-		{/if}
+		</div>
 	</div>
-</div>
+{:else}
+	<article class="w-full">
+		<div class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}>
+			{@html html}
+		</div>
+		{#if linkedArtifacts.length > 0 && onOpenArtifact}
+			<div class="mt-3 flex flex-col gap-2">
+				{#each linkedArtifacts as artifact (artifact.artifactId)}
+					<ArtifactChip {artifact} onOpen={onOpenArtifact} />
+				{/each}
+			</div>
+		{/if}
+		<div class="mt-2 flex items-center">
+			<button
+				type="button"
+				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+				aria-label={copied ? 'Copied' : 'Copy response'}
+				onclick={() => void copyMessageText()}
+			>
+				{#if copied}
+					<Check class="h-3.5 w-3.5" />
+				{:else}
+					<Copy class="h-3.5 w-3.5" />
+				{/if}
+			</button>
+		</div>
+	</article>
+{/if}

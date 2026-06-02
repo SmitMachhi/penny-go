@@ -102,7 +102,7 @@
 		</button>
 		{#if menuOpen}
 			<div
-				class="absolute right-0 z-10 mt-1 min-w-28 rounded-lg border border-border bg-card py-1 shadow-md"
+				class="absolute right-0 z-10 mt-1 min-w-28 rounded-lg border border-border bg-card py-1"
 			>
 				<button
 					type="button"

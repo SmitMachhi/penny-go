@@ -28,6 +28,28 @@ describe('normalizeHistoryMessages', () => {
 		expect(messages[0]?.role).toBe('user');
 		expect(messages[1]?.text).toBe('Hello');
 	});
+
+	it('coalesces intermediate assistant commentary into a thinking trace', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Fund my project' }] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'Searching corpus…' }] },
+			{ role: 'assistant', content: [{ type: 'text', text: 'Verifying sources…' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Brief created.',
+						textSignature: JSON.stringify({ v: 1, id: 'a1', phase: 'final_answer' })
+					}
+				]
+			}
+		]);
+
+		expect(messages).toHaveLength(2);
+		expect(messages[1]?.text).toBe('Brief created.');
+		expect(messages[1]?.thinkingTrace).toBe('Searching corpus…\n\nVerifying sources…');
+	});
 });
 
 describe('toolLabel', () => {

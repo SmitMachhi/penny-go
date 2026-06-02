@@ -1,4 +1,8 @@
 import { rememberArtifactId, upsertArtifact } from '$lib/chat/client-artifact-state.js';
+import {
+	applyCommentaryDelta,
+	applyThinkingDelta
+} from '$lib/chat/client-run-trace.js';
 import { upsertTool } from '$lib/chat/client-tools.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
@@ -26,7 +30,12 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 
 	switch (payload.type) {
 		case 'chat.delta':
-			handlers.state.streamText = payload.text;
+			applyCommentaryDelta(handlers.state.runTrace, payload.text, {
+				replace: payload.replace
+			});
+			break;
+		case 'thinking.delta':
+			applyThinkingDelta(handlers.state.runTrace, payload.text);
 			break;
 		case 'tool.start':
 			handlers.state.tools = upsertTool(handlers.state.tools, payload.name, 'running');

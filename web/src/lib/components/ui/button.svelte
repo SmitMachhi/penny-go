@@ -9,6 +9,7 @@
 		disabled?: boolean;
 		type?: 'button' | 'submit';
 		'aria-label'?: string;
+		'aria-expanded'?: boolean;
 		onclick?: (event: MouseEvent) => void;
 		children: Snippet;
 	};
@@ -20,6 +21,7 @@
 		disabled = false,
 		type = 'button',
 		'aria-label': ariaLabel,
+		'aria-expanded': ariaExpanded,
 		onclick,
 		children
 	}: Props = $props();
@@ -30,6 +32,7 @@
 	{disabled}
 	{onclick}
 	aria-label={ariaLabel}
+	aria-expanded={ariaExpanded}
 	class={cn(
 		'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
 		variant === 'default' && 'bg-primary text-primary-foreground hover:opacity-90',

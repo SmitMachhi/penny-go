@@ -1,16 +1,21 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { Send } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { chatPathFromSessionKey } from '$lib/chat/session-routes.js';
-	import Button from '$lib/components/ui/button.svelte';
-	import Textarea from '$lib/components/ui/textarea.svelte';
+	import {
+		HOME_HEADLINE,
+		HOME_SUBHEAD
+	} from '$lib/chat/starter-prompts.js';
+	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import StarterPromptChips from '$lib/components/chat/StarterPromptChips.svelte';
 
 	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let starting = $state(false);
+
+	const composerDisabled = $derived(starting || !chat.state.connected);
 
 	onMount(() => {
 		void chat.clearSession();
@@ -57,38 +62,27 @@
 			void handleSend();
 		}
 	}
+
+	function applyStarterPrompt(prompt: string): void {
+		draft = prompt;
+	}
 </script>
 
-<main class="flex flex-1 flex-col items-center justify-center px-4 py-10">
-	<div class="w-full max-w-2xl space-y-8 text-center">
-		<div class="space-y-2">
-			<h2 class="text-3xl font-semibold tracking-tight">Where should we begin?</h2>
-			<p class="text-sm text-muted-foreground">
-				Ask about grants, tax credits, or wage subsidies for a Canadian business. Each chat stays
-				isolated — facts won't mix across engagements.
-			</p>
+<main class="penny-canvas-surface flex flex-1 flex-col items-center justify-center py-12">
+	<div class="penny-chat-column w-full space-y-8">
+		<div class="space-y-2 text-center">
+			<h2 class="text-3xl font-semibold tracking-tight text-foreground">{HOME_HEADLINE}</h2>
+			<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">{HOME_SUBHEAD}</p>
 		</div>
 
-		<form
-			class="mx-auto flex w-full flex-col gap-3 rounded-2xl border border-border bg-card/60 p-4 text-left shadow-sm"
-			onsubmit={(event) => {
-				event.preventDefault();
-				void handleSend();
-			}}
-		>
-			<Textarea
-				bind:value={draft}
-				placeholder="Describe your business, jurisdiction, project, and timeline…"
-				disabled={starting || !chat.state.connected}
-				onkeydown={handleKeydown}
-			/>
-			<div class="flex items-center justify-between gap-3">
-				<p class="text-xs text-muted-foreground">Enter to send · Shift+Enter for newline</p>
-				<Button type="submit" disabled={starting || !chat.state.connected || !draft.trim()}>
-					<Send class="h-4 w-4" />
-					Send
-				</Button>
-			</div>
-		</form>
+		<StarterPromptChips disabled={composerDisabled} onSelect={applyStarterPrompt} />
+
+		<ChatComposer
+			bind:draft
+			disabled={composerDisabled}
+			sending={false}
+			onSubmit={() => void handleSend()}
+			onKeydown={handleKeydown}
+		/>
 	</div>
 </main>

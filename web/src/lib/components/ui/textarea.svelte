@@ -30,7 +30,7 @@
 	{oninput}
 	{onkeydown}
 	class={cn(
-		'w-full resize-none rounded-xl border border-border bg-card px-4 py-3 text-sm shadow-sm outline-none ring-primary/30 focus:ring-2',
+		'w-full resize-y rounded-xl border border-border bg-card px-4 py-3 text-base outline-none ring-discovery/25 focus:ring-2',
 		className
 	)}
 ></textarea>

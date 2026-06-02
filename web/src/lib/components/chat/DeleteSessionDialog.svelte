@@ -14,7 +14,7 @@
 			role="dialog"
 			aria-modal="true"
 			aria-labelledby="delete-session-title"
-			class="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-lg"
+			class="w-full max-w-md rounded-2xl border border-border bg-card p-6"
 		>
 			<h2 id="delete-session-title" class="text-lg font-semibold">Delete this chat?</h2>
 			<p class="mt-2 text-sm text-muted-foreground">

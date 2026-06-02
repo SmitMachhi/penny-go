@@ -1,4 +1,6 @@
 import type { ArtifactSummary } from '$lib/chat/artifacts.js';
+import type { RunTraceState } from '$lib/chat/client-run-trace.js';
+import { createEmptyRunTrace } from '$lib/chat/client-run-trace.js';
 import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
 
 export type ChatClientState = {
@@ -8,7 +10,8 @@ export type ChatClientState = {
 	sessionKey: string;
 	sessionId: string | null;
 	messages: ChatMessage[];
-	streamText: string;
+	runTrace: RunTraceState;
+	runTraceExpanded: boolean;
 	tools: ToolActivity[];
 	artifacts: ArtifactSummary[];
 	artifactPanelOpen: boolean;
@@ -25,7 +28,8 @@ export function createInitialChatState(): ChatClientState {
 		sessionKey: '',
 		sessionId: null,
 		messages: [],
-		streamText: '',
+		runTrace: createEmptyRunTrace(),
+		runTraceExpanded: false,
 		tools: [],
 		artifacts: [],
 		artifactPanelOpen: false,
@@ -61,7 +65,8 @@ export function appendUserMessage(state: ChatClientState, text: string): void {
 export function appendAssistantMessage(
 	state: ChatClientState,
 	text: string,
-	artifactIds: readonly string[]
+	artifactIds: readonly string[],
+	options?: { thinkingTrace?: string }
 ): void {
 	if (!text.trim()) {
 		return;
@@ -72,6 +77,7 @@ export function appendAssistantMessage(
 			id: crypto.randomUUID(),
 			role: 'assistant',
 			text,
+			...(options?.thinkingTrace ? { thinkingTrace: options.thinkingTrace } : {}),
 			...(artifactIds.length > 0 ? { artifactIds: [...artifactIds] } : {})
 		}
 	];
@@ -79,14 +85,16 @@ export function appendAssistantMessage(
 
 export function resetRunState(state: ChatClientState): void {
 	state.sending = false;
-	state.streamText = '';
+	state.runTrace = createEmptyRunTrace();
+	state.runTraceExpanded = false;
 	state.tools = [];
 }
 
 export function startRunState(state: ChatClientState): void {
 	state.sending = true;
 	state.operationError = null;
-	state.streamText = '';
+	state.runTrace = createEmptyRunTrace();
+	state.runTraceExpanded = true;
 	state.tools = [];
 }
 

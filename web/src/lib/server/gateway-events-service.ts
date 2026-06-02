@@ -1,4 +1,5 @@
 import { clearAllStreamingText } from '$lib/server/chat-stream-text.js';
+import { clearAllThinkingStreamText } from '$lib/server/chat-stream-thinking.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
 
 let eventBusInitialized = false;
@@ -17,6 +18,7 @@ export function ensureGatewayEventBus(options: {
 	client.onEvent(options.onEvent);
 	client.onDisconnect(() => {
 		clearAllStreamingText();
+		clearAllThinkingStreamText();
 		if (options.shouldReconnect()) {
 			void getGatewayClient().connect();
 		}

@@ -2,6 +2,8 @@ import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessage } from '$lib/chat/client-api.js';
 import { appendAssistantMessage, appendUserMessage, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
+import { stripTrailingAssistantMessages } from '$lib/chat/display-messages.js';
+import { finalizeRunTrace } from '$lib/chat/client-run-trace.js';
 import { openChatEventSource } from '$lib/chat/client-stream.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
@@ -72,6 +74,18 @@ export class ChatClient {
 		this.state.artifactPanelOpen = false;
 	}
 
+	toggleArtifactPanel(): void {
+		if (this.state.artifactPanelOpen) {
+			this.closeArtifactPanel();
+			return;
+		}
+
+		const artifactId = this.state.activeArtifactId ?? this.state.artifacts[0]?.artifactId;
+		if (artifactId) {
+			this.openArtifact(artifactId);
+		}
+	}
+
 	async refreshHealth(): Promise<void> {
 		const wasConnected = this.state.connected;
 		try {
@@ -110,7 +124,7 @@ export class ChatClient {
 	}
 
 	async loadHistory(): Promise<void> {
-		if (!this.state.sessionKey) {
+		if (!this.state.sessionKey || this.state.sending) {
 			return;
 		}
 		const sessionKey = this.state.sessionKey;
@@ -233,7 +247,13 @@ export class ChatClient {
 			return;
 		}
 		syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
-		appendAssistantMessage(this.state, payload.text || this.state.streamText, this.pendingRunArtifactIds);
+		this.state.messages = stripTrailingAssistantMessages(this.state.messages);
+		appendAssistantMessage(
+			this.state,
+			payload.text,
+			this.pendingRunArtifactIds,
+			{ thinkingTrace: finalizeRunTrace(this.state.runTrace, payload.text) }
+		);
 		this.state.operationError = null;
 		this.resetRun();
 	}

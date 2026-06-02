@@ -14,38 +14,53 @@
 	--color-primary-foreground: var(--primary-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
+	--color-discovery: var(--discovery);
+	--color-discovery-foreground: var(--discovery-foreground);
 	--color-destructive: var(--destructive);
 	--radius-lg: var(--radius);
+	--penny-chat-max-width: 48rem;
+	--penny-canvas-inline-padding: 1rem;
+	--penny-thread-gap: 1.75rem;
+	--penny-composer-dock-height: 7.5rem;
+	--penny-user-bubble: var(--user-bubble);
+	--penny-thinking-stream-max-height: 18rem;
+	--penny-thinking-idle-max-height: 12rem;
 }
 
 :root {
-	--background: oklch(0.99 0.002 260);
-	--foreground: oklch(0.18 0.02 260);
+	--background: oklch(1 0 0);
+	--foreground: oklch(0.2 0 0);
 	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.18 0.02 260);
-	--muted: oklch(0.96 0.005 260);
-	--muted-foreground: oklch(0.45 0.02 260);
-	--border: oklch(0.9 0.01 260);
-	--primary: oklch(0.45 0.12 250);
-	--primary-foreground: oklch(0.99 0 0);
-	--accent: oklch(0.94 0.02 250);
-	--accent-foreground: oklch(0.25 0.05 250);
+	--card-foreground: oklch(0.2 0 0);
+	--muted: oklch(0.97 0 0);
+	--muted-foreground: oklch(0.45 0 0);
+	--border: oklch(0.9 0 0);
+	--user-bubble: oklch(0.96 0.01 75);
+	--primary: oklch(0.2 0 0);
+	--primary-foreground: oklch(1 0 0);
+	--accent: oklch(0.96 0 0);
+	--accent-foreground: oklch(0.2 0 0);
+	--discovery: oklch(0.45 0 0);
+	--discovery-foreground: oklch(1 0 0);
 	--destructive: oklch(0.55 0.2 25);
 	--radius: 0.75rem;
 }
 
 .dark {
-	--background: oklch(0.14 0.02 260);
-	--foreground: oklch(0.96 0.005 260);
-	--card: oklch(0.18 0.02 260);
-	--card-foreground: oklch(0.96 0.005 260);
-	--muted: oklch(0.22 0.02 260);
-	--muted-foreground: oklch(0.7 0.02 260);
-	--border: oklch(0.28 0.02 260);
-	--primary: oklch(0.72 0.12 250);
-	--primary-foreground: oklch(0.14 0.02 260);
-	--accent: oklch(0.24 0.04 250);
-	--accent-foreground: oklch(0.92 0.02 250);
+	--background: oklch(0.145 0 0);
+	--foreground: oklch(0.95 0 0);
+	--card: oklch(0.18 0 0);
+	--card-foreground: oklch(0.95 0 0);
+	--muted: oklch(0.22 0 0);
+	--muted-foreground: oklch(0.65 0 0);
+	--border: oklch(0.28 0 0);
+	--user-bubble: oklch(0.26 0 0);
+	--primary: oklch(0.95 0 0);
+	--primary-foreground: oklch(0.145 0 0);
+	--accent: oklch(0.24 0 0);
+	--accent-foreground: oklch(0.95 0 0);
+	--discovery: oklch(0.65 0 0);
+	--discovery-foreground: oklch(0.145 0 0);
 	--destructive: oklch(0.62 0.18 25);
 }
 
@@ -59,9 +74,121 @@
 	}
 }
 
+@keyframes penny-stream-cursor {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.35;
+	}
+}
+
+@keyframes penny-icon-alive {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
+	}
+	40% {
+		transform: translate3d(0, -2px, 0) scale(1.045) rotate(-1.25deg);
+	}
+	75% {
+		transform: translate3d(0, 1px, 0) scale(1.02) rotate(0.75deg);
+	}
+}
+
+@keyframes penny-icon-thinking {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+	50% {
+		transform: translate3d(0, -3px, 0) scale(1.07);
+	}
+}
+
 @layer components {
+	.penny-chat-bg,
+	.penny-canvas-bg,
+	.penny-canvas-surface {
+		@apply relative bg-background;
+	}
+
+	.penny-canvas-surface {
+		@apply flex min-h-0 flex-1 flex-col;
+	}
+
+	.penny-chat-workspace {
+		@apply flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden;
+	}
+
+	.penny-chat-column,
+	.penny-prose-column {
+		margin-inline: auto;
+		width: 100%;
+		max-width: var(--penny-chat-max-width);
+		padding-inline: var(--penny-canvas-inline-padding);
+	}
+
+	.penny-user-bubble {
+		background-color: var(--penny-user-bubble);
+		color: var(--foreground);
+	}
+
+	.penny-composer-dock {
+		@apply pointer-events-none absolute inset-x-0 bottom-0 z-10 flex justify-center px-3 pb-3;
+	}
+
+	.penny-composer-dock::before {
+		content: '';
+		position: absolute;
+		inset-inline: 0;
+		bottom: 100%;
+		height: 2.5rem;
+		background: linear-gradient(to top, var(--background), transparent);
+		pointer-events: none;
+	}
+
+	.penny-composer-dock > :global(form) {
+		@apply pointer-events-auto w-full max-w-[var(--penny-chat-max-width)];
+	}
+
+	.penny-overlay-scroll {
+		scrollbar-width: none;
+		-ms-overflow-style: none;
+	}
+
+	.penny-overlay-scroll::-webkit-scrollbar {
+		display: none;
+	}
+
+	.penny-stream-cursor {
+		animation: penny-stream-cursor 1s ease-in-out infinite;
+	}
+
+	.penny-header-icon {
+		--penny-icon-alive-duration: 3.6s;
+		--penny-icon-thinking-duration: 1.15s;
+		display: grid;
+		place-items: center;
+		transform: translateZ(0);
+		animation: penny-icon-alive var(--penny-icon-alive-duration) ease-in-out infinite;
+	}
+
+	.penny-header-icon img {
+		@apply h-10 w-10 shrink-0 rounded-xl;
+	}
+
+	.penny-header-icon--compact img {
+		@apply h-8 w-8 rounded-lg;
+	}
+
+	.penny-header-icon--thinking {
+		animation: penny-icon-thinking var(--penny-icon-thinking-duration) ease-in-out infinite;
+	}
+
 	.penny-markdown {
-		@apply space-y-3;
+		@apply space-y-4 text-[0.9375rem] leading-7 text-foreground;
 	}
 
 	.penny-markdown :is(h1, h2, h3, h4) {
@@ -81,7 +208,7 @@
 	}
 
 	.penny-markdown p {
-		@apply leading-relaxed;
+		@apply leading-7;
 	}
 
 	.penny-markdown :is(ul, ol) {
@@ -101,7 +228,7 @@
 	}
 
 	.penny-markdown a {
-		@apply font-medium text-primary underline underline-offset-2;
+		@apply font-medium text-foreground underline underline-offset-2;
 	}
 
 	.penny-markdown strong {
@@ -129,7 +256,7 @@
 	}
 
 	.penny-markdown-table-wrap {
-		@apply my-4 overflow-x-auto rounded-xl border border-border bg-card shadow-sm;
+		@apply my-4 overflow-x-auto rounded-xl border border-border bg-card;
 	}
 
 	.penny-markdown table {

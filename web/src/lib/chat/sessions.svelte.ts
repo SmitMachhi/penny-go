@@ -29,6 +29,7 @@ export type SessionClientState = {
 	loading: boolean;
 	error: string | null;
 	sidebarOpen: boolean;
+	sidebarCollapsed: boolean;
 };
 
 type RefreshOptions = {
@@ -44,7 +45,8 @@ export function createInitialSessionState(): SessionClientState {
 		sessions: [],
 		loading: false,
 		error: null,
-		sidebarOpen: false
+		sidebarOpen: false,
+		sidebarCollapsed: false
 	};
 }
 

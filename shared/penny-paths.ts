@@ -41,11 +41,14 @@ export function resolveWorkspaceRoot(repoRoot: string): string {
 }
 
 export const ARTIFACTS_SEGMENT = 'artifacts';
-export const BRIEF_FILENAME = 'brief.json';
-export const SLIDES_FILENAME = 'slides.html';
+export const DOCUMENT_MD_FILENAME = 'document.md';
 export const PDF_FILENAME = 'brief.pdf';
 export const META_FILENAME = 'meta.json';
 export const INDEX_FILENAME = 'index.json';
+/** @deprecated Legacy artifacts only — migrate to document.md + meta.json */
+export const LEGACY_BRIEF_FILENAME = 'brief.json';
+/** @deprecated Legacy artifacts only — delete after PDF migration */
+export const LEGACY_SLIDES_FILENAME = 'slides.html';
 
 const ARTIFACT_ID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

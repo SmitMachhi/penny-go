@@ -4,7 +4,11 @@ import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessag
 import { appendAssistantMessage, appendUserMessage, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
 import { stripTrailingAssistantMessages } from '$lib/chat/display-messages.js';
 import { finalizeRunTrace } from '$lib/chat/client-run-trace.js';
-import { openChatEventSource } from '$lib/chat/client-stream.js';
+import {
+	findCompletedAssistantAfterLastUser,
+	RUN_RECOVERY_POLL_MS
+} from '$lib/chat/client-run-recovery.js';
+import { createChatStreamConnection, type ChatStreamConnection } from '$lib/chat/client-stream-connection.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
@@ -14,12 +18,14 @@ const GATEWAY_OFFLINE_MESSAGE = 'OpenClaw gateway is unavailable';
 
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
-	private eventSource: EventSource | null = null;
+	private streamConnection: ChatStreamConnection | null = null;
 	private activeRunId: string | null = null;
 	private artifactVersionSnapshot: ArtifactVersionSnapshot = new Map();
 	private pendingRunArtifactIds: string[] = [];
 	private historyRequestId = 0;
 	private healthPollTimer: ReturnType<typeof setInterval> | null = null;
+	private runRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
+	private expectedUserMessageCount = 0;
 	private onGatewayRecovered: (() => void) | null = null;
 
 	async bootstrap(): Promise<void> {
@@ -27,8 +33,13 @@ export class ChatClient {
 	}
 
 	dispose(): void {
-		this.eventSource?.close();
-		this.eventSource = null;
+		this.clearRunRecovery();
+		this.streamConnection?.close();
+		this.streamConnection = null;
+	}
+
+	ensureStreamConnected(): void {
+		this.streamConnection?.ensureOpen();
 	}
 
 	startHealthPolling(onRecovered?: () => void): void {
@@ -96,6 +107,7 @@ export class ChatClient {
 				if (!wasConnected) {
 					this.onGatewayRecovered?.();
 				}
+				this.ensureStreamConnected();
 			} else {
 				this.state.connectionError = payload.message ?? GATEWAY_OFFLINE_MESSAGE;
 			}
@@ -107,6 +119,7 @@ export class ChatClient {
 
 	async switchSession(sessionKey: string): Promise<void> {
 		if (this.state.sessionKey === sessionKey) {
+			this.ensureStreamConnected();
 			return;
 		}
 		if (this.state.sending) {
@@ -183,8 +196,10 @@ export class ChatClient {
 				return false;
 			}
 		}
+		this.ensureStreamConnected();
 		const sessionId = this.state.sessionId;
 		const previousMessages = this.state.messages;
+		const userMessageCount = previousMessages.filter((entry) => entry.role === 'user').length;
 		startRunState(this.state);
 		this.activeRunId = null;
 		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
@@ -194,9 +209,12 @@ export class ChatClient {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
 			if (this.state.sending) {
 				this.activeRunId = payload.runId;
+				this.expectedUserMessageCount = userMessageCount + 1;
+				this.scheduleRunRecovery(this.expectedUserMessageCount);
 			}
 			return true;
 		} catch (error) {
+			this.clearRunRecovery();
 			this.state.messages = previousMessages;
 			this.state.sending = false;
 			this.state.operationError = formatClientError(error, 'failed to send message');
@@ -215,12 +233,8 @@ export class ChatClient {
 		if (!this.state.sessionKey) {
 			return;
 		}
-		this.eventSource?.close();
-		this.eventSource = openChatEventSource(this.state.sessionKey, {
-			onError: () => {
-				this.state.connected = false;
-				this.state.connectionError = GATEWAY_OFFLINE_MESSAGE;
-			},
+		this.streamConnection?.close();
+		this.streamConnection = createChatStreamConnection(this.state.sessionKey, {
 			onPayload: (payload) => this.handleStreamEvent(payload)
 		});
 	}
@@ -234,6 +248,9 @@ export class ChatClient {
 			resetRun: () => this.resetRun(),
 			state: this.state
 		});
+		if (this.state.sending && payload.type !== 'connected') {
+			this.scheduleRunRecovery(this.expectedUserMessageCount);
+		}
 	}
 
 	private async finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void> {
@@ -268,10 +285,63 @@ export class ChatClient {
 	}
 
 	private resetRun(): void {
+		this.clearRunRecovery();
 		resetRunState(this.state);
 		this.activeRunId = null;
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
+	}
+
+	private scheduleRunRecovery(expectedUserMessageCount: number): void {
+		this.clearRunRecovery();
+		if (!this.state.sending) {
+			return;
+		}
+		this.runRecoveryTimer = setTimeout(() => {
+			void this.tryRecoverRunFromHistory(expectedUserMessageCount);
+		}, RUN_RECOVERY_POLL_MS);
+	}
+
+	private clearRunRecovery(): void {
+		if (this.runRecoveryTimer) {
+			clearTimeout(this.runRecoveryTimer);
+			this.runRecoveryTimer = null;
+		}
+	}
+
+	private async tryRecoverRunFromHistory(expectedUserMessageCount: number): Promise<void> {
+		if (!this.state.sending || !this.state.sessionKey) {
+			return;
+		}
+		const sessionKey = this.state.sessionKey;
+		try {
+			const payload = await fetchHistory(sessionKey);
+			if (!this.state.sending || sessionKey !== this.state.sessionKey) {
+				return;
+			}
+			const historyUserCount = payload.messages.filter((entry) => entry.role === 'user').length;
+			if (historyUserCount < expectedUserMessageCount) {
+				this.scheduleRunRecovery(expectedUserMessageCount);
+				return;
+			}
+			const assistant = findCompletedAssistantAfterLastUser(payload.messages);
+			if (!assistant) {
+				this.scheduleRunRecovery(expectedUserMessageCount);
+				return;
+			}
+			await this.loadArtifacts();
+			if (!this.state.sending || sessionKey !== this.state.sessionKey) {
+				return;
+			}
+			this.state.messages = stripTrailingAssistantMessages(this.state.messages);
+			appendAssistantMessage(this.state, assistant.text, assistant.artifactIds ?? [], {});
+			this.state.operationError = null;
+			this.resetRun();
+		} catch {
+			if (this.state.sending) {
+				this.scheduleRunRecovery(expectedUserMessageCount);
+			}
+		}
 	}
 
 	private async abortRunBeforeSessionReset(): Promise<void> {

@@ -1,10 +1,10 @@
 import { error } from '@sveltejs/kit';
 
 import { withApiCatch } from '$lib/server/api-handler.js';
-import { injectEmbeddedPreviewStyles } from '$lib/server/artifact-preview.js';
 import {
+	artifactPdfExists,
 	getArtifactMeta,
-	readArtifactSlidesHtml,
+	readArtifactPdfBytes,
 	toArtifactSummary
 } from '$lib/server/artifact-storage.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
@@ -22,18 +22,16 @@ export async function GET(event) {
 			throw error(404, 'artifact not found');
 		}
 
-		const accept = event.request.headers.get('accept') ?? '';
-		const wantsHtml =
-			event.url.searchParams.get('preview') === 'html' ||
-			(accept.includes('text/html') && !accept.includes('application/json'));
+		if (event.url.searchParams.get('preview') === 'pdf') {
+			const pdfReady = await artifactPdfExists(sessionKey, artifactId);
+			if (!pdfReady) {
+				throw error(404, 'pdf not available');
+			}
 
-		if (wantsHtml) {
-			const html = await readArtifactSlidesHtml(sessionKey, artifactId);
-			const embedded = event.url.searchParams.get('embedded') === '1';
-			const body = embedded ? injectEmbeddedPreviewStyles(html) : html;
-			return new Response(body, {
+			const pdfBytes = await readArtifactPdfBytes(sessionKey, artifactId);
+			return new Response(new Uint8Array(pdfBytes), {
 				headers: {
-					'content-type': 'text/html; charset=utf-8',
+					'content-type': 'application/pdf',
 					'cache-control': 'no-store'
 				}
 			});

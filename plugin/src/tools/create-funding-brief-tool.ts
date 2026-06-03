@@ -1,7 +1,7 @@
 import { Type } from "@sinclair/typebox";
 import type { AnyAgentTool } from "openclaw/plugin-sdk/plugin-entry";
 import { parsePennySessionUuid } from "@penny/shared/session-key";
-import { validateFundingBriefContent } from "@penny/shared/funding-brief";
+import { validateCreateFundingArtifactInput } from "@penny/shared/artifact-validation";
 
 import { createFundingBriefAction } from "../actions/funding-brief-tools.js";
 import type { PennyToolsConfigShape } from "../services/penny-config.js";
@@ -13,31 +13,32 @@ const confidenceSchema = Type.Union([
   Type.Literal("could_not_verify"),
 ]);
 
-const programSchema = Type.Object({
+const evidenceProgramSchema = Type.Object({
   name: Type.String(),
-  whyFit: Type.String(),
-  whyNot: Type.String(),
-  benefitType: Type.String(),
-  intakeStatus: Type.String(),
   officialUrl: Type.String(),
   confidence: confidenceSchema,
-  nextStep: Type.String(),
 });
 
 export const createFundingBriefParameters = Type.Object({
   title: Type.String(),
   triggerReason: Type.Union([Type.Literal("auto"), Type.Literal("user_requested")]),
+  bodyMarkdown: Type.String({
+    description:
+      "Full funding brief + strategy in markdown. Lead with brief and programs; follow with execution checklists and steps. Use GFM tables, bullets, and - [ ] task lists.",
+  }),
   artifactId: Type.Optional(
     Type.String({ description: "Existing artifact UUID to update in place" }),
   ),
-  business: Type.Object({
-    name: Type.Optional(Type.String()),
-    province: Type.Optional(Type.String()),
-    sector: Type.Optional(Type.String()),
-    employees: Type.Optional(Type.String()),
-    projectSummary: Type.Optional(Type.String()),
-  }),
-  programs: Type.Array(programSchema),
+  evidence: Type.Optional(
+    Type.Object({
+      programs: Type.Optional(Type.Array(evidenceProgramSchema)),
+    }),
+  ),
+  programs: Type.Optional(
+    Type.Array(evidenceProgramSchema, {
+      description: "Deprecated alias for evidence.programs — audit only, not rendered into PDF.",
+    }),
+  ),
   verification: Type.Object({
     verifiedAt: Type.String(),
     urlsChecked: Type.Array(Type.String()),
@@ -47,9 +48,9 @@ export const createFundingBriefParameters = Type.Object({
 
 export const createFundingBriefToolDefinition = {
   name: "create_funding_brief",
-  label: "Create funding brief artifact",
+  label: "Create funding artifact",
   description:
-    "Create or update a branded funding brief slideshow and PDF artifact for the active chat session.",
+    "Create or update a funding brief and strategy PDF for the active chat session. Write the full document in bodyMarkdown; PDF is generated from that markdown.",
   parameters: createFundingBriefParameters,
 } as const;
 
@@ -78,11 +79,11 @@ export function createFundingBriefTool(
           success: false,
           error: "invalid_session_key",
           message:
-            "Funding brief artifacts require a Penny web chat session (agent:main:penny:<uuid>).",
+            "Funding artifacts require a Penny web chat session (agent:main:penny:<uuid>).",
         });
       }
 
-      const validation = validateFundingBriefContent(params);
+      const validation = validateCreateFundingArtifactInput(params);
       if (!validation.ok) {
         return toToolJsonResult({
           success: false,

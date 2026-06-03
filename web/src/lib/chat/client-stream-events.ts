@@ -33,9 +33,11 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			applyCommentaryDelta(handlers.state.runTrace, payload.text, {
 				replace: payload.replace
 			});
+			handlers.state.runTrace = { ...handlers.state.runTrace };
 			break;
 		case 'thinking.delta':
 			applyThinkingDelta(handlers.state.runTrace, payload.text);
+			handlers.state.runTrace = { ...handlers.state.runTrace };
 			break;
 		case 'tool.start':
 			handlers.state.tools = upsertTool(handlers.state.tools, payload.name, 'running');

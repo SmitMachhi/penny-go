@@ -111,7 +111,7 @@ describe('session orchestration', () => {
 
 	it('stores the first user message as the session title', async () => {
 		const sessionKey = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
-		listGatewaySessions.mockResolvedValueOnce([{ key: sessionKey, updatedAt: 100 }]);
+		listGatewaySessions.mockResolvedValue([{ key: sessionKey, updatedAt: 100 }]);
 		patchGatewaySession.mockResolvedValueOnce(undefined);
 
 		const session = await generatePennySessionTitle(

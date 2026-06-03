@@ -15,6 +15,16 @@ describe('renderMarkdown', () => {
 		expect(html).toContain('rel="noopener noreferrer"');
 	});
 
+	it('marks external links for hover previews', () => {
+		const html = renderMarkdown('[App Store](https://apps.apple.com/us/app/id123)');
+		expect(html).toContain('class="penny-link-preview"');
+		expect(html).toContain('data-preview-url="https://apps.apple.com/us/app/id123"');
+		expect(html).toContain('penny-link-preview__label">App Store</span>');
+		expect(html).toContain('penny-link-preview__icon');
+		expect(html).toContain('aria-label="Link to App Store, opens in a new tab"');
+		expect(html).toContain('Opens website in a new tab. Hover for preview.');
+	});
+
 	it('strips script tags', () => {
 		const html = renderMarkdown('hello<script>alert(1)</script>');
 		expect(html).not.toContain('<script');

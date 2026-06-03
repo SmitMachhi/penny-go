@@ -7,6 +7,7 @@
 	type Props = {
 		draft?: string;
 		disabled?: boolean;
+		sendDisabled?: boolean;
 		sending?: boolean;
 		onSubmit: () => void;
 		onStop?: () => void;
@@ -16,13 +17,14 @@
 	let {
 		draft = $bindable(''),
 		disabled = false,
+		sendDisabled = false,
 		sending = false,
 		onSubmit,
 		onStop,
 		onKeydown
 	}: Props = $props();
 
-	const canSend = $derived(!disabled && draft.trim().length > 0);
+	const canSend = $derived(!sendDisabled && draft.trim().length > 0);
 </script>
 
 <form

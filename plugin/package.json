@@ -14,6 +14,7 @@
   "dependencies": {
     "@penny/shared": "file:../shared",
     "@sinclair/typebox": "^0.34.15",
+    "marked": "^18.0.4",
     "proper-lockfile": "^4.1.2"
   },
   "peerDependencies": {

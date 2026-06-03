@@ -1,9 +1,12 @@
 import DOMPurify from 'isomorphic-dompurify';
 import { marked } from 'marked';
 
+import { isPreviewableHref } from '$lib/chat/link-previewable.js';
+import { renderPreviewLinkHtml } from '$lib/chat/link-preview-markup.js';
+
 const MARKDOWN_SANITIZE_OPTIONS = {
 	USE_PROFILES: { html: true },
-	ADD_ATTR: ['target', 'rel']
+	ADD_ATTR: ['target', 'rel', 'class', 'data-preview-url', 'aria-label', 'aria-hidden']
 };
 
 marked.setOptions({
@@ -16,7 +19,13 @@ marked.use({
 		link({ href, title, text }) {
 			const safeHref = escapeHtmlAttribute(href ?? '');
 			const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
-			return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+			const linkText = escapeHtmlAttribute(text);
+
+			if (isPreviewableHref(href)) {
+				return renderPreviewLinkHtml(href, text, title);
+			}
+
+			return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${linkText}</a>`;
 		}
 	}
 });

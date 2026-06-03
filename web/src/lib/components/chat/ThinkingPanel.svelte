@@ -2,6 +2,7 @@
 	import { Brain, ChevronRight } from '@lucide/svelte';
 
 	import type { ToolActivity } from '$lib/chat/messages.js';
+	import { hasRunningTools } from '$lib/chat/tool-presentations.js';
 	import ToolStrip from '$lib/components/chat/ToolStrip.svelte';
 	import { cn } from '$lib/utils.js';
 
@@ -27,9 +28,21 @@
 
 	const hasContent = $derived(streaming || text.trim().length > 0 || tools.length > 0);
 
-	const label = $derived(
-		streaming ? 'Thinking…' : expanded ? 'Thought' : 'Thought for a moment'
-	);
+	const hasActiveTools = $derived(tools.length > 0);
+	const showToolStrip = $derived(hasActiveTools && (expanded || streaming));
+
+	const label = $derived.by(() => {
+		if (streaming && hasRunningTools(tools)) {
+			return 'Working for you…';
+		}
+		if (streaming) {
+			return 'Thinking…';
+		}
+		if (expanded) {
+			return 'Thought';
+		}
+		return 'Thought for a moment';
+	});
 
 	function handleToggle(): void {
 		if (onToggle) {
@@ -52,6 +65,12 @@
 			<ChevronRight class={cn('h-4 w-4 shrink-0 transition-transform', expanded && 'rotate-90')} />
 		</button>
 
+		{#if showToolStrip}
+			<div class={cn('mt-2', !expanded && 'mt-1.5')}>
+				<ToolStrip {tools} />
+			</div>
+		{/if}
+
 		{#if expanded}
 			<div
 				class={cn(
@@ -66,11 +85,6 @@
 					<span class="penny-stream-cursor ml-0.5 inline-block">▌</span>
 				{/if}
 			</div>
-			{#if tools.length > 0}
-				<div class="mt-2">
-					<ToolStrip {tools} />
-				</div>
-			{/if}
 		{/if}
 	</div>
 {/if}

@@ -3,6 +3,7 @@
 
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import type { ChatMessage } from '$lib/chat/messages.js';
+	import { enhanceLinkPreviews } from '$lib/chat/link-preview-action.js';
 	import { renderMarkdown } from '$lib/chat/markdown.js';
 	import ArtifactChip from '$lib/components/artifacts/ArtifactChip.svelte';
 	import { cn } from '$lib/utils.js';
@@ -72,9 +73,14 @@
 	</div>
 {:else}
 	<article class="w-full">
-		<div class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}>
-			{@html html}
-		</div>
+		{#key html}
+			<div
+				class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
+				use:enhanceLinkPreviews
+			>
+				{@html html}
+			</div>
+		{/key}
 		{#if linkedArtifacts.length > 0 && onOpenArtifact}
 			<div class="mt-3 flex flex-col gap-2">
 				{#each linkedArtifacts as artifact (artifact.artifactId)}

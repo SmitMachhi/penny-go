@@ -91,6 +91,7 @@
 				return;
 			}
 			void chat.refreshHealth();
+			chat.ensureStreamConnected();
 			void chat.loadHistory();
 		};
 

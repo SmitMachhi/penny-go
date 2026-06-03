@@ -49,10 +49,10 @@ API routes:
 
 ## Artifacts
 
-Funding brief slideshows (preview + PDF download) persist under `workspace/artifacts/<sessionUuid>/`. See **`../docs/penny-artifacts.md`**.
+Funding brief & strategy PDFs persist under `workspace/artifacts/<sessionUuid>/`. See **`../docs/penny-artifacts.md`**.
 
 - `GET /api/artifacts?sessionKey=` — list artifacts
-- `GET /api/artifacts/:id?sessionKey=&preview=html` — slideshow preview
+- `GET /api/artifacts/:id?sessionKey=&preview=pdf` — PDF bytes for panel preview
 - `GET /api/artifacts/:id/download?sessionKey=&format=pdf` — PDF download
 
 SSE: `artifact.create` / `artifact.update` after `create_funding_brief` tool completes.

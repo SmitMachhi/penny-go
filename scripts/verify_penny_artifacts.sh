@@ -10,7 +10,7 @@ usage() {
 Usage: scripts/verify_penny_artifacts.sh [options]
 
 Options:
-  --skip-pdf   Accept slides-only success when Playwright PDF render is unavailable
+  --skip-pdf   Accept document-only success when Playwright PDF render is unavailable
   -h, --help   Show this help
 EOF
 }
@@ -46,7 +46,7 @@ step "A1 — shared contract tests"
   npm test
 ) || fail "shared tests failed"
 
-step "A2 — plugin tests (includes brief HTML/storage)"
+step "A2 — plugin tests (artifact storage + tool validation)"
 (
   cd "${REPO_ROOT}/plugin"
   npm test
@@ -65,7 +65,7 @@ if [[ -x "${REPO_ROOT}/.venv/bin/python" ]]; then
 fi
 
 SMOKE_OUT="$(
-  node "${REPO_ROOT}/scripts/verify-artifact-create.mjs"
+  PENNY_SKIP_PDF="${SKIP_PDF}" node "${REPO_ROOT}/scripts/verify-artifact-create.mjs"
 )" || fail "artifact create smoke failed"
 
 echo "${SMOKE_OUT}"

@@ -12,6 +12,15 @@ export type JsonStdinSubprocessOutcome = {
   parsed?: Record<string, unknown> | undefined;
 };
 
+async function waitForSpawn(
+  child: ReturnType<typeof spawn>,
+): Promise<Error | null> {
+  return new Promise((resolve) => {
+    child.once("error", resolve);
+    child.once("spawn", () => resolve(null));
+  });
+}
+
 export async function runJsonStdinSubprocess(input: {
   command: string;
   args: readonly string[];
@@ -33,6 +42,11 @@ export async function runJsonStdinSubprocess(input: {
     : undefined;
 
   try {
+    const spawnFailure = await waitForSpawn(child);
+    if (spawnFailure) {
+      return { stderr: spawnFailure.message };
+    }
+
     child.stdin.write(`${JSON.stringify(input.payload)}\n`);
     child.stdin.end();
 

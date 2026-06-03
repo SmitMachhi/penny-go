@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import { uniqueSessionLabel } from '@penny/shared/session-label-unique';
 import { titleFromFirstMessage } from '@penny/shared/session-title';
 
 import {
@@ -31,6 +32,21 @@ export type { PennySessionView };
 
 const PENNY_MAIN_AGENT_ID = 'main';
 const SESSION_LIST_LIMIT = 50;
+
+async function listTakenSessionLabels(excludeKey: string): Promise<string[]> {
+	const rows = await listGatewaySessions({
+		agentId: PENNY_MAIN_AGENT_ID,
+		includeDerivedTitles: false,
+		includeLastMessage: false,
+		limit: SESSION_LIST_LIMIT,
+		includeGlobal: false,
+		includeUnknown: false
+	});
+	return (rows ?? [])
+		.filter((row) => row.key !== excludeKey)
+		.map((row) => row.label?.trim())
+		.filter((label): label is string => Boolean(label));
+}
 
 async function legacySessionHasHistory(): Promise<boolean> {
 	try {
@@ -88,12 +104,14 @@ export async function createPennySession(label?: string): Promise<PennySessionVi
 export async function renamePennySession(key: string, label: string): Promise<PennySessionView> {
 	const sessionKey = resolveSessionKey(key);
 	const trimmedLabel = parseSessionLabel(label);
+	const takenLabels = await listTakenSessionLabels(sessionKey);
+	const uniqueLabel = uniqueSessionLabel(trimmedLabel, takenLabels);
 
-	await patchGatewaySession({ key: sessionKey, label: trimmedLabel });
+	await patchGatewaySession({ key: sessionKey, label: uniqueLabel });
 
 	return buildCreatedSessionView({
 		key: sessionKey,
-		label: trimmedLabel,
+		label: uniqueLabel,
 		isLegacy: sessionKey === LEGACY_SESSION_KEY
 	});
 }

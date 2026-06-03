@@ -1,6 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/state';
+	import { tick } from 'svelte';
 
+	import {
+		isThreadNearBottom,
+		scrollThreadToBottom
+	} from '$lib/chat/chat-thread-scroll.js';
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { liveRunTraceText } from '$lib/chat/client-run-trace.js';
 	import {
@@ -18,19 +23,64 @@
 	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let loadedRouteId = $state<string | null>(null);
+	let threadEl = $state<HTMLElement | undefined>(undefined);
+	let followThread = $state(false);
+	let suppressScrollPinUpdate = $state(false);
 
 	const routeId = $derived(page.params.id ?? '');
 	const displayMessages = $derived(messagesForDisplay(chat.state.messages, chat.state.sending));
 
-	const composerDisabled = $derived(
+	const inputDisabled = $derived(!chat.state.connected);
+	const sendDisabled = $derived(
 		chat.state.sending || !chat.state.connected || chat.state.loading
 	);
+	const liveTraceText = $derived(liveRunTraceText(chat.state.runTrace));
+
+	async function pinThreadToBottom(behavior: ScrollBehavior = 'smooth'): Promise<void> {
+		followThread = true;
+		await tick();
+		if (!threadEl) {
+			return;
+		}
+		suppressScrollPinUpdate = true;
+		scrollThreadToBottom(threadEl, behavior);
+		await tick();
+		suppressScrollPinUpdate = false;
+	}
+
+	function handleThreadScroll(): void {
+		if (suppressScrollPinUpdate || !threadEl) {
+			return;
+		}
+		followThread = isThreadNearBottom(threadEl);
+	}
+
+	$effect(() => {
+		if (!followThread || !threadEl) {
+			return;
+		}
+		void displayMessages.length;
+		void chat.state.sending;
+		void liveTraceText;
+		void chat.state.tools.length;
+		void chat.state.runTraceExpanded;
+
+		void tick().then(() => {
+			if (!followThread || !threadEl) {
+				return;
+			}
+			suppressScrollPinUpdate = true;
+			scrollThreadToBottom(threadEl, 'auto');
+			suppressScrollPinUpdate = false;
+		});
+	});
 
 	$effect(() => {
 		if (loadedRouteId === routeId) {
 			return;
 		}
 		loadedRouteId = routeId;
+		followThread = false;
 		const sessionKey = sessionKeyFromRouteId(routeId);
 		if (!sessionKey) {
 			return;
@@ -39,22 +89,28 @@
 	});
 
 	async function handleSend() {
+		if (sendDisabled) {
+			return;
+		}
 		const message = draft;
 		const trimmed = message.trim();
 		const isFirstMessage = chat.state.messages.length === 0;
 		draft = '';
+		followThread = true;
 		const sent = await chat.sendMessage(message);
 		if (!sent) {
 			draft = message;
+			followThread = threadEl ? isThreadNearBottom(threadEl) : false;
 			return;
 		}
+		await pinThreadToBottom('smooth');
 		if (isFirstMessage && chat.state.sessionKey && trimmed) {
 			sessions.setTitleFromFirstMessage(chat.state.sessionKey, trimmed);
 		}
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
-		if (event.key === 'Enter' && !event.shiftKey) {
+		if (event.key === 'Enter' && !event.shiftKey && !sendDisabled) {
 			event.preventDefault();
 			void handleSend();
 		}
@@ -69,8 +125,10 @@
 	<div class="penny-chat-workspace">
 		<div class="relative flex min-h-0 min-w-0 flex-1 flex-col">
 			<section
+				bind:this={threadEl}
 				class="penny-chat-column penny-overlay-scroll flex min-h-0 flex-1 flex-col overflow-y-auto pt-6"
-				style="gap: var(--penny-thread-gap); padding-bottom: var(--penny-composer-dock-height)"
+				style="gap: var(--penny-thread-gap)"
+				onscroll={handleThreadScroll}
 			>
 				{#if chat.state.loading}
 					<p class="text-[0.9375rem] text-muted-foreground">Loading conversation…</p>
@@ -84,7 +142,7 @@
 								{CANVAS_EMPTY_SUBHEAD}
 							</p>
 						</div>
-						<StarterPromptChips disabled={composerDisabled} onSelect={applyStarterPrompt} />
+						<StarterPromptChips disabled={sendDisabled} onSelect={applyStarterPrompt} />
 					</div>
 				{/if}
 
@@ -101,7 +159,7 @@
 
 				{#if chat.state.sending}
 					<ThinkingPanel
-						text={liveRunTraceText(chat.state.runTrace)}
+						text={liveTraceText}
 						tools={chat.state.tools}
 						expanded={chat.state.runTraceExpanded}
 						streaming={true}
@@ -115,7 +173,8 @@
 			<div class="penny-composer-dock">
 				<ChatComposer
 					bind:draft
-					disabled={composerDisabled}
+					disabled={inputDisabled}
+					sendDisabled={sendDisabled}
 					sending={chat.state.sending}
 					onSubmit={() => void handleSend()}
 					onStop={() => void chat.abortActiveRun()}

@@ -1,4 +1,4 @@
-import type { FundingConfidence } from './funding-brief.js';
+import type { FundingConfidence } from './artifact-types.js';
 
 export type PennyBrandTokens = {
 	background: string;
@@ -14,16 +14,16 @@ export type PennyBrandTokens = {
 };
 
 export const PENNY_BRAND_LIGHT: PennyBrandTokens = {
-	background: 'oklch(0.99 0.002 260)',
-	foreground: 'oklch(0.18 0.02 260)',
+	background: 'oklch(1 0 0)',
+	foreground: 'oklch(0.2 0 0)',
 	card: 'oklch(1 0 0)',
-	cardForeground: 'oklch(0.18 0.02 260)',
-	primary: 'oklch(0.45 0.12 250)',
-	primaryForeground: 'oklch(0.99 0 0)',
-	muted: 'oklch(0.96 0.005 260)',
-	mutedForeground: 'oklch(0.45 0.02 260)',
-	border: 'oklch(0.9 0.01 260)',
-	accent: 'oklch(0.94 0.02 250)'
+	cardForeground: 'oklch(0.2 0 0)',
+	primary: 'oklch(0.2 0 0)',
+	primaryForeground: 'oklch(1 0 0)',
+	muted: 'oklch(0.97 0 0)',
+	mutedForeground: 'oklch(0.45 0 0)',
+	border: 'oklch(0.9 0 0)',
+	accent: 'oklch(0.96 0 0)'
 };
 
 export type ConfidenceBadgeStyle = {
@@ -36,21 +36,57 @@ export type ConfidenceBadgeStyle = {
 export const CONFIDENCE_BADGE_STYLES: Record<FundingConfidence, ConfidenceBadgeStyle> = {
 	verified_live: {
 		label: 'Verified live',
-		background: 'oklch(0.94 0.04 155)',
-		foreground: 'oklch(0.35 0.08 155)',
-		border: 'oklch(0.82 0.06 155)'
+		background: 'oklch(0.96 0.02 155)',
+		foreground: 'oklch(0.35 0.06 155)',
+		border: 'oklch(0.86 0.04 155)'
 	},
 	newly_discovered: {
 		label: 'Newly discovered',
-		background: 'oklch(0.94 0.04 250)',
-		foreground: 'oklch(0.35 0.08 250)',
-		border: 'oklch(0.82 0.06 250)'
+		background: 'oklch(0.96 0.01 75)',
+		foreground: 'oklch(0.38 0.04 75)',
+		border: 'oklch(0.88 0.02 75)'
 	},
 	could_not_verify: {
 		label: 'Could not verify',
-		background: 'oklch(0.95 0.03 55)',
-		foreground: 'oklch(0.42 0.08 55)',
-		border: 'oklch(0.84 0.05 55)'
+		background: 'oklch(0.96 0.02 55)',
+		foreground: 'oklch(0.42 0.06 55)',
+		border: 'oklch(0.86 0.04 55)'
+	}
+};
+
+export type ProgramVerdict = 'pursue_now' | 'explore' | 'defer' | 'skip';
+
+export type VerdictBadgeStyle = {
+	label: string;
+	background: string;
+	foreground: string;
+	border: string;
+};
+
+export const VERDICT_BADGE_STYLES: Record<ProgramVerdict, VerdictBadgeStyle> = {
+	pursue_now: {
+		label: 'Pursue now',
+		background: 'oklch(0.96 0.03 155)',
+		foreground: 'oklch(0.32 0.07 155)',
+		border: 'oklch(0.84 0.05 155)'
+	},
+	explore: {
+		label: 'Explore',
+		background: 'oklch(0.96 0.02 250)',
+		foreground: 'oklch(0.35 0.08 250)',
+		border: 'oklch(0.86 0.04 250)'
+	},
+	defer: {
+		label: 'Defer',
+		background: 'oklch(0.96 0.01 260)',
+		foreground: 'oklch(0.42 0.02 260)',
+		border: 'oklch(0.88 0.01 260)'
+	},
+	skip: {
+		label: 'Skip',
+		background: 'oklch(0.96 0.02 55)',
+		foreground: 'oklch(0.42 0.06 55)',
+		border: 'oklch(0.86 0.04 55)'
 	}
 };
 

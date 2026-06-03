@@ -1,3 +1,4 @@
+import { isLabelInUseMessage, uniqueSessionLabel } from '@penny/shared/session-label-unique';
 import { titleFromFirstMessage } from '@penny/shared/session-title';
 
 import { apiJson } from '$lib/chat/api-client.js';
@@ -38,6 +39,7 @@ type RefreshOptions = {
 };
 
 const TITLE_BACKFILL_LIMIT = 5;
+const LABEL_PATCH_RETRY_LIMIT = 3;
 const DEFAULT_SESSION_TITLE = 'New chat';
 
 export function createInitialSessionState(): SessionClientState {
@@ -109,7 +111,10 @@ export class SessionClient {
 			return;
 		}
 
-		const title = titleFromFirstMessage(trimmed);
+		const title = uniqueSessionLabel(
+			titleFromFirstMessage(trimmed),
+			this.takenLabelsExcept(key)
+		);
 		const previousSession = session ?? null;
 		this.titledSessions.add(key);
 		this.state.sessions = upsertSessionView(this.state.sessions, {
@@ -122,17 +127,54 @@ export class SessionClient {
 		void this.persistTitle(key, title, previousSession);
 	}
 
+	private takenLabelsExcept(excludeKey: string): string[] {
+		return this.state.sessions
+			.filter((session) => session.key !== excludeKey)
+			.map((session) => session.title);
+	}
+
+	private async patchSessionLabel(key: string, desiredLabel: string): Promise<string> {
+		const taken = new Set(this.takenLabelsExcept(key));
+		let candidate = uniqueSessionLabel(desiredLabel, taken);
+
+		for (let attempt = 0; attempt < LABEL_PATCH_RETRY_LIMIT; attempt += 1) {
+			try {
+				await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
+					method: 'PATCH',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ label: candidate })
+				});
+				return candidate;
+			} catch (error) {
+				const message = formatClientError(error, '');
+				if (!isLabelInUseMessage(message)) {
+					throw error;
+				}
+				taken.add(candidate);
+				candidate = uniqueSessionLabel(desiredLabel, taken);
+			}
+		}
+
+		throw new Error('failed to save session title');
+	}
+
 	private async persistTitle(
 		key: string,
 		title: string,
 		previousSession: PennySession | null
 	): Promise<void> {
 		try {
-			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ label: title })
-			});
+			const savedTitle = await this.patchSessionLabel(key, title);
+			if (savedTitle !== title) {
+				this.state.sessions = upsertSessionView(this.state.sessions, {
+					key,
+					title: savedTitle,
+					titleStatus: 'ready',
+					updatedAt: Date.now(),
+					isLegacy:
+						this.state.sessions.find((session) => session.key === key)?.isLegacy ?? false
+				});
+			}
 			this.state.error = null;
 		} catch (error) {
 			this.titledSessions.delete(key);
@@ -206,16 +248,42 @@ export class SessionClient {
 	}
 
 	async renameSession(key: string, label: string): Promise<boolean> {
-		try {
-			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
-				method: 'PATCH',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ label })
+		const trimmed = label.trim();
+		if (!trimmed) {
+			return false;
+		}
+
+		const uniqueLabel = uniqueSessionLabel(trimmed, this.takenLabelsExcept(key));
+		const session = this.state.sessions.find((entry) => entry.key === key);
+		const previousSession = session ?? null;
+
+		if (session) {
+			this.state.sessions = upsertSessionView(this.state.sessions, {
+				...session,
+				title: uniqueLabel,
+				titleStatus: 'ready',
+				updatedAt: Date.now()
 			});
+		}
+
+		try {
+			const savedLabel = await this.patchSessionLabel(key, uniqueLabel);
+			if (savedLabel !== uniqueLabel && session) {
+				this.state.sessions = upsertSessionView(this.state.sessions, {
+					...session,
+					title: savedLabel,
+					titleStatus: 'ready',
+					updatedAt: Date.now()
+				});
+			}
 			this.titledSessions.add(key);
+			this.state.error = null;
 			await this.refresh({ silent: true });
 			return true;
 		} catch (error) {
+			if (previousSession) {
+				this.state.sessions = replaceSessionView(this.state.sessions, previousSession);
+			}
 			this.state.error = formatClientError(error, 'failed to rename session');
 			return false;
 		}

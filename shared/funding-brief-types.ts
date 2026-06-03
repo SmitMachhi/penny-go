@@ -1,4 +1,8 @@
-import type { FundingBriefTriggerReason, FundingConfidence } from './funding-brief.js';
+export type FundingConfidence = 'verified_live' | 'newly_discovered' | 'could_not_verify';
+
+export type FundingBriefTriggerReason = 'auto' | 'user_requested';
+
+export type ProgramVerdict = 'pursue_now' | 'explore' | 'defer' | 'skip';
 
 export type FundingBriefBusiness = {
 	name?: string;
@@ -10,13 +14,20 @@ export type FundingBriefBusiness = {
 
 export type FundingBriefProgram = {
 	name: string;
-	whyFit: string;
-	whyNot: string;
 	benefitType: string;
 	intakeStatus: string;
 	officialUrl: string;
 	confidence: FundingConfidence;
-	nextStep: string;
+	verdict?: ProgramVerdict;
+	plainTerms?: string;
+	whyFit?: string;
+	whyNot?: string;
+	prerequisites?: string[];
+	steps?: string[];
+	documents?: string[];
+	timeline?: string;
+	fallback?: string;
+	nextStep?: string;
 };
 
 export type FundingBriefVerification = {
@@ -28,7 +39,8 @@ export type FundingBriefVerification = {
 export type FundingBriefContent = {
 	title: string;
 	triggerReason: FundingBriefTriggerReason;
-	business: FundingBriefBusiness;
+	bodyMarkdown: string;
+	business?: FundingBriefBusiness;
 	programs: FundingBriefProgram[];
 	verification: FundingBriefVerification;
 };
@@ -37,6 +49,7 @@ export type FundingBriefInput = FundingBriefContent & { sessionUuid: string };
 
 export type FundingBriefRecord = FundingBriefInput & {
 	artifactId: string;
+	formatVersion: number;
 	version: number;
 	createdAt: string;
 	updatedAt: string;

@@ -3,7 +3,6 @@ import { readFile, readdir, rm, stat } from 'node:fs/promises';
 import {
 	META_FILENAME,
 	PDF_FILENAME,
-	SLIDES_FILENAME,
 	isValidArtifactId,
 	resolveArtifactFilePath,
 	resolveSessionArtifactIndexPath,
@@ -70,16 +69,6 @@ export async function getArtifactMeta(
 	}
 
 	return readArtifactMetaFile(sessionKey, artifactId);
-}
-
-export async function readArtifactSlidesHtml(
-	sessionKey: string,
-	artifactId: string
-): Promise<string> {
-	const sessionUuid = requireSessionUuid(sessionKey);
-	const repoRoot = resolvePennyRepoRootFromEnv();
-	const slidesPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, SLIDES_FILENAME);
-	return readFile(slidesPath, 'utf8');
 }
 
 export async function readArtifactPdfBytes(

@@ -54,7 +54,7 @@ Decision: _________ (embedded / gateway).
 Copy fields from **`config/openclaw.penny.example.json5`** into **`~/.openclaw/openclaw.json`**:
 
 - **`agents.defaults.workspace`** → **`/…/penny-go/workspace`** (absolute).
-- **`agents.defaults.skills`** includes **`penny-funding`** and **`penny-artifacts`**.
+- **`agents.defaults.skills`** includes **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (runtime prose rules live in **`SOUL.md`**).
 - **`agents.defaults.model.primary`** → **`deepseek/deepseek-v4-flash`** (or override after auth works).
 - **`tools`** — **minimal profile + explicit `allow`** (corpus tools, reader, **`create_funding_brief`**, `web_search` only; **`web.fetch` disabled**).
 - **`plugins.entries`** — **`exa` enabled**; **`penny-tools` enabled** with **`corpusPath`**, **`pythonPath`**, **`repoRoot`** set to absolute paths **or** rely on **`PENNY_*`** env in `~/.openclaw/.env`.

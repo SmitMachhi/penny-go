@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import ArtifactToolbar from '$lib/components/artifacts/ArtifactToolbar.svelte';
-	import SlidePreview from '$lib/components/artifacts/SlidePreview.svelte';
+	import DocumentPreview from '$lib/components/artifacts/DocumentPreview.svelte';
 	import Button from '$lib/components/ui/button.svelte';
 	import { cn } from '$lib/utils.js';
 
@@ -36,8 +36,8 @@
 		)}
 	>
 		<div class="border-b border-border px-4 py-3">
-			<p class="text-xs font-medium tracking-[0.2em] text-discovery uppercase">Brief</p>
-			<p class="text-sm font-semibold">Funding brief</p>
+			<p class="text-xs font-medium tracking-[0.2em] text-discovery uppercase">Artifact</p>
+			<p class="text-sm font-semibold">Funding brief & strategy</p>
 		</div>
 
 		{#if artifacts.length > 1}
@@ -55,8 +55,8 @@
 		{/if}
 
 		<ArtifactToolbar artifact={activeArtifact} {sessionKey} />
-		<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/10">
-			<SlidePreview artifactId={activeArtifact.artifactId} {sessionKey} />
+		<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
+			<DocumentPreview artifactId={activeArtifact.artifactId} {sessionKey} />
 		</div>
 	</aside>
 {/if}

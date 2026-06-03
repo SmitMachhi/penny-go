@@ -5,10 +5,10 @@ import { resolvePython, resolveRepoRoot, type PennyToolsConfigShape } from './pe
 import { runJsonStdinSubprocess } from './subprocess-json.js';
 
 export function pdfRendererScriptPath(repoRoot: string): string {
-	return `${repoRoot}/tools/render_slides_pdf.py`;
+	return `${repoRoot}/tools/render_document_pdf.py`;
 }
 
-export async function renderFundingBriefPdf(
+export async function renderArtifactPdfFromHtml(
 	config: PennyToolsConfigShape,
 	htmlPath: string,
 	pdfPath: string,

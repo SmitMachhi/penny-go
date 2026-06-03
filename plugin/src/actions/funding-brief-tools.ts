@@ -1,28 +1,22 @@
-import type { FundingBriefInput } from '@penny/shared/funding-brief';
+import { validateCreateFundingArtifactInput } from '@penny/shared/artifact-validation';
+import type { CreateFundingArtifactParams } from '@penny/shared/artifact-types';
 
-import { validateFundingBriefInput } from '../domain/funding-brief.js';
 import type { PennyToolsConfigShape } from '../services/penny-config.js';
 import { resolveRepoRoot } from '../services/penny-config.js';
-import { renderFundingBriefPdf } from '../services/funding-brief-pdf.js';
-import { renderFundingBriefSlidesHtml } from '../services/funding-brief-slides.js';
 import {
-	buildArtifactMeta,
-	buildFundingBriefRecord,
 	createArtifactId,
-	loadFundingBriefRecord,
-	persistFundingBriefFiles
-} from '../services/funding-brief-storage.js';
+	loadArtifactMetaRecord,
+	persistArtifactFilesAllowPdfFailure
+} from '../services/artifact-storage.js';
 
-export type CreateFundingBriefParams = FundingBriefInput & {
-	artifactId?: string | undefined;
-};
+export type CreateFundingBriefParams = CreateFundingArtifactParams;
 
 export async function createFundingBriefAction(
 	config: PennyToolsConfigShape,
 	params: CreateFundingBriefParams,
 	signal?: AbortSignal | undefined
 ) {
-	const validation = validateFundingBriefInput(params);
+	const validation = validateCreateFundingArtifactInput(params);
 	if (!validation.ok) {
 		return {
 			success: false as const,
@@ -35,39 +29,36 @@ export async function createFundingBriefAction(
 	const now = new Date().toISOString();
 	const artifactId = params.artifactId?.trim() || createArtifactId();
 	const existing = params.artifactId
-		? await loadFundingBriefRecord(repoRoot, validation.value.sessionUuid, artifactId)
+		? await loadArtifactMetaRecord(repoRoot, params.sessionUuid, artifactId)
 		: null;
+
 	const version = existing ? existing.version + 1 : 1;
 	const createdAt = existing?.createdAt ?? now;
 
-	const record = buildFundingBriefRecord(validation.value, artifactId, version, {
-		createdAt,
-		updatedAt: now
-	});
-	const meta = buildArtifactMeta(record);
-	const slidesHtml = await renderFundingBriefSlidesHtml(record, repoRoot);
+	const fullParams: CreateFundingArtifactParams = {
+		...validation.value,
+		sessionUuid: params.sessionUuid,
+		artifactId
+	};
 
-	const persisted = await persistFundingBriefFiles({
-		repoRoot,
-		record,
-		meta,
-		slidesHtml
-	});
-
-	const pdfResult = await renderFundingBriefPdf(
+	const persisted = await persistArtifactFilesAllowPdfFailure({
 		config,
-		persisted.slidesPath,
-		persisted.pdfPath,
+		repoRoot,
+		params: fullParams,
+		artifactId,
+		version,
+		createdAt,
+		updatedAt: now,
 		signal
-	);
+	});
 
-	if (!pdfResult.success) {
+	if (!persisted.pdfOk) {
 		return {
 			success: false as const,
-			error: pdfResult.error ?? 'pdf_render_failed',
+			error: persisted.pdfError ?? 'pdf_render_failed',
 			artifactId,
-			sessionUuid: record.sessionUuid,
-			previewPath: persisted.slidesPath,
+			sessionUuid: params.sessionUuid,
+			documentPath: persisted.documentPath,
 			version
 		};
 	}
@@ -75,10 +66,10 @@ export async function createFundingBriefAction(
 	return {
 		success: true as const,
 		artifactId,
-		sessionUuid: record.sessionUuid,
-		title: record.title,
-		programCount: record.programs.length,
-		previewPath: persisted.slidesPath,
+		sessionUuid: params.sessionUuid,
+		title: fullParams.title,
+		programCount: persisted.meta.programCount,
+		documentPath: persisted.documentPath,
 		pdfPath: persisted.pdfPath,
 		version
 	};

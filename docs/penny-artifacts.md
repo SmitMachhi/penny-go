@@ -1,78 +1,66 @@
-# Penny artifacts
+# Penny funding artifacts
 
-Production-ready Claude-style artifacts for funding briefs: branded HTML slideshow preview, PDF download, server-side persistence per chat session.
+Production-ready artifacts: agent-authored markdown → PDF, server-side persistence per chat session.
 
-## What users see
+## Overview
 
-- Chat stays short and conversational.
-- Substantial recommendations appear in the **artifact panel** (right side on desktop, full-screen overlay on mobile).
-- Each artifact is a slide deck with Penny branding, one slide per program, plus executive summary.
-- Users can **download PDF** from the toolbar.
+- **Penny writes markdown** (`bodyMarkdown`) — brief pages first, strategy pages after.
+- **System generates PDF** (`brief.pdf`) — same file for panel preview and download.
+- Panel renders PDF pages with PDF.js (no HTML iframe).
 
-## Agent behavior
+## When Penny creates artifacts
 
 Penny calls `create_funding_brief` when:
 
-- The user asks for a brief, deck, slides, PDF, or export, or
-- She delivers two or more verified program recommendations with full detail.
+- The user asks for a brief, strategy, PDF, or export, or
+- Two or more verified programs are delivered with execution detail.
 
-See [`workspace/skills/penny-artifacts/SKILL.md`](../workspace/skills/penny-artifacts/SKILL.md).
+See `workspace/skills/penny-artifacts/SKILL.md` for agent workflow.
 
-## Storage layout
+## Storage layout (format v4)
 
 ```
-workspace/artifacts/<sessionUuid>/<artifactId>/
-  brief.json
-  slides.html
-  brief.pdf
-  meta.json
-workspace/artifacts/<sessionUuid>/index.json
+workspace/artifacts/<session-uuid>/<artifact-id>/
+  document.md      # canonical content (only copy)
+  brief.pdf        # generated deliverable
+  meta.json        # title, version, verification, optional evidence
 ```
 
-Cross-device access: BFF and OpenClaw gateway must share the same `PENNY_REPO_ROOT` (persistent volume). Artifacts load via session key — not browser localStorage.
-
-## Web API
-
-| Route | Purpose |
-| ----- | ------- |
-| `GET /api/artifacts?sessionKey=` | List artifacts for session |
-| `GET /api/artifacts/:id?sessionKey=&preview=html` | Slideshow HTML preview |
-| `GET /api/artifacts/:id?sessionKey=` | Artifact metadata (JSON) |
-| `GET /api/artifacts/:id/download?sessionKey=&format=pdf` | PDF download |
+Legacy `brief.json` and `slides.html` are removed on the next create/update.
 
 ## SSE events
 
-- `artifact.create` — new brief (version 1)
-- `artifact.update` — same `artifactId`, version bumped
+- `artifact.create` — new artifact (version 1)
+- `artifact.update` — revised artifact (version N+1)
 
 Emitted after `create_funding_brief` tool completes.
 
 ## Verification
 
 ```bash
-chmod +x scripts/verify_penny_artifacts.sh
 ./scripts/verify_penny_artifacts.sh
 ```
 
-Requires Playwright browsers for PDF step (same as Crawl4AI setup). Use `--skip-pdf` if slides-only smoke is enough.
+Requires Playwright for full PDF smoke. Use `--skip-pdf` if document-only smoke is enough.
 
-## Plugin tool
+## Tool
 
 `create_funding_brief` — registered in `penny-tools`, allowed in `config/openclaw.penny.example.json5`.
 
-The tool binds to the active OpenClaw session key at runtime (`agent:main:penny:<uuid>`). The agent does not pass a session id.
+Required: `title`, `triggerReason`, `bodyMarkdown` (with checklist or numbered steps), `verification`.
 
-Returns:
+Optional: `evidence.programs[]` (audit metadata only — not auto-rendered into PDF).
+
+Example tool result:
 
 ```json
 {
   "success": true,
   "artifactId": "...",
-  "sessionUuid": "...",
   "title": "...",
   "programCount": 3,
-  "previewPath": ".../slides.html",
-  "pdfPath": ".../brief.pdf",
-  "version": 1
+  "version": 1,
+  "documentPath": ".../document.md",
+  "pdfPath": ".../brief.pdf"
 }
 ```

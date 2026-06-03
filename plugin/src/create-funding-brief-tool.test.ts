@@ -11,20 +11,13 @@ const SESSION_KEY = buildPennySessionKey(SESSION_UUID);
 const sampleParams = {
 	title: 'Ontario SaaS funding brief',
 	triggerReason: 'user_requested' as const,
-	business: {
-		name: 'Acme SaaS',
-		province: 'Ontario'
-	},
+	bodyMarkdown:
+		'# Ontario SaaS funding brief\n\n## Plan\n\n- [ ] Review IRAP intake requirements\n\n1. Call an ITA this week.',
 	programs: [
 		{
 			name: 'IRAP',
-			whyFit: 'Supports R&D hiring.',
-			whyNot: 'Requires NRC advisor intake.',
-			benefitType: 'Grant',
-			intakeStatus: 'Open',
 			officialUrl: 'https://nrc.canada.ca/en/support-technology-innovation',
-			confidence: 'verified_live' as const,
-			nextStep: 'Contact an IRAP ITA.'
+			confidence: 'verified_live' as const
 		}
 	],
 	verification: {
@@ -41,9 +34,12 @@ test('createFundingBriefTool rejects missing penny session key', async () => {
 	assert.equal(details.error, 'invalid_session_key');
 });
 
-test('createFundingBriefTool rejects invalid brief content before storage', async () => {
+test('createFundingBriefTool rejects markdown without actionable steps', async () => {
 	const tool = createFundingBriefTool({ repoRoot: '/tmp/penny-go' }, SESSION_KEY);
-	const result = await tool.execute('call-2', { ...sampleParams, programs: [] });
+	const result = await tool.execute('call-2', {
+		...sampleParams,
+		bodyMarkdown: '# Summary only\n\nNo checklist here.'
+	});
 	const details = result.details as Record<string, unknown>;
 	assert.equal(details.success, false);
 	assert.equal(details.error, 'validation_failed');

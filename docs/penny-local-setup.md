@@ -17,7 +17,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 
 | Path | Role |
 | ---- | ---- |
-| `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skill) |
+| `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skills including stop-slop) |
 | `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `create_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
 | `database/data/funding/curated/verified-programs.jsonl` | Corpus |
@@ -227,7 +227,9 @@ npm install && npm run dev
 
 Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
 
-**Artifacts:** after verified recommendations, Penny can create a funding brief slideshow in the right panel (preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `create_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `create_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+
+**Voice:** anti–AI-slop rules are in **`workspace/SOUL.md`** (always in context). Full checklist: **`workspace/skills/stop-slop/`**. Add `stop-slop` to `agents.defaults.skills` when merging `config/openclaw.penny.example.json5`.
 
 Regression ladder (offline + optional live agent runs):
 

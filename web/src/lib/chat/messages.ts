@@ -192,17 +192,4 @@ export function normalizeHistoryMessages(rawMessages: unknown[]): ChatMessage[] 
 	return result;
 }
 
-export function toolLabel(name: string): string {
-	switch (name) {
-		case 'search_corpus':
-			return 'Searching funding corpus';
-		case 'read_official_source':
-			return 'Verifying official source';
-		case 'web_search':
-			return 'Searching the web (Exa)';
-		case 'create_funding_brief':
-			return 'Building funding brief';
-		default:
-			return name;
-	}
-}
+export { toolLabel } from './tool-presentations.js';

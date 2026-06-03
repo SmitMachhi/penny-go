@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { ValidationError } from '$lib/server/api-error.js';
 
-import { readGenerateTitleBody } from './+server.js';
+import { readGenerateTitleBody } from './generate-title-body.js';
 
 function buildRequest(body: unknown): Request {
 	return new Request('https://penny.local/api/sessions/key/generate-title', {

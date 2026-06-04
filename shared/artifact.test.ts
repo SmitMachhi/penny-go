@@ -70,6 +70,21 @@ test('validateCreateFundingArtifactInput accepts legacy programs alias', () => {
 	assert.equal(result.ok, true);
 });
 
+test('validateCreateFundingArtifactInput falls back to legacy programs when evidence is empty', () => {
+	const input = buildValidInput();
+	const result = validateCreateFundingArtifactInput({
+		...input,
+		evidence: {},
+		programs: input.evidence?.programs
+	});
+
+	assert.equal(result.ok, true);
+	if (!result.ok) {
+		return;
+	}
+	assert.equal(result.value.evidence?.programs?.length, 1);
+});
+
 test('validateCreateFundingArtifactInput rejects missing actionable markdown', () => {
 	const input = buildValidInput();
 	input.bodyMarkdown = 'Summary only.';

@@ -146,11 +146,14 @@ function parseTriggerReason(value: unknown, errors: ArtifactValidationError[]): 
 }
 
 function normalizeEvidence(input: Record<string, unknown>, errors: ArtifactValidationError[]): ArtifactEvidence | undefined {
+	const evidenceProgramsValue = isRecord(input.evidence) ? input.evidence.programs : undefined;
 	if (isRecord(input.evidence)) {
-		const programs = parseEvidencePrograms(input.evidence.programs, errors);
-		return programs.length > 0 ? { programs } : undefined;
+		const programs = parseEvidencePrograms(evidenceProgramsValue, errors);
+		if (programs.length > 0) {
+			return { programs };
+		}
 	}
-	if (Array.isArray(input.programs)) {
+	if (evidenceProgramsValue === undefined && Array.isArray(input.programs)) {
 		const programs = parseEvidencePrograms(input.programs, errors);
 		return programs.length > 0 ? { programs } : undefined;
 	}

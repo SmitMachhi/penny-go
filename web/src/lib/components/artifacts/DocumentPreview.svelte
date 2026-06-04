@@ -1,9 +1,11 @@
-<script lang="ts">
-	import { ExternalLink } from '@lucide/svelte';
+	<script lang="ts">
+		import { ExternalLink } from '@lucide/svelte';
 
-	type Props = {
-		artifactId: string;
-		sessionKey: string;
+		import { loadPdfObjectUrl, type PdfObjectUrl } from '$lib/chat/pdf-preview.js';
+
+		type Props = {
+			artifactId: string;
+			sessionKey: string;
 		version: number;
 		pdfAvailable: boolean;
 	};
@@ -12,6 +14,7 @@
 
 	let loadError = $state<string | null>(null);
 	let previewReady = $state(false);
+	let previewObjectUrl = $state<string | null>(null);
 
 	const pdfUrl = $derived(
 		`/api/artifacts/${artifactId}?sessionKey=${encodeURIComponent(sessionKey)}&preview=pdf&version=${version}`
@@ -21,9 +24,11 @@
 		const url = pdfUrl;
 		const available = pdfAvailable;
 		let cancelled = false;
+		let preview: PdfObjectUrl | null = null;
 
 		loadError = null;
 		previewReady = false;
+		previewObjectUrl = null;
 
 		if (!available || !artifactId || !sessionKey) {
 			return;
@@ -31,21 +36,14 @@
 
 		void (async () => {
 			try {
-				const response = await fetch(url, { credentials: 'same-origin' });
-				if (!response.ok) {
-					throw new Error(`pdf_fetch_${response.status}`);
+				const loadedPreview = await loadPdfObjectUrl({ url });
+				if (cancelled) {
+					loadedPreview.revoke();
+					return;
 				}
-				const contentType = response.headers.get('content-type') ?? '';
-				if (!contentType.includes('pdf')) {
-					throw new Error('pdf_invalid_content_type');
-				}
-				const blob = await response.blob();
-				if (cancelled || blob.size === 0) {
-					throw new Error('pdf_empty');
-				}
-				if (!cancelled) {
-					previewReady = true;
-				}
+				preview = loadedPreview;
+				previewObjectUrl = loadedPreview.objectUrl;
+				previewReady = true;
 			} catch {
 				if (!cancelled) {
 					loadError = 'Could not load PDF preview.';
@@ -56,6 +54,8 @@
 
 		return () => {
 			cancelled = true;
+			preview?.revoke();
+			previewObjectUrl = null;
 		};
 	});
 
@@ -85,10 +85,10 @@
 		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
 			Loading memo…
 		</div>
-	{:else}
-		<div class="flex shrink-0 items-center justify-end gap-2 border-b border-border/60 px-3 py-1.5">
-			<button
-				type="button"
+		{:else if previewObjectUrl}
+			<div class="flex shrink-0 items-center justify-end gap-2 border-b border-border/60 px-3 py-1.5">
+				<button
+					type="button"
 				class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
 				onclick={openInNewTab}
 			>
@@ -97,12 +97,12 @@
 			</button>
 		</div>
 		<div class="min-h-0 flex-1 overflow-hidden bg-white">
-			<embed
-				title="Funding memo preview"
-				src="{pdfUrl}#view=FitH"
-				type="application/pdf"
-				class="block h-full w-full"
-			/>
+				<embed
+					title="Funding memo preview"
+					src="{previewObjectUrl}#view=FitH"
+					type="application/pdf"
+					class="block h-full w-full"
+				/>
 		</div>
 	{/if}
 </div>

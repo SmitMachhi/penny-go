@@ -178,7 +178,7 @@
 				</div>
 				<button
 					type="button"
-					class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent"
+					class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
 					aria-label="Close funding plan panel"
 					onclick={onClose}
 				>

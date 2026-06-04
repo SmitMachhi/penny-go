@@ -68,7 +68,7 @@
 				<button
 					type="button"
 					class={cn(
-						'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-accent disabled:opacity-60'
+						'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary disabled:opacity-60'
 					)}
 					disabled={downloading}
 					onclick={() => void handleDownload()}
@@ -90,7 +90,7 @@
 			{/if}
 			<button
 				type="button"
-				class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent hover:text-foreground"
+				class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
 				aria-label="Close funding plan panel"
 				onclick={onClose}
 			>

@@ -72,6 +72,10 @@ export function mapAgentEventToSse(payload: AgentEventPayload): SsePayload | nul
 		};
 	}
 
+	if (payload.stream !== 'tool') {
+		return null;
+	}
+
 	const toolName = payload.data?.tool ?? payload.data?.name;
 	if (!toolName) {
 		return null;

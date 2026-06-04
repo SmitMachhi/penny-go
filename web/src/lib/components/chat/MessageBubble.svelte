@@ -85,8 +85,8 @@
 			type="button"
 			class={cn(
 				'mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
-				'opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
-				'hover:bg-penny-brand-subtle hover:text-primary'
+				'border border-transparent opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
+				'hover:border-primary/35 hover:text-primary'
 			)}
 			aria-label={copied ? 'Copied' : 'Copy message'}
 			onclick={() => void copyMessageText()}
@@ -124,7 +124,7 @@
 			<div class="mt-2 flex items-center">
 				<button
 					type="button"
-					class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-penny-brand-subtle hover:text-primary"
+					class="flex h-7 w-7 items-center justify-center rounded-md border border-transparent text-muted-foreground hover:border-primary/35 hover:text-primary"
 					aria-label={copied ? 'Copied' : 'Copy response'}
 					onclick={() => void copyMessageText()}
 				>

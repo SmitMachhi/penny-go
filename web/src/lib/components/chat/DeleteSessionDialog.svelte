@@ -23,7 +23,7 @@
 			<div class="mt-6 flex justify-end gap-2">
 				<button
 					type="button"
-					class="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent"
+					class="rounded-lg border border-border px-4 py-2 text-sm transition-colors hover:border-primary hover:text-primary"
 					onclick={onCancel}
 				>
 					Cancel

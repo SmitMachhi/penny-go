@@ -3,7 +3,7 @@
 	import { ChevronRight } from '@lucide/svelte';
 
 	import type { ToolActivity } from '$lib/chat/messages.js';
-	import PennyWorkSteps from '$lib/components/chat/PennyWorkSteps.svelte';
+	import ToolStrip from '$lib/components/chat/ToolStrip.svelte';
 	import { cn } from '$lib/utils.js';
 
 	const GENERIC_STATUS_LINES = new Set(['Thinking…', 'Thinking...', 'Working for you…']);
@@ -32,7 +32,8 @@
 	let traceEl = $state<HTMLDivElement | null>(null);
 	const isControlled = $derived(onToggle !== undefined);
 	const expanded = $derived(isControlled ? controlledExpanded : internalExpanded);
-	const showSteps = $derived(streaming);
+	const showTools = $derived(streaming && tools.length > 0);
+	const showWorkingHint = $derived(streaming && tools.length === 0);
 	const traceVisible = $derived(expanded && text.trim().length > 0);
 	const panelVisible = $derived(streaming || text.trim().length > 0);
 
@@ -109,8 +110,10 @@
 
 		{#if expanded}
 			<div class="mt-2 space-y-2 border-l-2 border-primary/20 pl-3">
-				{#if showSteps}
-					<PennyWorkSteps {tools} sending={streaming} />
+				{#if showTools}
+					<ToolStrip {tools} />
+				{:else if showWorkingHint}
+					<p class="text-xs text-muted-foreground">Working…</p>
 				{/if}
 				{#if traceVisible}
 					<div

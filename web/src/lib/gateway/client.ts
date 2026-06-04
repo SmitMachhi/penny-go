@@ -2,11 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { WebSocket } from 'ws';
 
 import type { GatewayConfig } from './config.js';
-import {
-	buildGatewayConnectParams,
-	parseGatewayFrame,
-	type PendingRequest
-} from './client-helpers.js';
+import { parseGatewayFrame, type PendingRequest } from './client-helpers.js';
+import { buildConnectParams } from './connect-params.js';
 import type { GatewayEventListener, GatewayFrame } from './types.js';
 
 export class GatewayClient {
@@ -151,7 +148,7 @@ export class GatewayClient {
 			timer
 		});
 
-		const params = buildGatewayConnectParams(this.config.token);
+		const params = buildConnectParams(this.config.token);
 		this.ws.send(
 			JSON.stringify({
 				type: 'req',

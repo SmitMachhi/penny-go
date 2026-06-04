@@ -24,12 +24,20 @@ export const PENNY_GATEWAY_RPC_REQUIRED_SCOPES = {
 
 export type PennyGatewayRpcMethod = keyof typeof PENNY_GATEWAY_RPC_REQUIRED_SCOPES;
 
-/** Scopes declared on gateway `connect` for the local Penny BFF (token stays server-side). */
-export const PENNY_GATEWAY_OPERATOR_SCOPES: readonly OperatorScope[] = [
+const CONNECT_SCOPE_ORDER: readonly OperatorScope[] = [
 	OPERATOR_READ_SCOPE,
 	OPERATOR_WRITE_SCOPE,
 	OPERATOR_ADMIN_SCOPE
 ];
+
+const REQUIRED_SCOPE_SET = new Set<OperatorScope>(
+	Object.values(PENNY_GATEWAY_RPC_REQUIRED_SCOPES)
+);
+
+/** Scopes declared on gateway `connect` — derived from `PENNY_GATEWAY_RPC_REQUIRED_SCOPES`. */
+export const PENNY_GATEWAY_OPERATOR_SCOPES: readonly OperatorScope[] = CONNECT_SCOPE_ORDER.filter(
+	(scope) => REQUIRED_SCOPE_SET.has(scope)
+);
 
 /** Mirrors OpenClaw `authorizeOperatorScopesForMethod` for Penny's static RPC set. */
 export function pennyConnectScopesAuthorizeMethod(

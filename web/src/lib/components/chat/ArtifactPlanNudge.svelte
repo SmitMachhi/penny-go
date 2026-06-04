@@ -22,7 +22,7 @@
 
 <button
 	type="button"
-	class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-primary/20 bg-penny-brand-subtle/80 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary/35 hover:bg-penny-brand-subtle hover:text-primary"
+	class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-primary/25 bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
 	title={artifactChipLabel(artifact)}
 	onclick={handleOpen}
 >

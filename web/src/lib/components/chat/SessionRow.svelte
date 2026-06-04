@@ -78,8 +78,10 @@
 		<button
 			type="button"
 			class={cn(
-				'w-full rounded-lg px-3 py-2 text-left transition-colors',
-				active ? 'bg-penny-brand-subtle text-primary' : 'hover:bg-penny-brand-subtle/70'
+				'w-full rounded-lg border px-3 py-2 text-left transition-colors',
+				active
+					? 'border-primary/45 text-primary'
+					: 'border-transparent hover:border-primary/35'
 			)}
 			onclick={onSelect}
 			ondblclick={startRename}
@@ -114,14 +116,14 @@
 			>
 				<button
 					type="button"
-					class="block w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+					class="block w-full px-3 py-1.5 text-left text-sm hover:text-primary"
 					onclick={startRename}
 				>
 					Rename
 				</button>
 				<button
 					type="button"
-					class="block w-full px-3 py-1.5 text-left text-sm text-destructive hover:bg-accent"
+					class="block w-full px-3 py-1.5 text-left text-sm text-destructive hover:text-destructive/80"
 					onclick={() => {
 						menuOpen = false;
 						onDelete();

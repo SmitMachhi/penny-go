@@ -36,9 +36,10 @@
 	class={cn(
 		'inline-flex items-center justify-center gap-2 rounded-lg text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50',
 		variant === 'default' && 'bg-primary text-primary-foreground hover:opacity-90',
-		variant === 'ghost' && 'hover:bg-accent hover:text-accent-foreground',
+		variant === 'ghost' &&
+			'border border-transparent hover:border-primary/35 hover:text-primary',
 		variant === 'outline' &&
-			'border border-border bg-card hover:border-primary/30 hover:bg-penny-brand-subtle',
+			'border border-border bg-card hover:border-primary hover:text-primary',
 		size === 'default' && 'h-10 px-4 py-2',
 		size === 'icon' && 'h-10 w-10',
 		className

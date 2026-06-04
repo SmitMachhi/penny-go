@@ -10,6 +10,14 @@ import {
 } from './penny-gateway-rpc-manifest.js';
 
 describe('PENNY_GATEWAY_OPERATOR_SCOPES', () => {
+	it('derives connect scopes from every RPC requirement', () => {
+		const required = [...new Set(Object.values(PENNY_GATEWAY_RPC_REQUIRED_SCOPES))];
+		expect(PENNY_GATEWAY_OPERATOR_SCOPES).toEqual(
+			expect.arrayContaining(required)
+		);
+		expect(PENNY_GATEWAY_OPERATOR_SCOPES).toContain(OPERATOR_ADMIN_SCOPE);
+	});
+
 	it('authorizes every GatewayRpc method', () => {
 		for (const method of Object.keys(PENNY_GATEWAY_RPC_REQUIRED_SCOPES)) {
 			const auth = pennyConnectScopesAuthorizeMethod(

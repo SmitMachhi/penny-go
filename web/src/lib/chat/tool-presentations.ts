@@ -51,9 +51,9 @@ const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 		Icon: Globe,
 		spinWhenRunning: true,
 		capsuleRunning:
-			'border-primary/30 bg-penny-brand-subtle text-primary dark:border-primary/40 dark:bg-primary/12 dark:text-primary',
+			'border-primary/50 text-primary dark:border-primary/55 dark:text-primary',
 		capsuleDone:
-			'border-primary/22 bg-penny-brand-subtle/70 text-primary/90 dark:border-primary/32 dark:bg-primary/8 dark:text-primary/85',
+			'border-primary/25 text-primary/85 dark:border-primary/30 dark:text-primary/80',
 		capsuleError:
 			'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
 		iconRunning: 'text-primary',
@@ -63,9 +63,9 @@ const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 		label: 'Building funding plan',
 		Icon: FileText,
 		capsuleRunning:
-			'border-primary/35 bg-penny-brand-subtle text-primary dark:border-primary/45 dark:bg-primary/15 dark:text-primary',
+			'border-primary/50 text-primary dark:border-primary/55 dark:text-primary',
 		capsuleDone:
-			'border-primary/25 bg-penny-brand-subtle/80 text-primary/90 dark:border-primary/35 dark:bg-primary/10 dark:text-primary/85',
+			'border-primary/25 text-primary/85 dark:border-primary/30 dark:text-primary/80',
 		capsuleError:
 			'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
 		iconRunning: 'text-primary',

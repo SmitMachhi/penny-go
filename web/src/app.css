@@ -332,7 +332,7 @@
 	}
 
 	.penny-work-step--running .penny-work-step__marker {
-		@apply border-primary/35 bg-penny-brand-subtle text-primary;
+		@apply border-primary text-primary;
 	}
 
 	.penny-work-step--running .penny-work-step__label {
@@ -452,12 +452,12 @@
 	}
 
 	.penny-markdown a.penny-link-preview {
-		@apply inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full border border-primary/20 bg-penny-brand-subtle px-2.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors;
+		@apply inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full border border-primary/25 bg-background px-2.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors;
 	}
 
 	.penny-markdown a.penny-link-preview:hover,
 	.penny-markdown a.penny-link-preview:focus-visible {
-		@apply border-primary/35 bg-penny-brand-muted text-penny-brand-deep underline decoration-primary/40 underline-offset-2;
+		@apply border-primary text-penny-brand-deep underline decoration-primary/40 underline-offset-2;
 	}
 
 	.penny-markdown a.penny-link-preview:focus-visible {
@@ -553,6 +553,6 @@
 	}
 
 	.penny-markdown tbody tr:hover {
-		@apply bg-accent/40;
+		@apply bg-muted/40;
 	}
 }

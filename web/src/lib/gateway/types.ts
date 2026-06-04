@@ -42,3 +42,20 @@ export type AgentEventPayload = {
 		replace?: boolean;
 	};
 };
+
+export type GatewaySessionRow = {
+	key: string;
+	label?: string;
+	derivedTitle?: string;
+	lastMessagePreview?: string;
+	updatedAt: number | null;
+};
+
+export type ListGatewaySessionsInput = {
+	agentId: string;
+	limit: number;
+	includeDerivedTitles: boolean;
+	includeLastMessage: boolean;
+	includeGlobal: boolean;
+	includeUnknown: boolean;
+};

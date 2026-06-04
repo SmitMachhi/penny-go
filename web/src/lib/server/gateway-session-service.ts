@@ -1,21 +1,7 @@
+import type { GatewaySessionRow, ListGatewaySessionsInput } from '$lib/gateway/types.js';
 import { getGatewayRpc } from '$lib/server/gateway-rpc.js';
 
-export type GatewaySessionRow = {
-	key: string;
-	label?: string;
-	derivedTitle?: string;
-	lastMessagePreview?: string;
-	updatedAt: number | null;
-};
-
-export type ListGatewaySessionsInput = {
-	agentId: string;
-	limit: number;
-	includeDerivedTitles: boolean;
-	includeLastMessage: boolean;
-	includeGlobal: boolean;
-	includeUnknown: boolean;
-};
+export type { GatewaySessionRow, ListGatewaySessionsInput };
 
 export async function listGatewaySessions(
 	input: ListGatewaySessionsInput

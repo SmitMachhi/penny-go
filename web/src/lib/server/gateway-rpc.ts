@@ -1,6 +1,5 @@
-import type { ChatSendResult } from '$lib/gateway/types.js';
+import type { ChatSendResult, GatewayEventListener, GatewaySessionRow, ListGatewaySessionsInput } from '$lib/gateway/types.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
-import type { GatewaySessionRow, ListGatewaySessionsInput } from '$lib/server/gateway-session-service.js';
 
 type ChatHistoryPayload = {
 	messages?: unknown[];
@@ -76,6 +75,14 @@ export class GatewayRpc {
 	async connect() {
 		await getGatewayClient().connect();
 	}
+
+	onEvent(listener: GatewayEventListener): () => void {
+		return getGatewayClient().onEvent(listener);
+	}
+
+	onDisconnect(listener: () => void): () => void {
+		return getGatewayClient().onDisconnect(listener);
+	}
 }
 
 let sharedRpc: GatewayRpc | null = null;
@@ -90,3 +97,5 @@ export function getGatewayRpc(): GatewayRpc {
 export function resetGatewayRpcForTests(): void {
 	sharedRpc = null;
 }
+
+export type { GatewaySessionRow, ListGatewaySessionsInput };

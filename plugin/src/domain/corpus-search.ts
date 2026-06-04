@@ -1,10 +1,8 @@
-import { MAX_CORPUS_RESULTS } from '../constants.js';
+import { MAX_CORPUS_RESULTS } from './corpus-config.js';
 import { corpusKeywordOverlapScore, sanitizeKeywords } from './corpus-keywords.js';
 import type { ProgramProfile, SearchCorpusResultRow } from './corpus-types.js';
-import {
-	PROGRAM_LOAN_AUDIT_FIELDS
-} from './program-fields.js';
-import { loanAuditTextFromFields, textLooksLoanBacked } from './loan-filter.js';
+import { PROGRAM_LOAN_AUDIT_FIELDS } from './program-fields.js';
+import { loanAuditTextFromFields, LOAN_INCLUDE_EVIDENCE, textLooksLoanBacked } from './loan-filter.js';
 import { normalizeToken } from './text-normalize.js';
 
 export type SearchCorpusParams = {
@@ -30,9 +28,9 @@ function jurisdictionMatches(
 
 function looksLoanBackedRow(row: ProgramProfile): boolean {
 	const auditText = loanAuditTextFromFields(
-		row as Record<string, unknown>,
+		row,
 		[...PROGRAM_LOAN_AUDIT_FIELDS],
-		true
+		LOAN_INCLUDE_EVIDENCE
 	);
 	return textLooksLoanBacked([auditText]);
 }

@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { resolvePennyRepoRoot, resolveWorkspaceRoot as sharedWorkspaceRoot } from '@penny/shared/penny-paths';
+import { resolvePennyRepoRoot } from '@penny/shared/penny-paths';
 
 import { CORPUS_SEGMENTS_RELATIVE } from '../constants.js';
 
@@ -40,8 +40,4 @@ export function resolveCorpusPath(config: PennyToolsConfigShape): string {
 
 export function readerScriptPath(repoRoot: string): string {
 	return path.join(repoRoot, 'tools', 'read_official_source.py');
-}
-
-export function resolveWorkspaceRoot(config: PennyToolsConfigShape): string {
-	return sharedWorkspaceRoot(resolveRepoRoot(config));
 }

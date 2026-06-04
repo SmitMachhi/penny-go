@@ -12,6 +12,7 @@ export type ProgramProfile = {
   deadline_or_intake?: string;
   status?: string;
   source_urls?: unknown;
+  evidence?: unknown[];
   confidence?: string;
 };
 

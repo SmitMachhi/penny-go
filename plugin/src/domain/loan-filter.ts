@@ -1,9 +1,13 @@
 import heuristic from '@penny/shared/loan-heuristic.json' with { type: 'json' };
 
+import type { ProgramProfile } from './corpus-types.js';
+
 /** Canonical loan-like heuristic — keep in sync via shared/loan-heuristic.json */
 const LOANLIKE_REGEX = new RegExp(heuristic.regex, 'iu');
 
 export const PROGRAM_LOAN_AUDIT_FIELDS = heuristic.auditFields as readonly (keyof import('./corpus-types.js').ProgramProfile)[];
+
+export const LOAN_INCLUDE_EVIDENCE = heuristic.includeEvidence;
 
 export function textLooksLoanBacked(textParts: readonly string[]): boolean {
 	const blob = textParts.filter(Boolean).join(' ');
@@ -11,8 +15,8 @@ export function textLooksLoanBacked(textParts: readonly string[]): boolean {
 }
 
 export function loanAuditTextFromFields(
-	row: Record<string, unknown>,
-	fields: readonly string[],
+	row: ProgramProfile,
+	fields: readonly (keyof ProgramProfile)[],
 	includeEvidence: boolean
 ): string {
 	const fieldText = fields.map((field) => String(row[field] ?? ''));

@@ -1,6 +1,6 @@
 import type { PennySessionView } from '$lib/types/penny-session.js';
 
-import type { GatewaySessionRow } from '$lib/server/gateway-session-service.js';
+import type { GatewaySessionRow } from '$lib/gateway/types.js';
 
 export const DEFAULT_SESSION_TITLE = 'New chat';
 export const LEGACY_SESSION_TITLE = 'Previous chat';

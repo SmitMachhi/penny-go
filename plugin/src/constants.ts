@@ -1,5 +1,3 @@
-export const MAX_CORPUS_RESULTS = 20;
-
 /** Milliseconds allowed for Crawl4AI subprocess. */
 export const READ_OFFICIAL_SOURCE_TIMEOUT_MS = 120_000;
 

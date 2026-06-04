@@ -92,9 +92,10 @@ def validate_row_shape(rows: list[JsonObject]) -> list[str]:
 
 def loan_audit_text(row: JsonObject) -> str:
     field_text = [str(row.get(field) or "") for field in TEXT_FIELDS_FOR_LOAN_AUDIT]
-    evidence = row.get("evidence")
-    if isinstance(evidence, list):
-        field_text.extend(str(item) for item in evidence)
+    if _LOAN_HEURISTIC.get("includeEvidence"):
+        evidence = row.get("evidence")
+        if isinstance(evidence, list):
+            field_text.extend(str(item) for item in evidence)
     return " ".join(field_text).lower()
 
 def validate_no_loanlike_rows(rows: list[JsonObject]) -> list[str]:

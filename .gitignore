@@ -30,3 +30,4 @@ venv/
 # openclaw local workspace state
 workspace/.openclaw/
 workspace/artifacts/
+workspace/penny-session-index.json

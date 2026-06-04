@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { onDestroy, onMount } from 'svelte';
+	import { onMount } from 'svelte';
 	import { FileText, Menu, PanelLeft, X } from '@lucide/svelte';
 
-	import { ChatClient } from '$lib/chat/client.svelte.js';
-	import { setPennyContext } from '$lib/chat/penny-context.js';
+	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
-	import { SessionClient } from '$lib/chat/sessions.svelte.js';
 	import PennyBrand from '$lib/components/chat/PennyBrand.svelte';
 	import SessionSidebar from '$lib/components/chat/SessionSidebar.svelte';
 	import ThemeToggle from '$lib/components/chat/ThemeToggle.svelte';
@@ -19,8 +17,7 @@
 
 	let { children }: Props = $props();
 
-	const chat = new ChatClient();
-	const sessions = new SessionClient();
+	const { chat, sessions } = getPennyContext();
 	let wasSending = $state(false);
 	let bannerDismissed = $state(false);
 
@@ -43,8 +40,6 @@
 			: APP_TITLE
 	);
 	const showSidebarBrand = $derived(sessions.state.sidebarCollapsed);
-
-	setPennyContext({ chat, sessions });
 
 	$effect(() => {
 		if (bannerError) {
@@ -94,10 +89,7 @@
 		return () => document.removeEventListener('visibilitychange', onVisibilityChange);
 	});
 
-	onDestroy(() => {
-		chat.stopHealthPolling();
-		chat.dispose();
-	});
+
 </script>
 
 <svelte:head>
@@ -136,7 +128,7 @@
 			</div>
 
 			<div class="flex items-center gap-2 sm:gap-3">
-				{#if chat.state.artifacts.length > 0}
+				{#if chat.state.activeArtifactId || chat.state.artifacts.length > 0}
 					<Button
 						variant={chat.state.artifactPanelOpen ? 'default' : 'outline'}
 						size="icon"

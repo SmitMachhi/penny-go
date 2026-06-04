@@ -1,3 +1,4 @@
+import { buildArtifactDownloadFilename } from '@penny/shared/artifact-download-filename';
 import { error } from '@sveltejs/kit';
 
 import { withApiCatch } from '$lib/server/api-handler.js';
@@ -38,19 +39,15 @@ export async function GET(event) {
 		}
 
 		const pdfBytes = await readArtifactPdfBytes(sessionKey, artifactId, version);
-		const filename = `${sanitizeFilename(meta.title)}-v${version}.pdf`;
+		const filename = buildArtifactDownloadFilename(meta.title, version);
+		const encodedFilename = encodeURIComponent(filename);
 
 		return new Response(new Uint8Array(pdfBytes), {
 			headers: {
 				'content-type': 'application/pdf',
-				'content-disposition': `attachment; filename="${filename}"`,
+				'content-disposition': `attachment; filename="${filename}"; filename*=UTF-8''${encodedFilename}`,
 				'cache-control': 'no-store'
 			}
 		});
 	}, 'failed to download artifact');
-}
-
-function sanitizeFilename(title: string): string {
-	const cleaned = title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
-	return cleaned.length > 0 ? cleaned : 'penny-funding-memo';
 }

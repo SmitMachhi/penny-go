@@ -11,7 +11,7 @@
 	let { artifactId, sessionKey, version, pdfAvailable }: Props = $props();
 
 	let loadError = $state<string | null>(null);
-	let previewUrl = $state<string | null>(null);
+	let previewReady = $state(false);
 
 	const pdfUrl = $derived(
 		`/api/artifacts/${artifactId}?sessionKey=${encodeURIComponent(sessionKey)}&preview=pdf&version=${version}`
@@ -21,39 +21,41 @@
 		const url = pdfUrl;
 		const available = pdfAvailable;
 		let cancelled = false;
-		let objectUrl: string | null = null;
 
 		loadError = null;
-		previewUrl = null;
+		previewReady = false;
 
-		if (!available) {
+		if (!available || !artifactId || !sessionKey) {
 			return;
 		}
 
 		void (async () => {
 			try {
-				const response = await fetch(url);
+				const response = await fetch(url, { credentials: 'same-origin' });
 				if (!response.ok) {
 					throw new Error(`pdf_fetch_${response.status}`);
 				}
-				const blob = await response.blob();
-				if (cancelled) {
-					return;
+				const contentType = response.headers.get('content-type') ?? '';
+				if (!contentType.includes('pdf')) {
+					throw new Error('pdf_invalid_content_type');
 				}
-				objectUrl = URL.createObjectURL(blob);
-				previewUrl = objectUrl;
+				const blob = await response.blob();
+				if (cancelled || blob.size === 0) {
+					throw new Error('pdf_empty');
+				}
+				if (!cancelled) {
+					previewReady = true;
+				}
 			} catch {
 				if (!cancelled) {
 					loadError = 'Could not load PDF preview.';
+					previewReady = false;
 				}
 			}
 		})();
 
 		return () => {
 			cancelled = true;
-			if (objectUrl) {
-				URL.revokeObjectURL(objectUrl);
-			}
 		};
 	});
 
@@ -79,7 +81,7 @@
 				Open PDF in new tab
 			</button>
 		</div>
-	{:else if !previewUrl}
+	{:else if !previewReady}
 		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
 			Loading memo…
 		</div>
@@ -94,10 +96,13 @@
 				Open in new tab
 			</button>
 		</div>
-		<iframe
-			title="Funding memo preview"
-			src={previewUrl}
-			class="min-h-0 w-full flex-1 border-0 bg-white"
-		></iframe>
+		<div class="min-h-0 flex-1 overflow-hidden bg-white">
+			<embed
+				title="Funding memo preview"
+				src="{pdfUrl}#view=FitH"
+				type="application/pdf"
+				class="block h-full w-full"
+			/>
+		</div>
 	{/if}
 </div>

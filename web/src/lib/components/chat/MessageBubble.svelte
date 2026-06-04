@@ -29,7 +29,7 @@
 		message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text)
 	);
 
-	const ARTIFACT_DOWNLOAD_PATH_PATTERN = /\/api\/artifacts\/[^/]+\/download\b/i;
+	const ARTIFACT_API_LINK_PATTERN = /\/api\/artifacts\/([^/?#]+)/i;
 
 	function handleAssistantClick(event: MouseEvent): void {
 		if (!onOpenArtifact) {
@@ -40,23 +40,23 @@
 			return;
 		}
 		const href = anchor.getAttribute('href') ?? '';
-		if (!ARTIFACT_DOWNLOAD_PATH_PATTERN.test(href)) {
+		if (!ARTIFACT_API_LINK_PATTERN.test(href)) {
 			return;
 		}
 		event.preventDefault();
 		event.stopPropagation();
-		const artifactId = planNudgeArtifact?.artifactId ?? extractArtifactIdFromHref(href);
+		const artifactId = extractArtifactIdFromHref(href) ?? planNudgeArtifact?.artifactId;
 		if (artifactId) {
 			onOpenArtifact(artifactId);
 		}
 	}
 
-	function interceptArtifactDownloads(node: HTMLElement): { destroy: () => void } {
+	function interceptArtifactLinks(node: HTMLElement): { destroy: () => void } {
 		const onClick = (event: MouseEvent) => handleAssistantClick(event);
-		node.addEventListener('click', onClick);
+		node.addEventListener('click', onClick, true);
 		return {
 			destroy() {
-				node.removeEventListener('click', onClick);
+				node.removeEventListener('click', onClick, true);
 			}
 		};
 	}
@@ -109,7 +109,7 @@
 			<div
 				class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
 				use:enhanceLinkPreviews
-				use:interceptArtifactDownloads
+				use:interceptArtifactLinks
 			>
 				{@html html}
 				{#if streaming}
@@ -117,11 +117,8 @@
 				{/if}
 			</div>
 		{/key}
-		{#if planNudgeArtifact && onOpenArtifact}
-			<ArtifactPlanNudge
-				artifact={planNudgeArtifact}
-				onOpen={() => onOpenArtifact(planNudgeArtifact.artifactId)}
-			/>
+		{#if planNudgeArtifact}
+			<ArtifactPlanNudge artifact={planNudgeArtifact} />
 		{/if}
 		{#if !streaming}
 			<div class="mt-2 flex items-center">

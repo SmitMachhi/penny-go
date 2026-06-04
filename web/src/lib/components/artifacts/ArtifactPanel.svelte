@@ -26,20 +26,29 @@
 	let updateNotice = $state<string | null>(null);
 	let updateNoticeTimeout: ReturnType<typeof setTimeout> | undefined;
 
+	const panelArtifactId = $derived(
+		open ? (activeArtifactId ?? artifacts[0]?.artifactId ?? null) : null
+	);
+
 	const activeArtifact = $derived(
-		artifacts.find((artifact) => artifact.artifactId === activeArtifactId) ?? artifacts[0] ?? null
+		artifacts.find((artifact) => artifact.artifactId === panelArtifactId) ?? null
 	);
 
 	const selectedVersionEntry = $derived(
 		versions.find((entry) => entry.version === selectedVersion) ?? versions.at(-1) ?? null
 	);
 
-	const previewPdfAvailable = $derived(selectedVersionEntry?.pdfAvailable ?? activeArtifact?.pdfAvailable ?? false);
+	const previewPdfAvailable = $derived(
+		selectedVersionEntry?.pdfAvailable ??
+			activeArtifact?.pdfAvailable ??
+			(panelArtifactId !== null && !activeArtifact)
+	);
 
 	$effect(() => {
 		const artifact = activeArtifact;
+		const artifactId = panelArtifactId;
 		const key = sessionKey;
-		if (!artifact || !open) {
+		if (!artifact || !artifactId || !open) {
 			return;
 		}
 
@@ -120,7 +129,7 @@
 	}
 </script>
 
-{#if activeArtifact && open}
+{#if open && panelArtifactId}
 	<button
 		type="button"
 		class="fixed inset-0 z-40 bg-black/40 lg:hidden"
@@ -135,7 +144,7 @@
 		)}
 		style="--artifact-panel-width: {widthPx}px"
 	>
-		{#if artifacts.length > 1}
+		{#if artifacts.length > 1 && activeArtifact}
 			<div class="flex gap-2 overflow-x-auto border-b border-border px-4 py-2">
 				{#each artifacts as artifact (artifact.artifactId)}
 					<Button
@@ -149,20 +158,38 @@
 			</div>
 		{/if}
 
-		<ArtifactToolbar
-			artifact={activeArtifact}
-			{sessionKey}
-			{versions}
-			{selectedVersion}
-			pdfAvailable={previewPdfAvailable}
-			{updateNotice}
-			{detailLoading}
-			onSelectVersion={handleSelectVersion}
-			onClose={onClose}
-		/>
+		{#if activeArtifact}
+			<ArtifactToolbar
+				artifact={activeArtifact}
+				{sessionKey}
+				{versions}
+				{selectedVersion}
+				pdfAvailable={previewPdfAvailable}
+				{updateNotice}
+				{detailLoading}
+				onSelectVersion={handleSelectVersion}
+				onClose={onClose}
+			/>
+		{:else}
+			<div class="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
+				<div>
+					<p class="text-sm font-semibold">Funding plan</p>
+					<p class="text-xs text-muted-foreground">Loading memo…</p>
+				</div>
+				<button
+					type="button"
+					class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground hover:bg-accent"
+					aria-label="Close funding plan panel"
+					onclick={onClose}
+				>
+					×
+				</button>
+			</div>
+		{/if}
+
 		<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
 			<DocumentPreview
-				artifactId={activeArtifact.artifactId}
+				artifactId={panelArtifactId}
 				{sessionKey}
 				version={selectedVersion}
 				pdfAvailable={previewPdfAvailable}

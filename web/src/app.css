@@ -319,6 +319,53 @@
 		animation: penny-answer-enter 0.36s ease-out;
 	}
 
+	.penny-work-steps {
+		@apply space-y-1.5;
+	}
+
+	.penny-work-step {
+		@apply flex items-center gap-2 text-xs leading-snug transition-colors duration-300;
+	}
+
+	.penny-work-step__marker {
+		@apply inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/80;
+	}
+
+	.penny-work-step--running .penny-work-step__marker {
+		@apply border-primary/35 bg-penny-brand-subtle text-primary;
+	}
+
+	.penny-work-step--running .penny-work-step__label {
+		@apply font-medium text-foreground;
+	}
+
+	.penny-work-step--done .penny-work-step__marker {
+		@apply border-emerald-200/80 bg-emerald-50 text-emerald-600 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-400;
+	}
+
+	.penny-work-step--done .penny-work-step__label {
+		@apply text-muted-foreground;
+	}
+
+	.penny-work-step--pending .penny-work-step__label {
+		@apply text-muted-foreground/55;
+	}
+
+	.penny-work-step--running {
+		animation: penny-work-step-enter 0.28s ease-out;
+	}
+
+	@keyframes penny-work-step-enter {
+		from {
+			opacity: 0;
+			transform: translate3d(0, 3px, 0);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0);
+		}
+	}
+
 	@media (prefers-reduced-motion: reduce) {
 		.penny-activity-wrap,
 		.penny-activity-wrap--exit {
@@ -328,7 +375,8 @@
 		.penny-activity-avatar,
 		.penny-activity-status,
 		.penny-activity-tool--live,
-		.penny-answer-enter {
+		.penny-answer-enter,
+		.penny-work-step--running {
 			animation: none;
 		}
 	}

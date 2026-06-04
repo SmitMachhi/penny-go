@@ -25,6 +25,10 @@ marked.use({
 				return renderPreviewLinkHtml(href, text, title);
 			}
 
+			if (href?.includes('/api/artifacts/')) {
+				return `<a href="${safeHref}"${titleAttr}>${linkText}</a>`;
+			}
+
 			return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${linkText}</a>`;
 		}
 	}

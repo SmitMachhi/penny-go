@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Download, X } from '@lucide/svelte';
 
+	import { downloadArtifactPdf } from '$lib/chat/artifact-download.js';
 	import type { ArtifactSummary, ArtifactVersionSummary } from '$lib/chat/artifacts.js';
 	import ArtifactVersionSelect from '$lib/components/artifacts/ArtifactVersionSelect.svelte';
 	import { cn } from '$lib/utils.js';
@@ -29,12 +30,22 @@
 		onClose
 	}: Props = $props();
 
+	let downloading = $state(false);
+
 	const downloadHref = $derived(
 		`/api/artifacts/${artifact.artifactId}/download?sessionKey=${encodeURIComponent(sessionKey)}&format=pdf&version=${selectedVersion}`
 	);
 
-	function handleDownloadClick(event: MouseEvent): void {
-		event.stopPropagation();
+	async function handleDownload(): Promise<void> {
+		if (downloading || !pdfAvailable) {
+			return;
+		}
+		downloading = true;
+		try {
+			await downloadArtifactPdf(downloadHref, artifact.title, selectedVersion);
+		} finally {
+			downloading = false;
+		}
 	}
 </script>
 
@@ -54,17 +65,17 @@
 		</div>
 		<div class="flex shrink-0 items-center gap-1.5">
 			{#if pdfAvailable}
-				<a
-					href={downloadHref}
+				<button
+					type="button"
 					class={cn(
-						'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-accent'
+						'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-accent disabled:opacity-60'
 					)}
-					download={`${artifact.title}-v${selectedVersion}.pdf`}
-					onclick={handleDownloadClick}
+					disabled={downloading}
+					onclick={() => void handleDownload()}
 				>
 					<Download class="h-4 w-4" />
-					<span class="hidden sm:inline">Download</span>
-				</a>
+					<span class="hidden sm:inline">{downloading ? 'Downloading…' : 'Download'}</span>
+				</button>
 			{:else}
 				<button
 					type="button"

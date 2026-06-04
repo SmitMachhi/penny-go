@@ -16,4 +16,12 @@ describe('sanitizeAssistantDisplayText', () => {
 		expect(output).not.toMatch(/^MEDIA:/m);
 		expect(output).toContain('Here is your plan.');
 	});
+
+	it('removes artifact api links from markdown', () => {
+		const output = sanitizeAssistantDisplayText(
+			'[Open memo](/api/artifacts/abc/download?sessionKey=x&format=pdf) and /api/artifacts/abc?preview=pdf'
+		);
+		expect(output).not.toMatch(/\/api\/artifacts\//);
+		expect(output).toContain('Open memo');
+	});
 });

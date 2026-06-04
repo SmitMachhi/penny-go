@@ -103,7 +103,7 @@ export function startRunState(state: ChatClientState): void {
 	state.operationError = null;
 	state.runTrace = createEmptyRunTrace();
 	state.streamingAnswerText = '';
-	state.runTraceExpanded = false;
+	state.runTraceExpanded = true;
 	state.tools = [];
 }
 

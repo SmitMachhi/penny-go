@@ -71,11 +71,13 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview> {
 		return cached.preview;
 	}
 
-	const downloaded = await downloadHtml(url);
-	const preview = parseLinkPreviewFromHtml(downloaded.html, downloaded.url);
-	previewCache.set(cacheKey, { preview, expiresAt: Date.now() + CACHE_TTL_MS });
-	return preview;
-}
+		const downloaded = await downloadHtml(url);
+		const preview = await sanitizePreviewFavicon(
+			parseLinkPreviewFromHtml(downloaded.html, downloaded.url)
+		);
+		previewCache.set(cacheKey, { preview, expiresAt: Date.now() + CACHE_TTL_MS });
+		return preview;
+	}
 
 async function downloadHtml(initialUrl: URL): Promise<DownloadedHtml> {
 	const controller = new AbortController();
@@ -114,6 +116,19 @@ async function downloadHtml(initialUrl: URL): Promise<DownloadedHtml> {
 async function fetchPreviewUrl(url: URL, signal: AbortSignal): Promise<PreviewHttpResponse> {
 	const address = await resolvePublicAddress(url);
 	return previewTransport(url, address, signal);
+}
+
+async function sanitizePreviewFavicon(preview: LinkPreview): Promise<LinkPreview> {
+	if (!preview.favicon) {
+		return preview;
+	}
+	try {
+		const faviconUrl = parsePreviewableUrl(preview.favicon);
+		await resolvePublicAddress(faviconUrl);
+		return { ...preview, favicon: faviconUrl.toString() };
+	} catch {
+		return { ...preview, favicon: null };
+	}
 }
 
 async function resolvePublicAddress(url: URL): Promise<string> {

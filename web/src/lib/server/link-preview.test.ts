@@ -119,4 +119,27 @@ describe('fetchLinkPreview', () => {
 			expect.any(AbortSignal)
 		);
 	});
+
+	it('drops favicon urls that resolve to blocked addresses', async () => {
+		const transportMock = vi.fn<PreviewTransport>(
+			async () =>
+				Promise.resolve({
+					status: 200,
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode(
+						'<html><head><title>Public page</title><link rel="icon" href="http://icons.example/favicon.ico"></head></html>'
+					)
+				})
+		);
+		dnsLookupMock
+			.mockResolvedValueOnce([{ address: PUBLIC_TEST_ADDRESS, family: 4 }])
+			.mockResolvedValueOnce([{ address: LOOPBACK_TEST_ADDRESS, family: 4 }]);
+		setLinkPreviewTransportForTests(transportMock);
+
+		const preview = await fetchLinkPreview('https://example.ca/start');
+
+		expect(preview.title).toBe('Public page');
+		expect(preview.favicon).toBeNull();
+		expect(dnsLookupMock).toHaveBeenCalledWith('icons.example', { all: true, verbatim: true });
+	});
 });

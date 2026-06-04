@@ -8,6 +8,7 @@ import type {
 	ArtifactTriggerReason,
 	ArtifactValidationError,
 	ArtifactValidationResult,
+	ArtifactVerification,
 	ArtifactVersionSnapshot,
 	CreateFundingArtifactInput,
 	CreateFundingArtifactParams,
@@ -30,6 +31,9 @@ import {
 export const MAX_EVIDENCE_PROGRAMS = 5;
 export const ARTIFACT_FORMAT_VERSION = 5;
 export const MAX_CHANGE_SUMMARY_LENGTH = 280;
+const LEGACY_ARTIFACT_FORMAT_VERSION = 1;
+const LEGACY_VERIFICATION_NOTE =
+	'Legacy artifact created before verification metadata was recorded.';
 
 export const CONFIDENCE_LABELS = [
 	'verified_live',
@@ -232,7 +236,10 @@ export function validateCreateFundingArtifactInput(input: unknown): ArtifactVali
 	return errors.length > 0 || !value ? { ok: false, errors } : { ok: true, value };
 }
 
-type LegacyArtifactMetaRecord = ArtifactMetaRecord & { version?: number };
+type LegacyArtifactMetaRecord = {
+	latestVersion?: unknown;
+	version?: unknown;
+};
 
 export function resolveLatestVersion(meta: LegacyArtifactMetaRecord): number {
 	if (typeof meta.latestVersion === 'number' && meta.latestVersion >= 1) {
@@ -248,36 +255,70 @@ export function normalizeArtifactMetaRecord(raw: unknown): ArtifactMetaRecord | 
 	if (typeof raw !== 'object' || raw === null) {
 		return null;
 	}
-	const record = raw as LegacyArtifactMetaRecord;
+	const record = raw as Record<string, unknown> & LegacyArtifactMetaRecord;
+	const triggerReason = parseArtifactTriggerReason(record.triggerReason);
+	const verification = normalizeArtifactVerification(record.verification, record.updatedAt);
 	if (
 		typeof record.artifactId !== 'string' ||
 		typeof record.sessionUuid !== 'string' ||
 		typeof record.title !== 'string' ||
-		typeof record.formatVersion !== 'number' ||
-		typeof record.triggerReason !== 'string' ||
+		!triggerReason ||
 		typeof record.createdAt !== 'string' ||
 		typeof record.updatedAt !== 'string' ||
 		typeof record.programCount !== 'number' ||
-		typeof record.verification !== 'object' ||
-		record.verification === null
+		!verification
 	) {
 		return null;
 	}
 
 	const latestVersion = resolveLatestVersion(record);
+	const formatVersion =
+		typeof record.formatVersion === 'number'
+			? record.formatVersion
+			: LEGACY_ARTIFACT_FORMAT_VERSION;
 	return {
 		artifactId: record.artifactId,
 		sessionUuid: record.sessionUuid,
 		title: record.title,
 		latestVersion,
-		formatVersion: record.formatVersion,
-		triggerReason: record.triggerReason,
+		formatVersion,
+		triggerReason,
 		createdAt: record.createdAt,
 		updatedAt: record.updatedAt,
 		programCount: record.programCount,
-		pdfAvailable: record.pdfAvailable ?? true,
-		verification: record.verification,
-		evidence: record.evidence
+		pdfAvailable: typeof record.pdfAvailable === 'boolean' ? record.pdfAvailable : true,
+		verification,
+		evidence: isRecord(record.evidence) ? record.evidence : undefined
+	};
+}
+
+function parseArtifactTriggerReason(value: unknown): ArtifactTriggerReason | null {
+	return typeof value === 'string' && isOneOf(TRIGGER_REASONS, value) ? value : null;
+}
+
+function normalizeArtifactVerification(
+	value: unknown,
+	updatedAt: unknown
+): ArtifactVerification | null {
+	if (value === undefined) {
+		return typeof updatedAt === 'string'
+			? {
+					verifiedAt: updatedAt,
+					urlsChecked: [],
+					notes: LEGACY_VERIFICATION_NOTE
+				}
+			: null;
+	}
+	if (!isRecord(value) || typeof value.verifiedAt !== 'string' || !Array.isArray(value.urlsChecked)) {
+		return null;
+	}
+	if (!value.urlsChecked.every((url) => typeof url === 'string')) {
+		return null;
+	}
+	return {
+		verifiedAt: value.verifiedAt,
+		urlsChecked: value.urlsChecked,
+		notes: readOptionalString(value.notes)
 	};
 }
 
@@ -378,7 +419,7 @@ async function migrateFlatArtifactToVersioned(
 	rawMeta: unknown
 ): Promise<ArtifactMetaRecord> {
 	const latestVersion = resolveLatestVersion(
-		typeof rawMeta === 'object' && rawMeta !== null ? (rawMeta as ArtifactMetaRecord) : normalized
+		typeof rawMeta === 'object' && rawMeta !== null ? (rawMeta as LegacyArtifactMetaRecord) : normalized
 	);
 	const versionDir = resolveArtifactVersionDir(
 		options.repoRoot,

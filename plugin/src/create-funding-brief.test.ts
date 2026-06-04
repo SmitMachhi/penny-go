@@ -7,8 +7,10 @@ import test from 'node:test';
 import { validateCreateFundingArtifactInput } from '@penny/shared/artifact-validation';
 import {
 	DOCUMENT_MD_FILENAME,
+	LEGACY_BRIEF_FILENAME,
 	META_FILENAME,
 	PDF_FILENAME,
+	resolveArtifactFilePath,
 	resolveArtifactVersionFilePath
 } from '@penny/shared/penny-paths';
 
@@ -18,6 +20,7 @@ import {
 	loadArtifactMetaRecord,
 	persistArtifactFilesAllowPdfFailure
 } from './services/artifact-storage.js';
+import { createFundingBriefAction } from './actions/funding-brief-tools.js';
 
 const SESSION_UUID = '550e8400-e29b-41d4-a716-446655440000';
 const FAKE_PDF_BYTES = 'rendered pdf bytes';
@@ -239,4 +242,58 @@ test('persistArtifactFilesAllowPdfFailure writes versioned pdf when renderer suc
 	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
 	assert.equal(stored?.pdfAvailable, true);
 	assert.equal(stored?.latestVersion, 1);
+});
+
+test('createFundingBriefAction updates legacy flat artifact as next version', async () => {
+	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
+	assert.equal(validation.ok, true);
+	if (!validation.ok) {
+		return;
+	}
+
+	const repoRoot = await mkdtemp(join(tmpdir(), 'penny-artifact-legacy-update-'));
+	const fakePythonPath = await writeFakePdfRenderer(repoRoot);
+	const artifactId = '6ba7b814-9dad-41d4-a716-446655440000';
+	const metaPath = resolveArtifactFilePath(repoRoot, SESSION_UUID, artifactId, META_FILENAME);
+	const legacyBriefPath = resolveArtifactFilePath(
+		repoRoot,
+		SESSION_UUID,
+		artifactId,
+		LEGACY_BRIEF_FILENAME
+	);
+	const legacyPdfPath = resolveArtifactFilePath(repoRoot, SESSION_UUID, artifactId, PDF_FILENAME);
+	await mkdir(dirname(metaPath), { recursive: true });
+	await writeFile(
+		metaPath,
+		`${JSON.stringify(
+			{
+				artifactId,
+				sessionUuid: SESSION_UUID,
+				title: 'Legacy brief',
+				programCount: 1,
+				version: 1,
+				triggerReason: 'auto',
+				createdAt: '2026-05-24T12:00:00.000Z',
+				updatedAt: '2026-05-24T12:00:00.000Z'
+			},
+			null,
+			2
+		)}\n`,
+		'utf8'
+	);
+	await writeFile(legacyBriefPath, '{"title":"Legacy brief"}\n', 'utf8');
+	await writeFile(legacyPdfPath, 'legacy pdf bytes', 'utf8');
+
+	const result = await createFundingBriefAction(
+		{ repoRoot, pythonPath: fakePythonPath },
+		{ ...validation.value, sessionUuid: SESSION_UUID, artifactId, title: 'Updated brief' }
+	);
+
+	assert.equal(result.success, true);
+	assert.equal(result.version, 2);
+	assert.equal(result.latestVersion, 2);
+	const v1PdfPath = resolveArtifactVersionFilePath(repoRoot, SESSION_UUID, artifactId, 1, PDF_FILENAME);
+	const v2PdfPath = resolveArtifactVersionFilePath(repoRoot, SESSION_UUID, artifactId, 2, PDF_FILENAME);
+	assert.equal(await readFile(v1PdfPath, 'utf8'), 'legacy pdf bytes');
+	assert.equal(await readFile(v2PdfPath, 'utf8'), FAKE_PDF_BYTES);
 });

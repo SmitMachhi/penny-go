@@ -4,7 +4,7 @@
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import type { ChatMessage } from '$lib/chat/messages.js';
 	import { enhanceLinkPreviews } from '$lib/chat/link-preview-action.js';
-	import { renderMarkdown } from '$lib/chat/markdown.js';
+	import { renderAssistantMessageContent } from '$lib/chat/message-render.js';
 	import ArtifactPlanNudge from '$lib/components/chat/ArtifactPlanNudge.svelte';
 	import { cn } from '$lib/utils.js';
 
@@ -21,12 +21,17 @@
 
 	let copied = $state(false);
 
-	const html = $derived(
-		message.role === 'assistant' ? renderMarkdown(message.text) : ''
+	const rendered = $derived(
+		message.role === 'assistant'
+			? renderAssistantMessageContent({ text: message.text, streaming })
+			: null
 	);
 
 	const hasTable = $derived(
-		message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text)
+		message.role === 'assistant' &&
+			!streaming &&
+			/\|/.test(message.text) &&
+			/\n\|[-:\s|]+\|/.test(message.text)
 	);
 
 	const ARTIFACT_API_LINK_PATTERN = /\/api\/artifacts\/([^/?#]+)/i;
@@ -103,23 +108,26 @@
 			{message.text}
 		</div>
 	</div>
-{:else}
-	<article class="w-full">
-		{#key html}
-			<div
-				class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
-				use:enhanceLinkPreviews
-				use:interceptArtifactLinks
-			>
-				{@html html}
-				{#if streaming}
-					<span class="penny-stream-cursor ml-0.5 inline-block">▌</span>
-				{/if}
-			</div>
-		{/key}
-		{#if planNudgeArtifact}
-			<ArtifactPlanNudge artifact={planNudgeArtifact} />
-		{/if}
+	{:else}
+		<article class="w-full">
+			{#if rendered?.kind === 'text'}
+				<div
+					class="penny-markdown whitespace-pre-wrap"
+				>
+					{rendered.text}<span class="penny-stream-cursor ml-0.5 inline-block">▌</span>
+				</div>
+			{:else if rendered}
+				<div
+					class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
+					use:enhanceLinkPreviews
+					use:interceptArtifactLinks
+				>
+					{@html rendered.html}
+				</div>
+			{/if}
+			{#if planNudgeArtifact}
+				<ArtifactPlanNudge artifact={planNudgeArtifact} />
+			{/if}
 		{#if !streaming}
 			<div class="mt-2 flex items-center">
 				<button

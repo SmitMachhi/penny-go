@@ -1,5 +1,8 @@
 <script lang="ts">
-	import HomeView from '$lib/components/chat/HomeView.svelte';
+	const homeView = import('$lib/components/chat/HomeView.svelte');
 </script>
 
-<HomeView />
+{#await homeView then module}
+	{@const HomeView = module.default}
+	<HomeView />
+{/await}

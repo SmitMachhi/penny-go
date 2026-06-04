@@ -1,5 +1,8 @@
 <script lang="ts">
-	import ChatView from '$lib/components/chat/ChatView.svelte';
+	const chatView = import('$lib/components/chat/ChatView.svelte');
 </script>
 
-<ChatView />
+{#await chatView then module}
+	{@const ChatView = module.default}
+	<ChatView />
+{/await}

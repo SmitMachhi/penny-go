@@ -1,8 +1,32 @@
 import { marked } from 'marked';
 
-import { renderBriefMarkdown } from './brief-markdown.ts';
-
 const PRINT_CSP = "default-src 'none'; style-src 'unsafe-inline'";
+const ALLOWED_TAGS = new Set([
+	'a',
+	'blockquote',
+	'br',
+	'code',
+	'em',
+	'h1',
+	'h2',
+	'h3',
+	'h4',
+	'hr',
+	'li',
+	'ol',
+	'p',
+	'pre',
+	'strong',
+	'span',
+	'table',
+	'tbody',
+	'td',
+	'th',
+	'thead',
+	'tr',
+	'ul'
+]);
+const ALLOWED_ATTRS = new Set(['href', 'target', 'rel', 'class']);
 
 const PRINT_CSS = `
   @page { size: letter; margin: 0.75in; }
@@ -33,8 +57,85 @@ const PRINT_CSS = `
   li:has(.task-checkbox) { list-style: none; margin-left: -20pt; }
 `;
 
+function escapeHtmlAttribute(value: string): string {
+	return value
+		.replaceAll('&', '&amp;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;');
+}
+
+function sanitizeAttributes(tagName: string, rawAttrs: string): string {
+	if (!rawAttrs.trim()) {
+		return '';
+	}
+
+	const attrs: string[] = [];
+	const attrPattern = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)(?:\s*=\s*("([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/g;
+	for (const match of rawAttrs.matchAll(attrPattern)) {
+		const name = match[1]?.toLowerCase();
+		if (!name || !ALLOWED_ATTRS.has(name)) {
+			continue;
+		}
+		const value = match[3] ?? match[4] ?? match[5] ?? '';
+		if (name === 'href' && !/^https?:\/\//i.test(value)) {
+			continue;
+		}
+		attrs.push(`${name}="${escapeHtmlAttribute(value)}"`);
+	}
+
+	if (tagName === 'a' && !attrs.some((attr) => attr.startsWith('target='))) {
+		attrs.push('target="_blank"', 'rel="noopener noreferrer"');
+	}
+
+	return attrs.length > 0 ? ` ${attrs.join(' ')}` : '';
+}
+
+function sanitizePrintHtml(html: string): string {
+	return html.replace(/<\/?([a-zA-Z0-9]+)([^>]*)>/g, (full, tagName: string, rawAttrs: string) => {
+		const lowerTag = tagName.toLowerCase();
+		if (!ALLOWED_TAGS.has(lowerTag)) {
+			return '';
+		}
+		if (full.startsWith('</')) {
+			return `</${lowerTag}>`;
+		}
+		if (lowerTag === 'br' || lowerTag === 'hr') {
+			return `<${lowerTag}>`;
+		}
+		return `<${lowerTag}${sanitizeAttributes(lowerTag, rawAttrs)}>`;
+	});
+}
+
+function formatPrintCheckboxes(html: string): string {
+	return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/gi, '<span class="task-checkbox"></span>');
+}
+
+function renderLink(href: string | null | undefined, title: string | null | undefined, text: string): string {
+	const safeHref = escapeHtmlAttribute(href ?? '');
+	const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
+	return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${text}</a>`;
+}
+
+function parseMarkdown(markdown: string): string {
+	const parsed = marked.parse(markdown, { async: false });
+	if (typeof parsed !== 'string') {
+		throw new Error('unexpected async markdown render');
+	}
+	return parsed;
+}
+
 export function renderMarkdownToPrintHtml(markdown: string, title: string): string {
-	const bodyHtml = renderBriefMarkdown(markdown, marked);
+	marked.setOptions({ gfm: true, breaks: false });
+	marked.use({
+		renderer: {
+			link({ href, title, text }) {
+				return renderLink(href, title, text);
+			}
+		}
+	});
+	const bodyHtml = sanitizePrintHtml(formatPrintCheckboxes(parseMarkdown(markdown)));
 	const safeTitle = title.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 	return `<!DOCTYPE html>

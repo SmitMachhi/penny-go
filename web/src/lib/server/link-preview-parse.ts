@@ -1,4 +1,5 @@
 import type { LinkPreview } from '$lib/link-preview/types.js';
+import { parsePreviewableUrl } from '$lib/server/link-preview-url.js';
 
 const DESCRIPTION_MAX_CHARS = 200;
 const TITLE_FALLBACK_MAX_CHARS = 120;
@@ -67,14 +68,22 @@ function resolveFavicon(html: string, url: URL): string | null {
 
 	if (iconHref) {
 		try {
-			return new URL(iconHref, url).toString();
+			return safeFaviconUrl(new URL(iconHref, url));
 		} catch {
 			return null;
 		}
 	}
 
 	try {
-		return new URL('/favicon.ico', url).toString();
+		return safeFaviconUrl(new URL('/favicon.ico', url));
+	} catch {
+		return null;
+	}
+}
+
+function safeFaviconUrl(url: URL): string | null {
+	try {
+		return parsePreviewableUrl(url.toString()).toString();
 	} catch {
 		return null;
 	}

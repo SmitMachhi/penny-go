@@ -22,4 +22,11 @@ describe('parseLinkPreviewFromHtml', () => {
 		expect(preview.siteName).toBe('Example Site');
 		expect(preview.favicon).toBe('https://example.com/favicon.ico');
 	});
+
+	it('drops private network favicon urls', () => {
+		const html = '<link rel="icon" href="http://127.0.0.1/admin.ico" />';
+		const preview = parseLinkPreviewFromHtml(html, new URL('https://example.com/docs'));
+
+		expect(preview.favicon).toBeNull();
+	});
 });

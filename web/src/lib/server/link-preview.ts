@@ -1,15 +1,34 @@
 import type { LinkPreview } from '$lib/link-preview/types.js';
+import { ValidationError } from '$lib/server/api-error.js';
 import { parseLinkPreviewFromHtml } from '$lib/server/link-preview-parse.js';
 import { parsePreviewableUrl } from '$lib/server/link-preview-url.js';
 
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_HTML_BYTES = 512_000;
 const CACHE_TTL_MS = 3_600_000;
+const MAX_REDIRECTS = 5;
 const USER_AGENT = 'PennyLinkPreview/1.0';
+const MOVED_PERMANENTLY_STATUS = 301;
+const FOUND_STATUS = 302;
+const SEE_OTHER_STATUS = 303;
+const TEMPORARY_REDIRECT_STATUS = 307;
+const PERMANENT_REDIRECT_STATUS = 308;
+const REDIRECT_STATUSES = new Set([
+	MOVED_PERMANENTLY_STATUS,
+	FOUND_STATUS,
+	SEE_OTHER_STATUS,
+	TEMPORARY_REDIRECT_STATUS,
+	PERMANENT_REDIRECT_STATUS
+]);
 
 type CacheEntry = {
 	preview: LinkPreview;
 	expiresAt: number;
+};
+
+type DownloadedHtml = {
+	html: string;
+	url: URL;
 };
 
 const previewCache = new Map<string, CacheEntry>();
@@ -22,39 +41,79 @@ export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview> {
 		return cached.preview;
 	}
 
-	const html = await downloadHtml(url);
-	const preview = parseLinkPreviewFromHtml(html, url);
+	const downloaded = await downloadHtml(url);
+	const preview = parseLinkPreviewFromHtml(downloaded.html, downloaded.url);
 	previewCache.set(cacheKey, { preview, expiresAt: Date.now() + CACHE_TTL_MS });
 	return preview;
 }
 
-async function downloadHtml(url: URL): Promise<string> {
+async function downloadHtml(initialUrl: URL): Promise<DownloadedHtml> {
 	const controller = new AbortController();
 	const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+	let url = initialUrl;
 
 	try {
-		const response = await fetch(url, {
-			signal: controller.signal,
-			headers: {
-				Accept: 'text/html,application/xhtml+xml',
-				'User-Agent': USER_AGENT
-			},
-			redirect: 'follow'
-		});
+		for (let redirectCount = 0; redirectCount <= MAX_REDIRECTS; redirectCount += 1) {
+			const response = await fetchPreviewUrl(url, controller.signal);
+			if (isRedirectResponse(response)) {
+				url = parseRedirectUrl(response, url, redirectCount);
+				continue;
+			}
 
-		if (!response.ok) {
-			throw new Error(`preview fetch failed: ${response.status}`);
+			if (!response.ok) {
+				throw new Error(`preview fetch failed: ${response.status}`);
+			}
+
+			const contentType = response.headers.get('content-type') ?? '';
+			if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+				throw new Error('preview response is not html');
+			}
+
+			const buffer = await readLimitedBody(response, MAX_HTML_BYTES);
+			return {
+				html: new TextDecoder('utf-8', { fatal: false }).decode(buffer),
+				url
+			};
 		}
 
-		const contentType = response.headers.get('content-type') ?? '';
-		if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
-			throw new Error('preview response is not html');
-		}
-
-		const buffer = await readLimitedBody(response, MAX_HTML_BYTES);
-		return new TextDecoder('utf-8', { fatal: false }).decode(buffer);
+		throw new Error('preview redirect limit exceeded');
 	} finally {
 		clearTimeout(timeout);
+	}
+}
+
+function fetchPreviewUrl(url: URL, signal: AbortSignal): Promise<Response> {
+	return fetch(url, {
+		signal,
+		headers: {
+			Accept: 'text/html,application/xhtml+xml',
+			'User-Agent': USER_AGENT
+		},
+		redirect: 'manual'
+	});
+}
+
+function isRedirectResponse(response: Response): boolean {
+	return REDIRECT_STATUSES.has(response.status);
+}
+
+function parseRedirectUrl(response: Response, currentUrl: URL, redirectCount: number): URL {
+	if (redirectCount >= MAX_REDIRECTS) {
+		throw new Error('preview redirect limit exceeded');
+	}
+
+	const location = response.headers.get('location')?.trim();
+	if (!location) {
+		throw new Error('preview redirect missing location');
+	}
+
+	try {
+		return parsePreviewableUrl(new URL(location, currentUrl).toString());
+	} catch (error) {
+		if (error instanceof ValidationError) {
+			throw error;
+		}
+		throw new ValidationError('redirect url is invalid');
 	}
 }
 

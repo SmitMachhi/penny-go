@@ -14,6 +14,7 @@
 	} from '$lib/chat/starter-prompts.js';
 	import { messagesForDisplay } from '$lib/chat/display-messages.js';
 	import { consumePendingFirstMessage } from '$lib/chat/pending-first-message.js';
+	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
@@ -83,12 +84,24 @@
 		loadedRouteId = routeId;
 		followThread = false;
 		const sessionKey = sessionKeyFromRouteId(routeId);
-		if (!sessionKey) {
-			return;
-		}
-		void (async () => {
-			await chat.switchSession(sessionKey);
-			const pending = consumePendingFirstMessage(sessionKey);
+			if (!sessionKey) {
+				return;
+			}
+			const targetRouteId = routeId;
+			void (async () => {
+				await chat.switchSession(sessionKey);
+				if (
+					!isPendingFirstMessageRouteCurrent({
+						loadedRouteId,
+						targetRouteId,
+						currentRouteId: routeId,
+						currentSessionKey: chat.state.sessionKey,
+						targetSessionKey: sessionKey
+					})
+				) {
+					return;
+				}
+				const pending = consumePendingFirstMessage(sessionKey);
 			if (!pending || chat.state.sending) {
 				return;
 			}

@@ -1,3 +1,5 @@
+import { isIP } from 'node:net';
+
 import { ValidationError } from '$lib/server/api-error.js';
 
 const HTTP_PROTOCOL = 'http:';
@@ -42,6 +44,15 @@ const DOCUMENTATION_198_THIRD_OCTET = 100;
 const DOCUMENTATION_203_FIRST_OCTET = 203;
 const DOCUMENTATION_203_SECOND_OCTET = 0;
 const DOCUMENTATION_203_THIRD_OCTET = 113;
+const HEX_RADIX = 16;
+const IPV6_UNIQUE_LOCAL_MASK = 0xfe00;
+const IPV6_UNIQUE_LOCAL_PREFIX = 0xfc00;
+const IPV6_LINK_LOCAL_MASK = 0xffc0;
+const IPV6_LINK_LOCAL_PREFIX = 0xfe80;
+const IPV6_MULTICAST_MASK = 0xff00;
+const IPV6_MULTICAST_PREFIX = 0xff00;
+const IPV6_DOCUMENTATION_FIRST_SEGMENT = 0x2001;
+const IPV6_DOCUMENTATION_SECOND_SEGMENT = 0x0db8;
 
 export function parsePreviewableUrl(raw: string): URL {
 	const trimmed = raw.trim();
@@ -87,7 +98,7 @@ export function isBlockedPreviewHostname(hostname: string): boolean {
 		return true;
 	}
 
-	return hostname.includes(':');
+	return hostname.includes(':') && isBlockedIpv6(hostname);
 }
 
 function assertPublicHostname(hostname: string): void {
@@ -117,6 +128,46 @@ function isBlockedIpv4(hostname: string): boolean {
 		isLinkLocalIpv4(a, b) ||
 		isDocumentationOrReservedIpv4(octets)
 	);
+}
+
+function isBlockedIpv6(hostname: string): boolean {
+	const normalized = stripIpv6Brackets(hostname);
+	if (isIP(normalized) !== 6) {
+		return true;
+	}
+	if (normalized === '::' || normalized === LOOPBACK_IPV6_BARE) {
+		return true;
+	}
+	const embeddedIpv4 = readEmbeddedIpv4(normalized);
+	if (embeddedIpv4 && isBlockedIpv4(embeddedIpv4)) {
+		return true;
+	}
+	const [first, second] = readIpv6LeadingSegments(normalized);
+	return (
+		(first & IPV6_UNIQUE_LOCAL_MASK) === IPV6_UNIQUE_LOCAL_PREFIX ||
+		(first & IPV6_LINK_LOCAL_MASK) === IPV6_LINK_LOCAL_PREFIX ||
+		(first & IPV6_MULTICAST_MASK) === IPV6_MULTICAST_PREFIX ||
+		(first === IPV6_DOCUMENTATION_FIRST_SEGMENT &&
+			second === IPV6_DOCUMENTATION_SECOND_SEGMENT)
+	);
+}
+
+function stripIpv6Brackets(hostname: string): string {
+	return hostname.startsWith('[') && hostname.endsWith(']')
+		? hostname.slice(1, -1).toLowerCase()
+		: hostname.toLowerCase();
+}
+
+function readEmbeddedIpv4(hostname: string): string | null {
+	const match = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(hostname);
+	return match?.[1] ?? null;
+}
+
+function readIpv6LeadingSegments(hostname: string): [number, number] {
+	const segments = hostname.split(':');
+	const first = Number.parseInt(segments[0] || '0', HEX_RADIX);
+	const second = Number.parseInt(segments[1] || '0', HEX_RADIX);
+	return [Number.isNaN(first) ? 0 : first, Number.isNaN(second) ? 0 : second];
 }
 
 function isRfc1918Ipv4(a: number, b: number): boolean {

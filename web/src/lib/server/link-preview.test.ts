@@ -9,6 +9,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const HTML_HEADERS = { 'content-type': 'text/html' };
 const REDIRECT_STATUS = 302;
 const PUBLIC_TEST_ADDRESS = '93.184.216.34';
+const PUBLIC_IPV6_TEST_ADDRESS = '2606:2800:220:1:248:1893:25c8:1946';
 const LOOPBACK_TEST_ADDRESS = '127.0.0.1';
 
 type LookupAddress = {
@@ -116,6 +117,28 @@ describe('fetchLinkPreview', () => {
 		expect(transportMock).toHaveBeenLastCalledWith(
 			new URL('https://example.ca/final'),
 			PUBLIC_TEST_ADDRESS,
+			expect.any(AbortSignal)
+		);
+	});
+
+	it('fetches previews from public ipv6 dns results', async () => {
+		const transportMock = vi.fn<PreviewTransport>(
+			async () =>
+				Promise.resolve({
+					status: 200,
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode('<html><head><title>IPv6 page</title></head></html>')
+				})
+		);
+		dnsLookupMock.mockResolvedValueOnce([{ address: PUBLIC_IPV6_TEST_ADDRESS, family: 6 }]);
+		setLinkPreviewTransportForTests(transportMock);
+
+		const preview = await fetchLinkPreview('https://example.ca/start');
+
+		expect(preview.title).toBe('IPv6 page');
+		expect(transportMock).toHaveBeenCalledWith(
+			new URL('https://example.ca/start'),
+			PUBLIC_IPV6_TEST_ADDRESS,
 			expect.any(AbortSignal)
 		);
 	});

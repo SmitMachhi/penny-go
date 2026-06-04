@@ -136,14 +136,13 @@ async function resolvePublicAddress(url: URL): Promise<string> {
 	if (addresses.length === 0) {
 		throw new ValidationError('url host is not allowed');
 	}
-	if (addresses.some((entry) => isBlockedPreviewHostname(entry.address.toLowerCase()))) {
+	const publicAddress = addresses.find(
+		(entry) => !isBlockedPreviewHostname(entry.address.toLowerCase())
+	);
+	if (!publicAddress) {
 		throw new ValidationError('url host is not allowed');
 	}
-	const firstAddress = addresses[0];
-	if (!firstAddress) {
-		throw new ValidationError('url host is not allowed');
-	}
-	return firstAddress.address;
+	return publicAddress.address;
 }
 
 function isOkStatus(status: number): boolean {

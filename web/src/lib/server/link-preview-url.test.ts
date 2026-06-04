@@ -30,6 +30,16 @@ describe('parsePreviewableUrl', () => {
 		expect(() => parsePreviewableUrl('http://198.18.0.1/')).toThrow(ValidationError);
 	});
 
+	it('accepts public ipv6 hosts', () => {
+		const url = parsePreviewableUrl('https://[2606:2800:220:1:248:1893:25c8:1946]/');
+		expect(url.hostname).toBe('[2606:2800:220:1:248:1893:25c8:1946]');
+	});
+
+	it('rejects private ipv6 hosts', () => {
+		expect(() => parsePreviewableUrl('http://[fd00::1]/')).toThrow(ValidationError);
+		expect(() => parsePreviewableUrl('http://[fe80::1]/')).toThrow(ValidationError);
+	});
+
 	it('rejects credentials in urls', () => {
 		expect(() => parsePreviewableUrl('https://user:pass@example.com')).toThrow(ValidationError);
 	});

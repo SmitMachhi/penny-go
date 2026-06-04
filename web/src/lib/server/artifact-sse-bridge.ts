@@ -22,10 +22,11 @@ export async function buildArtifactSseForToolDone(
 		runId,
 		artifact: {
 			artifactId: artifact.artifactId,
-			title: artifact.title,
-			programCount: artifact.programCount,
-			version: artifact.version,
-			updatedAt: artifact.updatedAt
-		}
-	};
+				title: artifact.title,
+				programCount: artifact.programCount,
+				version: artifact.version,
+				updatedAt: artifact.updatedAt,
+				pdfAvailable: artifact.pdfAvailable ?? true
+			}
+		};
 }

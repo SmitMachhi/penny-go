@@ -22,6 +22,7 @@ export type ArtifactMeta = {
 	triggerReason: 'auto' | 'user_requested';
 	createdAt: string;
 	updatedAt: string;
+	pdfAvailable?: boolean;
 };
 
 export function toArtifactSummary(meta: ArtifactMeta): ArtifactSummary {
@@ -30,7 +31,8 @@ export function toArtifactSummary(meta: ArtifactMeta): ArtifactSummary {
 		title: meta.title,
 		programCount: meta.programCount,
 		version: meta.version,
-		updatedAt: meta.updatedAt
+		updatedAt: meta.updatedAt,
+		pdfAvailable: meta.pdfAvailable ?? true
 	};
 }
 

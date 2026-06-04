@@ -4,6 +4,7 @@ export type ArtifactSummary = {
 	programCount: number;
 	version: number;
 	updatedAt: string;
+	pdfAvailable: boolean;
 };
 
 export type ArtifactsResponse = {

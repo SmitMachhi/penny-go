@@ -28,6 +28,7 @@ export type ArtifactMetaRecord = {
 	createdAt: string;
 	updatedAt: string;
 	programCount: number;
+	pdfAvailable: boolean;
 	verification: ArtifactVerification;
 	evidence?: ArtifactEvidence;
 };

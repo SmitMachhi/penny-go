@@ -31,6 +31,7 @@ export type ArtifactIndexEntry = Pick<
 	| 'triggerReason'
 	| 'createdAt'
 	| 'updatedAt'
+	| 'pdfAvailable'
 >;
 
 export type PersistArtifactResult = {
@@ -63,7 +64,8 @@ export function buildArtifactMetaRecord(
 	params: CreateFundingArtifactParams,
 	artifactId: string,
 	version: number,
-	timestamps: { createdAt: string; updatedAt: string }
+	timestamps: { createdAt: string; updatedAt: string },
+	pdfAvailable = true
 ): ArtifactMetaRecord {
 	const programCount = params.evidence?.programs?.length ?? 0;
 	return {
@@ -76,6 +78,7 @@ export function buildArtifactMetaRecord(
 		createdAt: timestamps.createdAt,
 		updatedAt: timestamps.updatedAt,
 		programCount,
+		pdfAvailable,
 		verification: params.verification,
 		evidence: params.evidence
 	};
@@ -96,12 +99,10 @@ export async function loadArtifactMetaRecord(
 }
 
 export async function persistArtifactFiles(input: PersistArtifactInput): Promise<PersistArtifactResult> {
-	const meta = buildArtifactMetaRecord(
-		input.params,
-		input.artifactId,
-		input.version,
-		{ createdAt: input.createdAt, updatedAt: input.updatedAt }
-	);
+	const meta = buildArtifactMetaRecord(input.params, input.artifactId, input.version, {
+		createdAt: input.createdAt,
+		updatedAt: input.updatedAt
+	});
 
 	const artifactDir = resolveArtifactDir(input.repoRoot, input.params.sessionUuid, input.artifactId);
 	await mkdir(artifactDir, { recursive: true });
@@ -165,12 +166,13 @@ export async function persistArtifactFilesAllowPdfFailure(
 		return { ...result, pdfOk: true };
 	} catch (error) {
 		const message = error instanceof Error ? error.message : 'pdf_render_failed';
-		const meta = buildArtifactMetaRecord(
-			input.params,
-			input.artifactId,
-			input.version,
-			{ createdAt: input.createdAt, updatedAt: input.updatedAt }
-		);
+			const meta = buildArtifactMetaRecord(
+				input.params,
+				input.artifactId,
+				input.version,
+				{ createdAt: input.createdAt, updatedAt: input.updatedAt },
+				false
+			);
 		const artifactDir = resolveArtifactDir(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await mkdir(artifactDir, { recursive: true });
 		const documentPath = resolveArtifactFilePath(
@@ -185,14 +187,15 @@ export async function persistArtifactFilesAllowPdfFailure(
 			input.artifactId,
 			META_FILENAME
 		);
-		const pdfPath = resolveArtifactFilePath(
-			input.repoRoot,
-			input.params.sessionUuid,
-			input.artifactId,
-			PDF_FILENAME
-		);
-		await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
-		await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
+			const pdfPath = resolveArtifactFilePath(
+				input.repoRoot,
+				input.params.sessionUuid,
+				input.artifactId,
+				PDF_FILENAME
+			);
+			await rm(pdfPath, { force: true });
+			await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
+			await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
 		await removeLegacyArtifactFiles(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await upsertSessionArtifactIndex(input.repoRoot, meta);
 		return {
@@ -251,11 +254,12 @@ async function upsertSessionArtifactIndex(repoRoot: string, meta: ArtifactMetaRe
 		sessionUuid: meta.sessionUuid,
 		title: meta.title,
 		programCount: meta.programCount,
-		version: meta.version,
-		triggerReason: meta.triggerReason,
-		createdAt: meta.createdAt,
-		updatedAt: meta.updatedAt
-	};
+			version: meta.version,
+			triggerReason: meta.triggerReason,
+			createdAt: meta.createdAt,
+			updatedAt: meta.updatedAt,
+			pdfAvailable: meta.pdfAvailable
+		};
 
 	await withSessionIndexLock(indexPath, async () => {
 		let entries: ArtifactIndexEntry[] = [];

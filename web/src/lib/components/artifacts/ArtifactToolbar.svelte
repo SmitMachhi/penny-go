@@ -23,14 +23,27 @@
 			{artifact.programCount} program{artifact.programCount === 1 ? '' : 's'} · v{artifact.version}
 		</p>
 	</div>
-	<a
-		href={downloadHref}
-		class={cn(
-			'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-accent'
-		)}
-		download
-	>
-		<Download class="h-4 w-4" />
-		Download PDF
-	</a>
-</div>
+		{#if artifact.pdfAvailable}
+			<a
+				href={downloadHref}
+				class={cn(
+					'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium hover:bg-accent'
+				)}
+				download
+			>
+				<Download class="h-4 w-4" />
+				Download PDF
+			</a>
+		{:else}
+			<button
+				type="button"
+				class={cn(
+					'inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border bg-muted px-3 text-sm font-medium text-muted-foreground'
+				)}
+				disabled
+			>
+				<Download class="h-4 w-4" />
+				PDF unavailable
+			</button>
+		{/if}
+	</div>

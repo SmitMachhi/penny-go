@@ -55,8 +55,12 @@
 		{/if}
 
 		<ArtifactToolbar artifact={activeArtifact} {sessionKey} />
-		<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
-			<DocumentPreview artifactId={activeArtifact.artifactId} {sessionKey} />
-		</div>
+			<div class="relative min-h-0 flex-1 overflow-hidden bg-muted/20">
+				<DocumentPreview
+					artifactId={activeArtifact.artifactId}
+					{sessionKey}
+					pdfAvailable={activeArtifact.pdfAvailable}
+				/>
+			</div>
 	</aside>
 {/if}

@@ -4,9 +4,10 @@
 	type Props = {
 		artifactId: string;
 		sessionKey: string;
+		pdfAvailable: boolean;
 	};
 
-	let { artifactId, sessionKey }: Props = $props();
+	let { artifactId, sessionKey, pdfAvailable }: Props = $props();
 
 	let pageUrls = $state<string[]>([]);
 	let loading = $state(true);
@@ -23,6 +24,11 @@
 		loading = true;
 		loadError = null;
 		pageUrls = [];
+
+		if (!pdfAvailable) {
+			loading = false;
+			return;
+		}
 
 		void (async () => {
 			try {
@@ -85,8 +91,8 @@
 		</div>
 	{:else if pageUrls.length === 0}
 		<div class="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
-			PDF preview unavailable.
-		</div>
+				PDF unavailable.
+			</div>
 	{:else}
 		<div class="flex flex-col items-center gap-4 p-4">
 			{#each pageUrls as pageUrl, index (index)}

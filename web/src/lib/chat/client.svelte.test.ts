@@ -100,7 +100,7 @@ describe('ChatClient', () => {
 
 	it('skips history reload before send when sessionId is already known', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			if (requestPath(input).startsWith('/api/chat/history')) {
+			if (requestPath(input).startsWith('/api/sessions')) {
 				throw new Error('history should not reload');
 			}
 			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
@@ -114,7 +114,7 @@ describe('ChatClient', () => {
 		await client.sendMessage(MESSAGE);
 
 		expect(fetchMock).not.toHaveBeenCalledWith(
-			expect.stringContaining('/api/chat/history'),
+			expect.stringContaining('/api/sessions'),
 			expect.anything()
 		);
 		expect(fetchMock).toHaveBeenCalledWith(
@@ -126,7 +126,7 @@ describe('ChatClient', () => {
 	it('does not send when the active session changes during history reload', async () => {
 		const client = new ChatClient();
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			if (requestPath(input).startsWith('/api/chat/history')) {
+			if (requestPath(input).startsWith('/api/sessions')) {
 				client.state.sessionKey = OTHER_SESSION_KEY;
 				return jsonResponse({ sessionKey: SESSION_KEY, messages: [] });
 			}
@@ -147,7 +147,7 @@ describe('ChatClient', () => {
 	it('reports no send when history reload fails', async () => {
 		vi.useFakeTimers();
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			if (requestPath(input).startsWith('/api/chat/history')) {
+			if (requestPath(input).startsWith('/api/sessions')) {
 				return Response.json({ error: 'history unavailable' }, { status: 503 });
 			}
 			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
@@ -185,7 +185,7 @@ describe('ChatClient', () => {
 				abortRequests += 1;
 				return abortRequests === FIRST_ABORT_REQUEST ? firstAbortResponse : jsonResponse({});
 			}
-			if (path.startsWith('/api/chat/history')) {
+			if (path.startsWith('/api/sessions')) {
 				return jsonResponse({ sessionKey: OTHER_SESSION_KEY, messages: [] });
 			}
 			if (path.startsWith('/api/artifacts')) {
@@ -237,7 +237,7 @@ describe('ChatClient', () => {
 	it('loads history without listing artifacts when switching sessions', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			const path = requestPath(input);
-			if (path.startsWith('/api/chat/history')) {
+			if (path.startsWith('/api/sessions')) {
 				return jsonResponse({ sessionKey: SESSION_KEY, sessionId: SESSION_ID, messages: [] });
 			}
 			if (path.startsWith('/api/artifacts')) {
@@ -252,7 +252,7 @@ describe('ChatClient', () => {
 
 		await vi.waitFor(() =>
 			expect(fetchMock).toHaveBeenCalledWith(
-				`/api/chat/history?sessionKey=${encodeURIComponent(SESSION_KEY)}`,
+				`/api/sessions/${encodeURIComponent(SESSION_KEY)}/bootstrap`,
 				expect.objectContaining({ signal: expect.any(AbortSignal) })
 			)
 		);
@@ -306,7 +306,7 @@ describe('ChatClient', () => {
 			if (path === '/api/chat/send') {
 				return sendResponse;
 			}
-			if (path.startsWith('/api/chat/history')) {
+			if (path.startsWith('/api/sessions')) {
 				return jsonResponse({
 					sessionKey: SESSION_KEY,
 					messages: [
@@ -348,7 +348,7 @@ describe('ChatClient', () => {
 	it('resumes awaiting UI when history has a pending user turn', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			const path = requestPath(input);
-			if (path.startsWith('/api/chat/history')) {
+			if (path.startsWith('/api/sessions')) {
 				return jsonResponse({
 					sessionKey: SESSION_KEY,
 					sessionId: SESSION_ID,

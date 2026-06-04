@@ -18,7 +18,7 @@ export function fetchHealth(): Promise<{ ok?: boolean; message?: string }> {
 }
 
 export function fetchHistory(sessionKey: string): Promise<HistoryResponse> {
-	return apiJson(`/api/chat/history?sessionKey=${encodeURIComponent(sessionKey)}`);
+	return apiJson(`/api/sessions/${encodeURIComponent(sessionKey)}/bootstrap`);
 }
 
 export function fetchArtifacts(sessionKey: string): Promise<ArtifactsResponse> {

@@ -64,7 +64,7 @@ describe('ChatClient send failures', () => {
 				if (path === '/api/chat/abort') {
 					return Response.json({});
 				}
-				if (path.startsWith('/api/chat/history')) {
+				if (path.startsWith('/api/sessions')) {
 					return Response.json({ messages: [], sessionKey: path.includes(OTHER_SESSION_KEY) ? OTHER_SESSION_KEY : SESSION_KEY });
 				}
 				if (path.includes(`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`)) {
@@ -102,7 +102,7 @@ describe('ChatClient send failures', () => {
 				if (path === '/api/chat/send') {
 					return sendResponse;
 				}
-				if (path.startsWith('/api/chat/history')) {
+				if (path.startsWith('/api/sessions')) {
 					return Response.json({ messages: [], sessionKey: SESSION_KEY });
 				}
 				return Response.json({ artifacts: [] });

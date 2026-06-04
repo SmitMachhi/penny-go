@@ -9,6 +9,7 @@
 	} from '$lib/chat/artifact-panel-layout.js';
 
 	import {
+		createThreadScrollScheduler,
 		isThreadNearBottom,
 		resolveThreadBottomSpacerHeightPx,
 		scrollThreadToBottom,
@@ -52,6 +53,7 @@
 	let followThread = $state(false);
 	let suppressScrollPinUpdate = $state(false);
 	let artifactPanelWidthPx = $state(520);
+	const threadScrollScheduler = createThreadScrollScheduler();
 
 	const ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX = 24;
 
@@ -197,19 +199,24 @@
 		void chat.state.tools.length;
 		void chat.state.runTraceExpanded;
 
-		void tick().then(() => {
-			if (!followThread || !threadEl) {
-				return;
-			}
-			suppressScrollPinUpdate = true;
-			if (chat.state.sending && workingAnchorEl) {
-				scrollThreadToWorkingAnchor(threadEl, workingAnchorEl, 'auto');
-			} else {
-				scrollThreadToBottom(threadEl, 'auto');
-			}
-			suppressScrollPinUpdate = false;
+			void tick().then(() => {
+				if (!followThread || !threadEl) {
+					return;
+				}
+				threadScrollScheduler.schedule(() => {
+					if (!followThread || !threadEl) {
+						return;
+					}
+					suppressScrollPinUpdate = true;
+					if (chat.state.sending && workingAnchorEl) {
+						scrollThreadToWorkingAnchor(threadEl, workingAnchorEl, 'auto');
+					} else {
+						scrollThreadToBottom(threadEl, 'auto');
+					}
+					suppressScrollPinUpdate = false;
+				});
+			});
 		});
-	});
 
 	$effect(() => {
 		if (loadedRouteId === routeId) {

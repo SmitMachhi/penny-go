@@ -7,6 +7,7 @@ import {
 	distanceFromThreadBottom,
 	isThreadNearBottom,
 	resolveThreadBottomSpacerHeightPx,
+	createThreadScrollScheduler,
 	scrollThreadToBottom,
 	scrollThreadToWorkingAnchor
 } from './chat-thread-scroll.js';
@@ -104,5 +105,33 @@ describe('scrollThreadToWorkingAnchor', () => {
 
 		scrollThreadToWorkingAnchor(thread, anchor, 'auto');
 		expect(scrolledTop).toBe(504);
+	});
+});
+
+describe('createThreadScrollScheduler', () => {
+	it('coalesces multiple scroll requests into one animation frame', () => {
+		const frames: FrameRequestCallback[] = [];
+		let calls = 0;
+		const scheduler = createThreadScrollScheduler({
+			requestAnimationFrame: (callback) => {
+				frames.push(callback);
+				return 1;
+			},
+			cancelAnimationFrame: () => {}
+		});
+
+		scheduler.schedule(() => {
+			calls += 1;
+		});
+		scheduler.schedule(() => {
+			calls += 1;
+		});
+		const frame = frames[0];
+		if (!frame) {
+			throw new Error('animation frame was not scheduled');
+		}
+		frame(0);
+
+		expect(calls).toBe(1);
 	});
 });

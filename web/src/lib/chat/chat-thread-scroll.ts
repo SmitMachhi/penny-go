@@ -13,6 +13,57 @@ export const CHAT_WORKING_ANCHOR_SCROLL_OFFSET_PX = 16;
 /** Used when the thread viewport has not been measured yet (e.g. first send). */
 export const CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX = 640;
 
+type AnimationFrameScheduler = {
+	requestAnimationFrame: (callback: FrameRequestCallback) => number;
+	cancelAnimationFrame: (handle: number) => void;
+};
+
+export type ThreadScrollScheduler = {
+	schedule: (scroll: () => void) => void;
+	cancel: () => void;
+};
+
+function defaultAnimationFrameScheduler(): AnimationFrameScheduler {
+	if (typeof requestAnimationFrame === 'undefined') {
+		return {
+			requestAnimationFrame: (callback) => {
+				callback(0);
+				return 0;
+			},
+			cancelAnimationFrame: () => {}
+		};
+	}
+	return { requestAnimationFrame, cancelAnimationFrame };
+}
+
+export function createThreadScrollScheduler(
+	scheduler = defaultAnimationFrameScheduler()
+): ThreadScrollScheduler {
+	let frameHandle: number | null = null;
+	let pendingScroll: (() => void) | null = null;
+	return {
+		schedule(scroll) {
+			pendingScroll = scroll;
+			if (frameHandle !== null) {
+				return;
+			}
+			frameHandle = scheduler.requestAnimationFrame(() => {
+				frameHandle = null;
+				const nextScroll = pendingScroll;
+				pendingScroll = null;
+				nextScroll?.();
+			});
+		},
+		cancel() {
+			if (frameHandle !== null) {
+				scheduler.cancelAnimationFrame(frameHandle);
+			}
+			frameHandle = null;
+			pendingScroll = null;
+		}
+	};
+}
+
 export function distanceFromThreadBottom(element: HTMLElement): number {
 	return element.scrollHeight - element.scrollTop - element.clientHeight;
 }

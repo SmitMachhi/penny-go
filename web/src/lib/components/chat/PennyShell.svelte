@@ -82,12 +82,7 @@
 		});
 
 		const onVisibilityChange = () => {
-			if (
-				document.visibilityState !== 'visible' ||
-				!page.params.id ||
-				!chat.state.sessionKey ||
-				chat.state.sending
-			) {
+			if (document.visibilityState !== 'visible' || !page.params.id || !chat.state.sessionKey) {
 				return;
 			}
 			void chat.refreshHealth();

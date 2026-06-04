@@ -1,6 +1,8 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
-import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessage } from '$lib/chat/client-api.js';
+import { abortChatRun, fetchArtifacts, fetchHealth, sendChatMessage } from '$lib/chat/client-api.js';
+import { countUserMessages, hasPendingReply } from '$lib/chat/client-thread-reconcile.js';
+import { fetchHistoryWithRetry } from '$lib/chat/history-fetch-retry.js';
 import {
 	appendAssistantMessage,
 	appendUserMessage,
@@ -18,6 +20,11 @@ import {
 	findCompletedAssistantAfterLastUser,
 	RUN_RECOVERY_POLL_MS
 } from '$lib/chat/client-run-recovery.js';
+import {
+	clearRunResumeHint,
+	readRunResumeHint,
+	writeRunResumeHint
+} from '$lib/chat/run-resume-hint.js';
 import { createChatStreamConnection, type ChatStreamConnection } from '$lib/chat/client-stream-connection.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
@@ -90,7 +97,7 @@ export class ChatClient {
 		this.state.activeArtifactId = artifactId;
 		this.state.artifactPanelOpen = true;
 		this.state.artifactPanelDismissed = false;
-		if (this.state.artifacts.length === 0 && this.state.sessionKey) {
+		if (this.state.sessionKey) {
 			void this.loadArtifacts();
 		}
 		this.persistActiveSessionCache();
@@ -177,17 +184,21 @@ export class ChatClient {
 			this.state.historyRefreshing = true;
 		}
 		try {
-			const payload = await fetchHistory(sessionKey);
+			const payload = await fetchHistoryWithRetry(sessionKey, {
+				isCancelled: () =>
+					requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey
+			});
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
 				return;
 			}
 			const localUserCount = this.state.messages.filter((entry) => entry.role === 'user').length;
-			const remoteUserCount = payload.messages.filter((entry) => entry.role === 'user').length;
+			const remoteUserCount = countUserMessages(payload.messages);
 			if (localUserCount <= remoteUserCount) {
 				this.state.messages = payload.messages;
 			}
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
+			this.reconcileThreadAfterHistory(payload.messages, sessionKey);
 			this.persistActiveSessionCache();
 		} catch (error) {
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
@@ -237,16 +248,16 @@ export class ChatClient {
 			}
 		}
 		this.ensureStreamConnected();
-			const sessionId = this.state.sessionId;
-			const previousMessages = this.state.messages;
-			const userMessageCount = previousMessages.filter((entry) => entry.role === 'user').length;
-			const expectedUserMessageCount = userMessageCount + 1;
-			startRunState(this.state);
-			this.activeRunId = null;
-			this.expectedUserMessageCount = expectedUserMessageCount;
-			this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
-			this.pendingRunArtifactIds = [];
-			appendUserMessage(this.state, trimmed);
+		const sessionId = this.state.sessionId;
+		const previousMessages = this.state.messages;
+		const userMessageCount = countUserMessages(previousMessages);
+		const expectedUserMessageCount = userMessageCount + 1;
+		startRunState(this.state);
+		this.activeRunId = null;
+		this.expectedUserMessageCount = expectedUserMessageCount;
+		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
+		this.pendingRunArtifactIds = [];
+		appendUserMessage(this.state, trimmed);
 		this.persistActiveSessionCache();
 		try {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
@@ -255,20 +266,25 @@ export class ChatClient {
 				void this.persistAbort(payload.runId);
 				return true;
 			}
-				if (this.state.sending) {
-					this.activeRunId = payload.runId;
-					this.scheduleRunRecovery(expectedUserMessageCount);
-				}
-				return true;
-			} catch (error) {
-				this.clearRunRecovery();
-				this.state.messages = previousMessages;
-				this.state.sending = false;
-				this.abortRequested = false;
-				this.expectedUserMessageCount = 0;
-				this.state.operationError = formatClientError(error, 'failed to send message');
-				this.persistActiveSessionCache();
-				return false;
+			if (this.state.sending) {
+				this.activeRunId = payload.runId;
+				writeRunResumeHint({
+					sessionKey,
+					runId: payload.runId,
+					startedAt: Date.now()
+				});
+				this.scheduleRunRecovery(expectedUserMessageCount);
+			}
+			return true;
+		} catch (error) {
+			this.clearRunRecovery();
+			this.state.messages = previousMessages;
+			this.state.sending = false;
+			this.abortRequested = false;
+			this.expectedUserMessageCount = 0;
+			this.state.operationError = formatClientError(error, 'failed to send message');
+			this.persistActiveSessionCache();
+			return false;
 		}
 	}
 
@@ -366,6 +382,8 @@ export class ChatClient {
 		resetRunState(this.state);
 		this.activeRunId = null;
 		this.abortRequested = false;
+		this.expectedUserMessageCount = 0;
+		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 		this.persistActiveSessionCache();
@@ -375,6 +393,8 @@ export class ChatClient {
 		this.clearRunRecovery();
 		resetRunState(this.state);
 		this.activeRunId = null;
+		this.expectedUserMessageCount = 0;
+		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 		this.persistActiveSessionCache();
@@ -408,12 +428,44 @@ export class ChatClient {
 
 	private scheduleRunRecovery(expectedUserMessageCount: number): void {
 		this.clearRunRecovery();
-		if (!this.state.sending) {
+		if (!this.state.sending || expectedUserMessageCount < 1) {
 			return;
 		}
 		this.runRecoveryTimer = setTimeout(() => {
 			void this.tryRecoverRunFromHistory(expectedUserMessageCount);
 		}, RUN_RECOVERY_POLL_MS);
+	}
+
+	private reconcileThreadAfterHistory(
+		messages: ChatClientState['messages'],
+		sessionKey: string
+	): void {
+		const hint = readRunResumeHint(sessionKey);
+		const userCount = countUserMessages(messages);
+
+		if (hasPendingReply(messages)) {
+			if (!this.state.sending) {
+				startRunState(this.state);
+				this.activeRunId = hint?.runId ?? null;
+			} else if (hint?.runId && this.activeRunId === null) {
+				this.activeRunId = hint.runId;
+			}
+			this.expectedUserMessageCount = userCount;
+			this.scheduleRunRecovery(userCount);
+			return;
+		}
+
+		if (userCount === 0 && hint) {
+			if (!this.state.sending) {
+				startRunState(this.state);
+				this.activeRunId = hint.runId;
+			}
+			this.expectedUserMessageCount = 1;
+			this.scheduleRunRecovery(1);
+			return;
+		}
+
+		clearRunResumeHint(sessionKey);
 	}
 
 	private clearRunRecovery(): void {
@@ -429,22 +481,32 @@ export class ChatClient {
 		}
 		const sessionKey = this.state.sessionKey;
 		try {
-			const payload = await fetchHistory(sessionKey);
+			const payload = await fetchHistoryWithRetry(sessionKey, { retryDelaysMs: [0, 0, 0, 0] });
 			if (!this.state.sending || sessionKey !== this.state.sessionKey) {
 				return;
 			}
-			const historyUserCount = payload.messages.filter((entry) => entry.role === 'user').length;
+			const historyUserCount = countUserMessages(payload.messages);
 			if (historyUserCount < expectedUserMessageCount) {
 				this.scheduleRunRecovery(expectedUserMessageCount);
 				return;
 			}
 			const assistant = findCompletedAssistantAfterLastUser(payload.messages);
 			if (!assistant) {
+				const localUserCount = countUserMessages(this.state.messages);
+				if (localUserCount < historyUserCount) {
+					this.state.messages = payload.messages;
+					this.persistActiveSessionCache();
+				}
 				this.scheduleRunRecovery(expectedUserMessageCount);
 				return;
 			}
-			this.state.messages = stripTrailingAssistantMessages(this.state.messages);
-			appendAssistantMessage(this.state, assistant.text, assistant.artifactIds ?? [], {});
+			const localUserCount = countUserMessages(this.state.messages);
+			if (localUserCount <= historyUserCount) {
+				this.state.messages = payload.messages;
+			} else {
+				this.state.messages = stripTrailingAssistantMessages(this.state.messages);
+				appendAssistantMessage(this.state, assistant.text, assistant.artifactIds ?? [], {});
+			}
 			this.state.operationError = null;
 			this.resetRun();
 			this.persistActiveSessionCache();

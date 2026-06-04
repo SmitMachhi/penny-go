@@ -20,22 +20,26 @@
 		researchTraceText
 	} from '$lib/chat/run-status-headline.js';
 	import {
-		HOME_HEADLINE,
-		HOME_SUBHEAD
-	} from '$lib/chat/starter-prompts.js';
+		CHAT_AWAITING_REPLY_HEADLINE,
+		CHAT_AWAITING_REPLY_SUBHEAD,
+		CHAT_EMPTY_THREAD_SUBHEAD
+	} from '$lib/chat/thread-empty-copy.js';
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import type { ChatMessage } from '$lib/chat/messages.js';
 	import {
 		findLastAssistantMessageId,
 		messagesForDisplay
 	} from '$lib/chat/display-messages.js';
-	import { consumePendingFirstMessage } from '$lib/chat/pending-first-message.js';
+	import { sanitizeAssistantDisplayText } from '$lib/chat/sanitize-assistant-text.js';
+	import {
+		clearPendingFirstMessage,
+		peekPendingFirstMessage
+	} from '$lib/chat/pending-first-message.js';
 	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
 	import MessageBubble from '$lib/components/chat/MessageBubble.svelte';
-	import StarterPromptChips from '$lib/components/chat/StarterPromptChips.svelte';
 	import PennyActiveTurn from '$lib/components/chat/PennyActiveTurn.svelte';
 	import ThinkingPanel from '$lib/components/chat/ThinkingPanel.svelte';
 
@@ -51,7 +55,8 @@
 	const ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX = 24;
 
 	const showArtifactPanelChrome = $derived(
-		chat.state.artifactPanelOpen && chat.state.artifacts.length > 0
+		chat.state.artifactPanelOpen &&
+			(chat.state.activeArtifactId !== null || chat.state.artifacts.length > 0)
 	);
 
 	onMount(() => {
@@ -115,6 +120,10 @@
 	const showThreadLoading = $derived(
 		chat.state.loading && chat.state.messages.length === 0 && !chat.state.sending
 	);
+	const showAwaitingReply = $derived(chat.state.messages.length === 0 && chat.state.sending);
+	const showEmptyThread = $derived(
+		chat.state.messages.length === 0 && !chat.state.sending && !chat.state.loading
+	);
 	const liveStatusHeadline = $derived(
 		extractRunStatusHeadline(chat.state.runTrace, chat.state.tools)
 	);
@@ -122,7 +131,7 @@
 		researchTraceText(chat.state.runTrace, chat.state.streamingAnswerText)
 	);
 	const streamingAssistantMessage = $derived.by((): ChatMessage | null => {
-		const text = chat.state.streamingAnswerText.trim();
+		const text = sanitizeAssistantDisplayText(chat.state.streamingAnswerText.trim());
 		if (!chat.state.sending || !text) {
 			return null;
 		}
@@ -232,13 +241,14 @@
 				) {
 					return;
 				}
-				const pending = consumePendingFirstMessage(sessionKey);
+				const pending = peekPendingFirstMessage(sessionKey);
 			if (!pending || chat.state.sending) {
 				return;
 			}
 			followThread = true;
 			const sent = await chat.sendMessage(pending, { skipHistoryReload: true });
 			if (sent) {
+				clearPendingFirstMessage();
 				sessions.setTitleFromFirstMessage(sessionKey, pending);
 				await pinThreadToBottom('smooth');
 			}
@@ -266,26 +276,6 @@
 		}
 	}
 
-	async function startWithPrompt(prompt: string): Promise<void> {
-		if (sendDisabled) {
-			return;
-		}
-		const trimmed = prompt.trim();
-		if (!trimmed) {
-			return;
-		}
-		const isFirstMessage = chat.state.messages.length === 0;
-		followThread = true;
-		const sent = await chat.sendMessage(trimmed);
-		if (!sent) {
-			return;
-		}
-		await pinThreadToBottom('smooth');
-		if (isFirstMessage && chat.state.sessionKey) {
-			sessions.setTitleFromFirstMessage(chat.state.sessionKey, trimmed);
-		}
-	}
-
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey && !sendDisabled) {
 			event.preventDefault();
@@ -306,21 +296,19 @@
 			>
 				{#if showThreadLoading}
 					<p class="text-[0.9375rem] text-muted-foreground">Loading conversation…</p>
-				{:else if chat.state.messages.length === 0}
-					<div class="space-y-6 py-8 text-center">
-						<div class="space-y-2">
-							<h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
-								{HOME_HEADLINE}
-							</h2>
-							<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">
-								{HOME_SUBHEAD}
-							</p>
-						</div>
-						<StarterPromptChips
-							disabled={sendDisabled}
-							onStart={(prompt) => void startWithPrompt(prompt)}
-						/>
+				{:else if showAwaitingReply}
+					<div class="space-y-2 py-8 text-center">
+						<h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+							{CHAT_AWAITING_REPLY_HEADLINE}
+						</h2>
+						<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">
+							{CHAT_AWAITING_REPLY_SUBHEAD}
+						</p>
 					</div>
+				{:else if showEmptyThread}
+					<p class="py-8 text-center text-[0.9375rem] text-muted-foreground">
+						{CHAT_EMPTY_THREAD_SUBHEAD}
+					</p>
 				{/if}
 
 				{#each displayMessages as message (message.id)}
@@ -342,6 +330,7 @@
 							researchTrace={liveResearchTrace}
 							traceExpanded={chat.state.runTraceExpanded}
 							streamingMessage={streamingAssistantMessage}
+							onOpenArtifact={(artifactId) => chat.openArtifact(artifactId)}
 							onToggleTrace={() => {
 								chat.state.runTraceExpanded = !chat.state.runTraceExpanded;
 							}}

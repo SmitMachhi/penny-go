@@ -12,7 +12,7 @@ export function stashPendingFirstMessage(pending: PendingFirstMessage): void {
 	sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pending));
 }
 
-export function consumePendingFirstMessage(sessionKey: string): string | null {
+function readPendingFirstMessageRaw(): PendingFirstMessage | null {
 	if (typeof sessionStorage === 'undefined') {
 		return null;
 	}
@@ -20,17 +20,35 @@ export function consumePendingFirstMessage(sessionKey: string): string | null {
 	if (!raw) {
 		return null;
 	}
-	let parsed: PendingFirstMessage;
 	try {
-		parsed = JSON.parse(raw) as PendingFirstMessage;
+		return JSON.parse(raw) as PendingFirstMessage;
 	} catch {
 		sessionStorage.removeItem(STORAGE_KEY);
 		return null;
 	}
-	if (parsed.sessionKey !== sessionKey || typeof parsed.message !== 'string') {
+}
+
+export function peekPendingFirstMessage(sessionKey: string): string | null {
+	const parsed = readPendingFirstMessageRaw();
+	if (!parsed || parsed.sessionKey !== sessionKey || typeof parsed.message !== 'string') {
 		return null;
 	}
-	sessionStorage.removeItem(STORAGE_KEY);
 	const trimmed = parsed.message.trim();
 	return trimmed.length > 0 ? trimmed : null;
+}
+
+export function clearPendingFirstMessage(): void {
+	if (typeof sessionStorage === 'undefined') {
+		return;
+	}
+	sessionStorage.removeItem(STORAGE_KEY);
+}
+
+/** @deprecated Prefer peek + clear on successful send */
+export function consumePendingFirstMessage(sessionKey: string): string | null {
+	const message = peekPendingFirstMessage(sessionKey);
+	if (message) {
+		clearPendingFirstMessage();
+	}
+	return message;
 }

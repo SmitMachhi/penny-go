@@ -145,6 +145,7 @@ describe('ChatClient', () => {
 	});
 
 	it('reports no send when history reload fails', async () => {
+		vi.useFakeTimers();
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			if (requestPath(input).startsWith('/api/chat/history')) {
 				return Response.json({ error: 'history unavailable' }, { status: 503 });
@@ -156,7 +157,10 @@ describe('ChatClient', () => {
 		const client = new ChatClient();
 		client.state.sessionKey = SESSION_KEY;
 
-		const sent = await client.sendMessage(MESSAGE);
+		const sentPromise = client.sendMessage(MESSAGE);
+		await vi.runAllTimersAsync();
+		const sent = await sentPromise;
+		vi.useRealTimers();
 
 		expect(sent).toBe(false);
 		expect(fetchMock).not.toHaveBeenCalledWith(
@@ -315,5 +319,26 @@ describe('ChatClient', () => {
 			MESSAGE
 		]);
 		resolveSend(jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY }));
+	});
+
+	it('resumes awaiting UI when history has a pending user turn', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path.startsWith('/api/chat/history')) {
+				return jsonResponse({
+					sessionKey: SESSION_KEY,
+					sessionId: SESSION_ID,
+					messages: [{ id: 'user-1', role: 'user', text: 'still running' }]
+				});
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		await client.switchSession(SESSION_KEY);
+
+		await vi.waitFor(() => expect(client.state.sending).toBe(true));
+		expect(client.state.messages.some((message) => message.role === 'user')).toBe(true);
 	});
 });

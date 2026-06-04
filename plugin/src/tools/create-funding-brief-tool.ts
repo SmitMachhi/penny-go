@@ -16,6 +16,10 @@ const confidenceSchema = Type.Union([
 ]);
 
 const LOCAL_PENNY_SESSION_PREFIX = "penny-";
+const AGENT_SCOPED_SESSION_HEAD = "agent";
+const SESSION_KEY_SEPARATOR = ":";
+const AGENT_SESSION_KEY_MIN_PARTS = 3;
+const AGENT_SESSION_REST_START_INDEX = 2;
 const HASH_ALGORITHM = "sha256";
 const HASH_ENCODING = "hex";
 const HEX_RADIX = 16;
@@ -85,12 +89,12 @@ function readOptionalArtifactId(params: unknown): string | undefined {
 }
 
 function localSessionUuid(sessionKey: string): string | null {
-  const trimmed = sessionKey.trim();
-  if (!trimmed.startsWith(LOCAL_PENNY_SESSION_PREFIX)) {
+  const candidate = localSessionCandidate(sessionKey);
+  if (!candidate.startsWith(LOCAL_PENNY_SESSION_PREFIX)) {
     return null;
   }
 
-  const hash = createHash(HASH_ALGORITHM).update(trimmed).digest(HASH_ENCODING);
+  const hash = createHash(HASH_ALGORITHM).update(candidate).digest(HASH_ENCODING);
   const variantNibble =
     (Number.parseInt(hash.slice(UUID_PART_FOUR_VARIANT_START, UUID_PART_FOUR_SUFFIX_START), HEX_RADIX) &
       UUID_VARIANT_CLEAR_MASK) |
@@ -103,6 +107,18 @@ function localSessionUuid(sessionKey: string): string | null {
     `${variantNibble.toString(HEX_RADIX)}${hash.slice(UUID_PART_FOUR_SUFFIX_START, UUID_PART_FOUR_END)}`,
     hash.slice(UUID_PART_FOUR_END, UUID_PART_FIVE_END),
   ].join("-");
+}
+
+function localSessionCandidate(sessionKey: string): string {
+  const trimmed = sessionKey.trim();
+  const parts = trimmed.split(SESSION_KEY_SEPARATOR).filter((part) => part.length > 0);
+  if (
+    parts.length >= AGENT_SESSION_KEY_MIN_PARTS &&
+    parts[0]?.toLowerCase() === AGENT_SCOPED_SESSION_HEAD
+  ) {
+    return parts.slice(AGENT_SESSION_REST_START_INDEX).join(SESSION_KEY_SEPARATOR);
+  }
+  return trimmed;
 }
 
 function resolveArtifactSessionUuid(sessionKey: string | undefined): string | null {

@@ -19,6 +19,8 @@ vi.mock('$lib/server/gateway-chat-service.js', () => ({
 	fetchChatHistory
 }));
 
+import { titleFromFirstMessage } from '@penny/shared/session-title';
+
 import {
 	createPennySession,
 	generatePennySessionTitle,
@@ -114,15 +116,14 @@ describe('session orchestration', () => {
 		listGatewaySessions.mockResolvedValue([{ key: sessionKey, updatedAt: 100 }]);
 		patchGatewaySession.mockResolvedValueOnce(undefined);
 
-		const session = await generatePennySessionTitle(
-			sessionKey,
-			'Tell me about Ontario SaaS grants for my dairy business'
-		);
-		expect(session.title).toBe('Tell me about Ontario SaaS grants for my dairy business');
+		const firstMessage = 'Tell me about Ontario SaaS grants for my dairy business';
+		const session = await generatePennySessionTitle(sessionKey, firstMessage);
+		const title = titleFromFirstMessage(firstMessage);
+		expect(session.title).toBe(title);
 		expect(session.titleStatus).toBe('ready');
 		expect(patchGatewaySession).toHaveBeenCalledWith({
 			key: sessionKey,
-			label: 'Tell me about Ontario SaaS grants for my dairy business'
+			label: title
 		});
 	});
 

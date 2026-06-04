@@ -7,6 +7,20 @@ test('titleFromFirstMessage trims whitespace', () => {
 	assert.equal(titleFromFirstMessage('  Ontario dairy grants  '), 'Ontario dairy grants');
 });
 
+test('titleFromFirstMessage uses first line only', () => {
+	assert.equal(
+		titleFromFirstMessage('Ontario dairy grants\n\n- Province: ON'),
+		'Ontario dairy grants'
+	);
+});
+
+test('titleFromFirstMessage strips markdown', () => {
+	assert.equal(
+		titleFromFirstMessage('**ClearStrata — Kingston, ON** is our company'),
+		'ClearStrata — Kingston, ON is our company'
+	);
+});
+
 test('titleFromFirstMessage truncates long prompts', () => {
 	const longPrompt = 'a'.repeat(SESSION_TITLE_MAX_CHARS + 10);
 	const title = titleFromFirstMessage(longPrompt);

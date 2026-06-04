@@ -37,7 +37,7 @@
 	>
 		<div class="border-b border-border px-4 py-3">
 			<p class="text-xs font-medium tracking-[0.2em] text-discovery uppercase">Artifact</p>
-			<p class="text-sm font-semibold">Funding brief & strategy</p>
+			<p class="text-sm font-semibold">Funding plan</p>
 		</div>
 
 		{#if artifacts.length > 1}

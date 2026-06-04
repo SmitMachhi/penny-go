@@ -1,6 +1,8 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { ArrowUp, Square } from '@lucide/svelte';
 
+	import { syncTextareaHeight } from '$lib/components/chat/auto-resize-textarea.js';
 	import { CHAT_DISCLAIMER, CHAT_PLACEHOLDER } from '$lib/chat/starter-prompts.js';
 	import { cn } from '$lib/utils.js';
 
@@ -25,6 +27,20 @@
 	}: Props = $props();
 
 	const canSend = $derived(!sendDisabled && draft.trim().length > 0);
+
+	let textareaEl = $state<HTMLTextAreaElement | null>(null);
+
+	async function refreshTextareaHeight(): Promise<void> {
+		await tick();
+		if (textareaEl) {
+			syncTextareaHeight(textareaEl);
+		}
+	}
+
+	$effect(() => {
+		draft;
+		void refreshTextareaHeight();
+	});
 </script>
 
 <form
@@ -38,10 +54,12 @@
 		class="flex items-end gap-2 rounded-[1.75rem] border border-border bg-background px-3 py-2"
 	>
 		<textarea
+			bind:this={textareaEl}
 			bind:value={draft}
 			placeholder={CHAT_PLACEHOLDER}
 			{disabled}
 			rows={1}
+			oninput={() => void refreshTextareaHeight()}
 			onkeydown={onKeydown}
 			class={cn(
 				'penny-overlay-scroll max-h-52 min-h-[2.75rem] flex-1 resize-none border-0 bg-transparent py-2.5',

@@ -13,6 +13,7 @@
 		CANVAS_EMPTY_SUBHEAD
 	} from '$lib/chat/starter-prompts.js';
 	import { messagesForDisplay } from '$lib/chat/display-messages.js';
+	import { consumePendingFirstMessage } from '$lib/chat/pending-first-message.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
@@ -85,7 +86,19 @@
 		if (!sessionKey) {
 			return;
 		}
-		void chat.switchSession(sessionKey);
+		void (async () => {
+			await chat.switchSession(sessionKey);
+			const pending = consumePendingFirstMessage(sessionKey);
+			if (!pending || chat.state.sending) {
+				return;
+			}
+			followThread = true;
+			const sent = await chat.sendMessage(pending, { skipHistoryReload: true });
+			if (sent) {
+				sessions.setTitleFromFirstMessage(sessionKey, pending);
+				await pinThreadToBottom('smooth');
+			}
+		})();
 	});
 
 	async function handleSend() {

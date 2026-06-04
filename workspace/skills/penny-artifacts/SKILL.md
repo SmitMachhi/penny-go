@@ -1,21 +1,36 @@
 ---
 name: penny-artifacts
-description: When and how Penny creates funding brief + strategy artifacts (markdown → PDF) alongside chat.
+description: When and how Penny creates funding-aligned operating plans (markdown → PDF) alongside chat.
 ---
 
 # Penny funding artifacts
 
 ## Purpose
 
-Use `create_funding_brief` to deliver a **consultant-grade funding brief and strategy** — one markdown document rendered to PDF that the owner can scroll, print, or hand to their team. Chat stays conversational; the artifact holds the full plan.
+Use `create_funding_brief` to deliver a **funding-aligned operating plan** — one markdown document rendered to PDF that the owner can scroll, print, or hand to their team. Chat stays conversational; the artifact holds the full plan.
+
+**Not** a 40-page MBA business plan. Set that expectation in chat when users say “business plan.”
 
 **Model:** Penny writes markdown → system generates PDF. No HTML templates, no `{{program:N}}` placeholders.
+
+**Panel:** Write so the artifact reads as a **memory/action list** — Context or Aspiration + Recommendation first, ranked programs with **Next step:**, then Strategy or Launch strategy checklists.
+
+## Consultation mode sections
+
+Follow `penny-consultation-modes` for intake. Use the matching `bodyMarkdown` section pattern:
+
+| Mode | Extra memory sections | Execution section |
+|------|----------------------|-------------------|
+| **Opportunity-backed** | `## Context`, `## Plan alignment` | `## Strategy` |
+| **Aspiration-first** | `## Aspiration`, `## Recommended business shape` | `## Launch strategy` |
+
+Both modes still need `## Recommendation` and `## Programs to pursue` with `### N.` blocks, **Verdict:**, and **Next step:** per program.
 
 ## When to create
 
 Call `create_funding_brief` when **any** of these apply:
 
-- The user asks for a strategy, brief, PDF, export, artifact, playbook, or action plan.
+- The user asks for a strategy, plan, brief, PDF, export, artifact, playbook, or action plan.
 - You are delivering **two or more** verified program recommendations with execution detail.
 - The answer would need a comparison, checklist, or more than ~15 lines of structured program data.
 - The user says "show me everything" or "what should I do next."
@@ -32,26 +47,18 @@ Use `triggerReason: "user_requested"` when the user explicitly asked for an expo
 
 Write like a funding consultant who **just finished a call with this owner**:
 
-- **One document, brief first then strategy** — early pages: situation, programs, recommendation; later pages: checklists and execution steps.
+- **One document** — situation and recommendation early; programs and execution after.
 - **Lead with what matters** from the conversation — urgency, blockers, who is executing, programs they asked about.
-- **Do not use a fixed template.** Skip sections that do not serve this user.
+- **Do not use a fixed template.** Skip sections that do not serve this user (but prefer the mode-specific section names when the mode is clear).
 - Include **printable checklists** (`- [ ]`) and/or **numbered steps** (`1.`) in `bodyMarkdown`.
 - Write program details **directly in markdown** (headings, tables, bullets) — do not use placeholders.
 - Verification appendix is added automatically at PDF time — do not paste raw URL walls in markdown.
-
-Suggested patterns (use when relevant, not mandatory):
-
-1. Executive summary / recommendation
-2. Program comparison or pursuit order
-3. 30-day action plan with checklists
-4. Per-program execution sections (steps, documents, timeline)
-5. Delegation notes if someone else will execute
 
 ## How to call the tool
 
 1. After all `read_official_source` calls for recommended programs, call `create_funding_brief` with:
    - `title`, `triggerReason`
-   - `bodyMarkdown` — full brief + strategy in markdown (GFM: headings, tables, task lists, links)
+   - `bodyMarkdown` — full plan in markdown (GFM: headings, tables, task lists, links)
    - `verification.verifiedAt` (ISO timestamp), `verification.urlsChecked[]`
    - Optional `evidence.programs[]` (0–5) for audit metadata only — **not rendered into the PDF body**
 2. To update an existing artifact, pass the same `artifactId` from the prior tool result.
@@ -79,9 +86,9 @@ Legacy `programs[]` at the top level is accepted as an alias for `evidence.progr
 
 After creating the artifact, keep chat short:
 
-> I've put your funding brief and strategy in the panel — scroll through or download the PDF.
+> I've put your funding plan in the panel — scroll through or download the PDF.
 
-Do **not** repeat the full strategy in chat when the artifact already contains it.
+Do **not** repeat the full plan in chat when the artifact already contains it.
 
 ## Confidence mapping
 

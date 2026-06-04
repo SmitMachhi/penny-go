@@ -146,7 +146,7 @@
 						variant={chat.state.artifactPanelOpen ? 'default' : 'outline'}
 						class="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-[6.75rem] sm:px-3"
 						aria-expanded={chat.state.artifactPanelOpen}
-						aria-label="Toggle funding brief panel"
+						aria-label="Toggle funding plan panel"
 						onclick={() => chat.toggleArtifactPanel()}
 					>
 						{#if chat.state.artifactPanelOpen}
@@ -154,7 +154,7 @@
 						{:else}
 							<PanelRight class="h-4 w-4" />
 						{/if}
-						<span class="hidden sm:inline">Brief</span>
+						<span class="hidden sm:inline">Plan</span>
 					</Button>
 				{/if}
 				<span

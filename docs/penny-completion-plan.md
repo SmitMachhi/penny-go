@@ -7,7 +7,8 @@ Goal: Penny runs end-to-end on your laptop with **corpus → live verify (`read_
 - Corpus verifier passes (**331** profiles baseline).
 - Plugin tests pass (`cd plugin && npm test`).
 - Python reader succeeds on **one HTML + one PDF** URL from the setup doc smoke block.
-- **Path A + Path B** agent runs show plausible tool traces (`search_corpus` first when relevant; **`read_official_source` before recommending** discovered programs).
+- **Corpus hit + corpus miss** agent runs show plausible tool traces (`search_corpus` first when relevant; **`read_official_source` before recommending** discovered programs).
+- **Opportunity-backed + aspiration-first** consultation smokes (setup doc §6f–6g) produce mode-appropriate artifact headings.
 - `~/.openclaw/` has working **DeepSeek** + **Exa** credentials for whichever runtime you pick (embedded vs gateway daemon).
 
 References: **`docs/penny-local-setup.md`**, **`config/openclaw.penny.example.json5`**.
@@ -54,7 +55,7 @@ Decision: _________ (embedded / gateway).
 Copy fields from **`config/openclaw.penny.example.json5`** into **`~/.openclaw/openclaw.json`**:
 
 - **`agents.defaults.workspace`** → **`/…/penny-go/workspace`** (absolute).
-- **`agents.defaults.skills`** includes **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (runtime prose rules live in **`SOUL.md`**).
+- **`agents.defaults.skills`** includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (runtime prose rules live in **`SOUL.md`**).
 - **`agents.defaults.model.primary`** → **`deepseek/deepseek-v4-flash`** (or override after auth works).
 - **`tools`** — **minimal profile + explicit `allow`** (corpus tools, reader, **`create_funding_brief`**, `web_search` only; **`web.fetch` disabled**).
 - **`plugins.entries`** — **`exa` enabled**; **`penny-tools` enabled** with **`corpusPath`**, **`pythonPath`**, **`repoRoot`** set to absolute paths **or** rely on **`PENNY_*`** env in `~/.openclaw/.env`.
@@ -72,8 +73,10 @@ Restart **gateway** (if using daemon): **`openclaw gateway restart`** (or follow
 | E1 — corpus | `cd database && python3 scripts/verify_funding_corpus.py` | Exits **0**, **331** profiles |
 | E2 — plugin tests | `cd plugin && npm test` | **All tests pass** |
 | E3 — reader smoke | stdin HTML + PDF (setup doc §3) | **`success: true`**, non-empty content |
-| E4 — Path A | **`openclaw agent --local`** Ontario SaaS prompt (setup doc §6d) | **`search_corpus` before web search**; **`read_official_source`** per recommendation |
-| E5 — Path B | **`openclaw agent --local`** Inuvik tourism prompt (setup doc §6e) | Corpus-first; weak hits → **`web_search`** → **`read_official_source`** |
+| E4 — corpus hit | **`openclaw agent --local`** Ontario SaaS prompt (setup doc §6d) | **`search_corpus` before web search**; **`read_official_source`** per recommendation |
+| E5 — corpus miss | **`openclaw agent --local`** Inuvik tourism prompt (setup doc §6e) | Corpus-first; weak hits → **`web_search`** → **`read_official_source`** |
+| E6 — opportunity-backed | setup doc §6f | Artifact with **`## Plan alignment`**; mode in engagement memory |
+| E7 — aspiration-first | setup doc §6g | Artifact with **`## Recommended business shape`**; corpus miss only when needed |
 | A1 — artifacts | **`./scripts/verify_penny_artifacts.sh`** | Shared, plugin, web tests pass; brief HTML + PDF smoke (or `--skip-pdf`) |
 
 **Recording:** Paste or save **`--json`** outputs / gateway logs for regressions later.
@@ -106,7 +109,7 @@ See **`docs/penny-artifacts.md`** for artifact panel, API, and cross-device pers
 [ ] Phase B: venv + crawl4ai-setup + PDF/HTML reader smoke OK
 [ ] Phase C: plugin install + inspect penny-tools OK
 [ ] Phase D: merged config + gateway restart / env load OK
-[ ] Phase E: E1 → E5 all pass (log Path A/B traces)
+[ ] Phase E: E1 → E7 all pass (log corpus + consultation smokes)
 [ ] Phase F: key rotation noted for post-tasting
 ```
 

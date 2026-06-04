@@ -179,13 +179,13 @@ cd plugin && npm test
 
 Use section **3** HTML + PDF commands.
 
-### 6d — Path A — Ontario SaaS hiring
+### 6d — Corpus hit — Ontario SaaS hiring
 
 Use **embedded mode** for Phase 1 tasting (no gateway daemon required):
 
 ```bash
 openclaw agent --local \
-  --session-id penny-path-a \
+  --session-id penny-corpus-hit \
   --message "We're a 12-person SaaS company in Toronto hiring two senior developers in Q3. What government funding can help?" \
   --json
 ```
@@ -196,18 +196,50 @@ Pass when the transcript shows:
 2. `read_official_source` ≥ once per recommendation
 3. No loan products and no hallucinated eligibility
 
-### 6e — Path B — Niche territorial corpus miss
+### 6e — Corpus miss — Niche territorial search
 
 ```bash
 openclaw agent --local \
-  --session-id penny-path-b \
+  --session-id penny-corpus-miss \
   --message "We are a small Inuvik tourism business launching a new cultural experience program in 2026. What territorial or federal non-loan funding exists?" \
   --json
 ```
 
 Pass when corpus-first behavior remains, weak corpus hits escalate to scoped `web_search`, and discovery routes through `read_official_source`.
 
-**Note:** these full-agent runs require a live model session (Gateway plus keys, or `openclaw agent --local` with working DeepSeek auth). The repo cannot complete 6d/6e in CI without your secrets.
+### 6f — Consultation mode: opportunity-backed
+
+```bash
+openclaw agent --local \
+  --session-id penny-opportunity-backed \
+  --message "I have a B2B SaaS company in Ontario with 8 employees. Find verified grants and ITCs and put a funding-aligned operating plan in the artifact with plan alignment for our business." \
+  --json
+```
+
+Pass when:
+
+1. Engagement memory or transcript reflects **opportunity-backed** intake
+2. `create_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
+3. Evidence trace unchanged (corpus → verify)
+
+### 6g — Consultation mode: aspiration-first
+
+```bash
+openclaw agent --local \
+  --session-id penny-aspiration-first \
+  --message "I want to start a tourism experience business in the Northwest Territories. Find verified non-loan funding and propose a business shape I can build toward, then create the funding plan artifact." \
+  --json
+```
+
+Pass when:
+
+1. **Aspiration-first** intake (industry + location)
+2. Artifact includes `## Recommended business shape` and `## Launch strategy` (or honest thin corpus note)
+3. Corpus miss escalates to `web_search` only when needed
+
+**Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working DeepSeek auth). The repo cannot complete them in CI without your secrets.
+
+Ensure `agents.defaults.skills` includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (see `config/openclaw.penny.example.json5`).
 
 ## 7. Web chat UI (Phase 2)
 

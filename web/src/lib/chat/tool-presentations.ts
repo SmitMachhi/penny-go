@@ -60,7 +60,7 @@ const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 		iconDone: 'text-sky-500/80 dark:text-sky-500/70'
 	},
 	create_funding_brief: {
-		label: 'Building funding strategy',
+		label: 'Building funding plan',
 		Icon: FileText,
 		capsuleRunning:
 			'border-stone-300/90 bg-stone-100 text-stone-900 dark:border-stone-700/80 dark:bg-stone-900/55 dark:text-stone-100',

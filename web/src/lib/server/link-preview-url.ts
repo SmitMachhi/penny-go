@@ -10,16 +10,38 @@ const LOOPBACK_IPV6_BARE = '::1';
 
 const PRIVATE_IPV4_OCTET_MIN = 0;
 const PRIVATE_IPV4_OCTET_MAX = 255;
+const THIS_NETWORK_FIRST_OCTET = 0;
 const RFC1918_CLASS_A_OCTET = 10;
 const RFC1918_CLASS_B_FIRST_OCTET = 172;
 const RFC1918_CLASS_B_SECOND_OCTET_MIN = 16;
 const RFC1918_CLASS_B_SECOND_OCTET_MAX = 31;
 const RFC1918_CLASS_C_FIRST_OCTET = 192;
 const RFC1918_CLASS_C_SECOND_OCTET = 168;
+const IETF_PROTOCOL_FIRST_OCTET = 192;
+const IETF_PROTOCOL_SECOND_OCTET = 0;
+const IETF_PROTOCOL_THIRD_OCTET = 0;
+const DOCUMENTATION_192_FIRST_OCTET = 192;
+const DOCUMENTATION_192_SECOND_OCTET = 0;
+const DOCUMENTATION_192_THIRD_OCTET = 2;
+const SIX_TO_FOUR_ANYCAST_FIRST_OCTET = 192;
+const SIX_TO_FOUR_ANYCAST_SECOND_OCTET = 88;
+const SIX_TO_FOUR_ANYCAST_THIRD_OCTET = 99;
+const CGNAT_FIRST_OCTET = 100;
+const CGNAT_SECOND_OCTET_MIN = 64;
+const CGNAT_SECOND_OCTET_MAX = 127;
 const LINK_LOCAL_FIRST_OCTET = 169;
 const LINK_LOCAL_SECOND_OCTET = 254;
 const MULTICAST_FIRST_OCTET = 224;
 const LOOPBACK_FIRST_OCTET = 127;
+const BENCHMARK_FIRST_OCTET = 198;
+const BENCHMARK_SECOND_OCTET_MIN = 18;
+const BENCHMARK_SECOND_OCTET_MAX = 19;
+const DOCUMENTATION_198_FIRST_OCTET = 198;
+const DOCUMENTATION_198_SECOND_OCTET = 51;
+const DOCUMENTATION_198_THIRD_OCTET = 100;
+const DOCUMENTATION_203_FIRST_OCTET = 203;
+const DOCUMENTATION_203_SECOND_OCTET = 0;
+const DOCUMENTATION_203_THIRD_OCTET = 113;
 
 export function parsePreviewableUrl(raw: string): URL {
 	const trimmed = raw.trim();
@@ -86,24 +108,75 @@ function isBlockedIpv4(hostname: string): boolean {
 	}
 
 	const [a, b] = octets;
-	if (a === RFC1918_CLASS_A_OCTET) {
-		return true;
-	}
+	return (
+		a === THIS_NETWORK_FIRST_OCTET ||
+		a === LOOPBACK_FIRST_OCTET ||
+		a >= MULTICAST_FIRST_OCTET ||
+		isRfc1918Ipv4(a, b) ||
+		isCgnatIpv4(a, b) ||
+		isLinkLocalIpv4(a, b) ||
+		isDocumentationOrReservedIpv4(octets)
+	);
+}
+
+function isRfc1918Ipv4(a: number, b: number): boolean {
+	return (
+		a === RFC1918_CLASS_A_OCTET ||
+		(a === RFC1918_CLASS_B_FIRST_OCTET &&
+			b >= RFC1918_CLASS_B_SECOND_OCTET_MIN &&
+			b <= RFC1918_CLASS_B_SECOND_OCTET_MAX) ||
+		(a === RFC1918_CLASS_C_FIRST_OCTET && b === RFC1918_CLASS_C_SECOND_OCTET)
+	);
+}
+
+function isCgnatIpv4(a: number, b: number): boolean {
+	return a === CGNAT_FIRST_OCTET && b >= CGNAT_SECOND_OCTET_MIN && b <= CGNAT_SECOND_OCTET_MAX;
+}
+
+function isLinkLocalIpv4(a: number, b: number): boolean {
+	return a === LINK_LOCAL_FIRST_OCTET && b === LINK_LOCAL_SECOND_OCTET;
+}
+
+function isDocumentationOrReservedIpv4(octets: number[]): boolean {
+	const [a, b, c] = octets;
 	if (
-		a === RFC1918_CLASS_B_FIRST_OCTET &&
-		b >= RFC1918_CLASS_B_SECOND_OCTET_MIN &&
-		b <= RFC1918_CLASS_B_SECOND_OCTET_MAX
+		a === IETF_PROTOCOL_FIRST_OCTET &&
+		b === IETF_PROTOCOL_SECOND_OCTET &&
+		c === IETF_PROTOCOL_THIRD_OCTET
 	) {
 		return true;
 	}
-	if (a === RFC1918_CLASS_C_FIRST_OCTET && b === RFC1918_CLASS_C_SECOND_OCTET) {
+	if (
+		a === DOCUMENTATION_192_FIRST_OCTET &&
+		b === DOCUMENTATION_192_SECOND_OCTET &&
+		c === DOCUMENTATION_192_THIRD_OCTET
+	) {
 		return true;
 	}
-	if (a === LINK_LOCAL_FIRST_OCTET && b === LINK_LOCAL_SECOND_OCTET) {
+	if (
+		a === SIX_TO_FOUR_ANYCAST_FIRST_OCTET &&
+		b === SIX_TO_FOUR_ANYCAST_SECOND_OCTET &&
+		c === SIX_TO_FOUR_ANYCAST_THIRD_OCTET
+	) {
 		return true;
 	}
-	if (a >= MULTICAST_FIRST_OCTET) {
+	if (
+		a === BENCHMARK_FIRST_OCTET &&
+		b >= BENCHMARK_SECOND_OCTET_MIN &&
+		b <= BENCHMARK_SECOND_OCTET_MAX
+	) {
 		return true;
 	}
-	return a === LOOPBACK_FIRST_OCTET;
+	if (
+		a === DOCUMENTATION_198_FIRST_OCTET &&
+		b === DOCUMENTATION_198_SECOND_OCTET &&
+		c === DOCUMENTATION_198_THIRD_OCTET
+	) {
+		return true;
+	}
+	return (
+		a === DOCUMENTATION_203_FIRST_OCTET &&
+		b === DOCUMENTATION_203_SECOND_OCTET &&
+		c === DOCUMENTATION_203_THIRD_OCTET
+	);
 }

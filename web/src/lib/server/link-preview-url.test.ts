@@ -25,6 +25,11 @@ describe('parsePreviewableUrl', () => {
 		expect(() => parsePreviewableUrl('http://192.168.0.1/')).toThrow(ValidationError);
 	});
 
+	it('rejects non-public ipv4 hosts', () => {
+		expect(() => parsePreviewableUrl('http://100.64.0.1/')).toThrow(ValidationError);
+		expect(() => parsePreviewableUrl('http://198.18.0.1/')).toThrow(ValidationError);
+	});
+
 	it('rejects credentials in urls', () => {
 		expect(() => parsePreviewableUrl('https://user:pass@example.com')).toThrow(ValidationError);
 	});

@@ -48,6 +48,8 @@
 	let suppressScrollPinUpdate = $state(false);
 	let artifactPanelWidthPx = $state(520);
 
+	const ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX = 24;
+
 	const showArtifactPanelChrome = $derived(
 		chat.state.artifactPanelOpen && chat.state.artifacts.length > 0
 	);
@@ -84,6 +86,25 @@
 
 		handle.addEventListener('pointermove', onMove);
 		handle.addEventListener('pointerup', onUp);
+	}
+
+	function handleArtifactPanelResizeKeydown(event: KeyboardEvent): void {
+		let deltaPx = 0;
+		if (event.key === 'ArrowLeft') {
+			deltaPx = ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX;
+		}
+		if (event.key === 'ArrowRight') {
+			deltaPx = -ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX;
+		}
+		if (deltaPx === 0) {
+			return;
+		}
+		event.preventDefault();
+		artifactPanelWidthPx = clampArtifactPanelWidth(
+			artifactPanelWidthPx + deltaPx,
+			window.innerWidth
+		);
+		storeArtifactPanelWidth(artifactPanelWidthPx, window.innerWidth);
 	}
 
 	const routeId = $derived(page.params.id ?? '');
@@ -346,18 +367,17 @@
 					onKeydown={handleKeydown}
 				/>
 			</div>
-		</div>
+	</div>
 
-		{#if showArtifactPanelChrome}
-			<div
-				role="separator"
-				aria-orientation="vertical"
-				aria-label="Resize funding plan panel"
-				tabindex="0"
-				class="artifact-panel-resizer hidden shrink-0 lg:block"
-				onpointerdown={startArtifactPanelResize}
-			></div>
-		{/if}
+	{#if showArtifactPanelChrome}
+		<button
+			type="button"
+			aria-label="Resize funding plan panel"
+			class="artifact-panel-resizer hidden shrink-0 lg:block"
+			onpointerdown={startArtifactPanelResize}
+			onkeydown={handleArtifactPanelResizeKeydown}
+		></button>
+	{/if}
 
 		<ArtifactPanel
 			artifacts={chat.state.artifacts}

@@ -12,8 +12,8 @@ import type {
 	CreateFundingArtifactInput,
 	CreateFundingArtifactParams,
 	FundingConfidence
-} from './artifact-types.ts';
-import { repairVersionPdfFromLegacy, resolveArtifactPdfPaths } from './artifact-pdf-locations.ts';
+} from '@penny/shared/artifact-types';
+import { repairVersionPdfFromLegacy, resolveArtifactPdfPaths } from '@penny/shared/artifact-pdf-locations';
 import {
 	DOCUMENT_MD_FILENAME,
 	formatArtifactVersionSegment,

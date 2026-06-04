@@ -1,10 +1,11 @@
-import { copyFile, rm, stat } from 'node:fs/promises';
+import { copyFile, mkdir, rm, stat } from 'node:fs/promises';
+import { dirname } from 'node:path';
 
 import {
 	PDF_FILENAME,
 	resolveArtifactFilePath,
 	resolveArtifactVersionFilePath
-} from './penny-paths.ts';
+} from '@penny/shared/penny-paths';
 
 export type ArtifactPdfPathSet = {
 	versionPath: string;
@@ -49,6 +50,7 @@ export async function repairVersionPdfFromLegacy(paths: ArtifactPdfPathSet): Pro
 		return false;
 	}
 
+	await mkdir(dirname(paths.versionPath), { recursive: true });
 	await copyFile(paths.legacyPath, paths.versionPath);
 	await rm(paths.legacyPath, { force: true }).catch(() => undefined);
 	return true;

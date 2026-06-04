@@ -125,10 +125,10 @@ const PHASE_RANK: Record<ToolActivity['phase'], number> = {
 	done: 2
 };
 
-export function sortToolsForDisplay(tools: ToolActivity[]): ToolActivity[] {
+export function sortToolsForDisplay(tools: readonly ToolActivity[]): ToolActivity[] {
 	return [...tools].sort((left, right) => PHASE_RANK[left.phase] - PHASE_RANK[right.phase]);
 }
 
-export function hasRunningTools(tools: ToolActivity[]): boolean {
+export function hasRunningTools(tools: readonly ToolActivity[]): boolean {
 	return tools.some((tool) => tool.phase === 'running');
 }

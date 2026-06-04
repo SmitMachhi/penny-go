@@ -51,6 +51,16 @@
 		}
 	}
 
+	function interceptArtifactDownloads(node: HTMLElement): { destroy: () => void } {
+		const onClick = (event: MouseEvent) => handleAssistantClick(event);
+		node.addEventListener('click', onClick);
+		return {
+			destroy() {
+				node.removeEventListener('click', onClick);
+			}
+		};
+	}
+
 	function extractArtifactIdFromHref(href: string): string | null {
 		const match = href.match(/\/api\/artifacts\/([^/?]+)/i);
 		return match?.[1] ?? null;
@@ -94,11 +104,12 @@
 		</div>
 	</div>
 {:else}
-	<article class="w-full" onclick={handleAssistantClick}>
+	<article class="w-full">
 		{#key html}
 			<div
 				class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
 				use:enhanceLinkPreviews
+				use:interceptArtifactDownloads
 			>
 				{@html html}
 				{#if streaming}

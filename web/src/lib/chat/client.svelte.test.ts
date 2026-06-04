@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { ArtifactSummary } from './artifacts.js';
+import { RUN_RECOVERY_POLL_MS } from './client-run-recovery.js';
 import { ChatClient } from './client.svelte.js';
 import type { SsePayload } from './stream-events.js';
 
@@ -14,6 +15,7 @@ const ARTIFACT_ID = '00000000-0000-4000-8000-000000000001';
 
 type ChatClientInternals = {
 	finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void>;
+	handleStreamEvent(payload: SsePayload): void;
 };
 
 function jsonResponse(body: unknown): Response {
@@ -45,6 +47,7 @@ describe('ChatClient', () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		vi.useRealTimers();
 	});
 
 	it('aborts an active run before clearing the session', async () => {
@@ -262,5 +265,55 @@ describe('ChatClient', () => {
 		await vi.waitFor(() => expect(client.state.artifacts[0]?.title).toBe('Reloaded brief'));
 
 		expect(client.state.artifactPanelOpen).toBe(false);
+	});
+
+	it('does not recover a pre-response stream event from stale history', async () => {
+		vi.useFakeTimers();
+		let resolveSend: (response: Response) => void = () => {};
+		const sendResponse = new Promise<Response>((resolve) => {
+			resolveSend = resolve;
+		});
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return sendResponse;
+			}
+			if (path.startsWith('/api/chat/history')) {
+				return jsonResponse({
+					sessionKey: SESSION_KEY,
+					messages: [
+						{ id: 'old-user', role: 'user', text: 'old question' },
+						{ id: 'old-assistant', role: 'assistant', text: 'old answer' }
+					]
+				});
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		client.state.messages = [
+			{ id: 'old-user', role: 'user', text: 'old question' },
+			{ id: 'old-assistant', role: 'assistant', text: 'old answer' }
+		];
+		void client.sendMessage(MESSAGE, { skipHistoryReload: true });
+		await vi.waitFor(() => expect(client.state.sending).toBe(true));
+
+		(client as unknown as ChatClientInternals).handleStreamEvent({
+			type: 'thinking.delta',
+			runId: RUN_ID,
+			text: 'thinking'
+		});
+		await vi.advanceTimersByTimeAsync(RUN_RECOVERY_POLL_MS);
+
+		expect(client.state.sending).toBe(true);
+		expect(client.state.messages.map((message) => message.text)).toEqual([
+			'old question',
+			'old answer',
+			MESSAGE
+		]);
+		resolveSend(jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY }));
 	});
 });

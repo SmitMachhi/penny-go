@@ -237,14 +237,16 @@ export class ChatClient {
 			}
 		}
 		this.ensureStreamConnected();
-		const sessionId = this.state.sessionId;
-		const previousMessages = this.state.messages;
-		const userMessageCount = previousMessages.filter((entry) => entry.role === 'user').length;
-		startRunState(this.state);
-		this.activeRunId = null;
-		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
-		this.pendingRunArtifactIds = [];
-		appendUserMessage(this.state, trimmed);
+			const sessionId = this.state.sessionId;
+			const previousMessages = this.state.messages;
+			const userMessageCount = previousMessages.filter((entry) => entry.role === 'user').length;
+			const expectedUserMessageCount = userMessageCount + 1;
+			startRunState(this.state);
+			this.activeRunId = null;
+			this.expectedUserMessageCount = expectedUserMessageCount;
+			this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
+			this.pendingRunArtifactIds = [];
+			appendUserMessage(this.state, trimmed);
 		this.persistActiveSessionCache();
 		try {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
@@ -253,20 +255,20 @@ export class ChatClient {
 				void this.persistAbort(payload.runId);
 				return true;
 			}
-			if (this.state.sending) {
-				this.activeRunId = payload.runId;
-				this.expectedUserMessageCount = userMessageCount + 1;
-				this.scheduleRunRecovery(this.expectedUserMessageCount);
-			}
-			return true;
-		} catch (error) {
-			this.clearRunRecovery();
-			this.state.messages = previousMessages;
-			this.state.sending = false;
-			this.abortRequested = false;
-			this.state.operationError = formatClientError(error, 'failed to send message');
-			this.persistActiveSessionCache();
-			return false;
+				if (this.state.sending) {
+					this.activeRunId = payload.runId;
+					this.scheduleRunRecovery(expectedUserMessageCount);
+				}
+				return true;
+			} catch (error) {
+				this.clearRunRecovery();
+				this.state.messages = previousMessages;
+				this.state.sending = false;
+				this.abortRequested = false;
+				this.expectedUserMessageCount = 0;
+				this.state.operationError = formatClientError(error, 'failed to send message');
+				this.persistActiveSessionCache();
+				return false;
 		}
 	}
 

@@ -28,6 +28,7 @@ import { titleFromFirstMessage } from '@penny/shared/session-title';
 import {
 	createPennySession,
 	generatePennySessionTitle,
+	getPennySessionIndex,
 	listPennySessions
 } from './session-orchestration.js';
 import { LEGACY_SESSION_KEY } from './session-key.js';
@@ -77,6 +78,23 @@ describe('session orchestration', () => {
 		]);
 		expect(sessions[0]?.title).toBe('Newer chat');
 		expect(sessions[0]?.titleStatus).toBe('ready');
+	});
+
+	it('reconciles the local session index when it is empty', async () => {
+		listGatewaySessions.mockResolvedValueOnce([
+			{
+				key: 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001',
+				updatedAt: 100,
+				label: 'Indexed chat'
+			}
+		]);
+
+		const sessions = await getPennySessionIndex();
+		const cached = await getPennySessionIndex();
+
+		expect(sessions[0]?.title).toBe('Indexed chat');
+		expect(cached[0]?.title).toBe('Indexed chat');
+		expect(listGatewaySessions).toHaveBeenCalledOnce();
 	});
 
 	it('uses New chat for unlabeled sessions', async () => {

@@ -18,6 +18,7 @@ import { deleteEngagementMemory } from '$lib/server/penny-engagement-storage.js'
 import { deleteSessionArtifacts } from '$lib/server/artifact-storage.js';
 import {
 	deletePennySessionIndex,
+	readPennySessionIndex,
 	replacePennySessionIndex,
 	upsertPennySessionIndex
 } from '$lib/server/penny-session-index.js';
@@ -97,6 +98,14 @@ export async function listPennySessions(): Promise<PennySessionView[]> {
 
 	await replacePennySessionIndex([]);
 	return [];
+}
+
+export async function getPennySessionIndex(): Promise<PennySessionView[]> {
+	const indexed = await readPennySessionIndex();
+	if (indexed.length > 0) {
+		return indexed;
+	}
+	return listPennySessions();
 }
 
 export async function createPennySession(label?: string): Promise<PennySessionView> {

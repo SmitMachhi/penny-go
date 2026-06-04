@@ -96,3 +96,20 @@ test('renderMarkdownToPrintHtml renders tables and task lists', () => {
 	);
 	assert.match(html, /task-checkbox|<table/i);
 });
+
+test('renderMarkdownToPrintHtml strips active html before printing', () => {
+	const html = renderMarkdownToPrintHtml(
+		[
+			'[bad link](javascript:alert(1))',
+			'<img src="http://169.254.169.254/latest" onerror="alert(1)">',
+			'<iframe src="https://example.ca"></iframe>',
+			'<span onclick="alert(1)">Safe text</span>'
+		].join('\n\n'),
+		'Unsafe <title>'
+	);
+
+	assert.doesNotMatch(html, /javascript:/i);
+	assert.doesNotMatch(html, /<img|<iframe|onerror|onclick/i);
+	assert.match(html, /Safe text/);
+	assert.match(html, /Unsafe &lt;title&gt;/);
+});

@@ -1,5 +1,9 @@
 import { marked } from 'marked';
 
+import { renderBriefMarkdown } from './brief-markdown.ts';
+
+const PRINT_CSP = "default-src 'none'; style-src 'unsafe-inline'";
+
 const PRINT_CSS = `
   @page { size: letter; margin: 0.75in; }
   body {
@@ -29,28 +33,18 @@ const PRINT_CSS = `
   li:has(.task-checkbox) { list-style: none; margin-left: -20pt; }
 `;
 
-function formatPrintCheckboxes(html: string): string {
-	return html.replace(/<input\b[^>]*\btype="checkbox"[^>]*>/gi, '<span class="task-checkbox"></span>');
-}
-
-function sanitizePrintHtml(html: string): string {
-	return html.replace(/<script[\s\S]*?<\/script>/gi, '');
-}
-
 export function renderMarkdownToPrintHtml(markdown: string, title: string): string {
-	marked.setOptions({ gfm: true, breaks: false });
-	const bodyHtml = sanitizePrintHtml(
-		formatPrintCheckboxes(marked.parse(markdown, { async: false }) as string)
-	);
+	const bodyHtml = renderBriefMarkdown(markdown, marked);
 	const safeTitle = title.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
 
 	return `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <title>${safeTitle}</title>
-  <style>${PRINT_CSS}</style>
-</head>
+	<html lang="en">
+	<head>
+	  <meta charset="utf-8" />
+	  <meta http-equiv="Content-Security-Policy" content="${PRINT_CSP}" />
+	  <title>${safeTitle}</title>
+	  <style>${PRINT_CSS}</style>
+	</head>
 <body>${bodyHtml}</body>
 </html>`;
 }

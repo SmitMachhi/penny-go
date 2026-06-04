@@ -12,6 +12,7 @@ import {
 	sendChatMessage
 } from '$lib/server/gateway-chat-service.js';
 import { listSessionArtifactSummaries } from '$lib/server/artifact-storage.js';
+import { bumpPennySessionIndex } from '$lib/server/penny-session-index.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
 const CHAT_DELIVER = false;
@@ -41,12 +42,14 @@ export async function sendChat(input: {
 	}
 
 	const sessionKey = resolveSessionKey(input.sessionKey);
-	return sendChatMessage({
+	const response = await sendChatMessage({
 		message,
 		sessionKey,
 		sessionId: input.sessionId,
 		deliver: CHAT_DELIVER
 	});
+	await bumpPennySessionIndex(sessionKey);
+	return response;
 }
 
 export async function abortChat(input: { sessionKey?: string; runId?: string }) {

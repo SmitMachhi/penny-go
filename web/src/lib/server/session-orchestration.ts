@@ -16,6 +16,11 @@ import {
 } from '$lib/server/gateway-session-service.js';
 import { deleteEngagementMemory } from '$lib/server/penny-engagement-storage.js';
 import { deleteSessionArtifacts } from '$lib/server/artifact-storage.js';
+import {
+	deletePennySessionIndex,
+	replacePennySessionIndex,
+	upsertPennySessionIndex
+} from '$lib/server/penny-session-index.js';
 import { sanitizeSessionDisplayText } from '$lib/server/session-display-sanitize.js';
 import { parseOptionalSessionLabel, parseSessionLabel } from '$lib/server/session-label.js';
 import {
@@ -76,14 +81,21 @@ export async function listPennySessions(): Promise<PennySessionView[]> {
 		.map((row) => toPennySessionView(row));
 
 	if (pennyRows.length > 0) {
+		await replacePennySessionIndex(pennyRows);
 		return pennyRows;
 	}
 
 	if (await legacySessionHasHistory()) {
 		const legacyRow = rows.find((row) => row.key === LEGACY_SESSION_KEY);
-		return [toPennySessionView(legacyRow ?? { key: LEGACY_SESSION_KEY, updatedAt: null }, true)];
-	}
+			const legacySession = toPennySessionView(
+				legacyRow ?? { key: LEGACY_SESSION_KEY, updatedAt: null },
+				true
+			);
+			await replacePennySessionIndex([legacySession]);
+			return [legacySession];
+		}
 
+	await replacePennySessionIndex([]);
 	return [];
 }
 
@@ -98,7 +110,9 @@ export async function createPennySession(label?: string): Promise<PennySessionVi
 		...(trimmedLabel ? { label: trimmedLabel } : {})
 	});
 
-	return buildCreatedSessionView({ key, label: trimmedLabel });
+	const session = buildCreatedSessionView({ key, label: trimmedLabel });
+	await upsertPennySessionIndex(session);
+	return session;
 }
 
 export async function renamePennySession(key: string, label: string): Promise<PennySessionView> {
@@ -109,11 +123,13 @@ export async function renamePennySession(key: string, label: string): Promise<Pe
 
 	await patchGatewaySession({ key: sessionKey, label: uniqueLabel });
 
-	return buildCreatedSessionView({
+	const session = buildCreatedSessionView({
 		key: sessionKey,
 		label: uniqueLabel,
 		isLegacy: sessionKey === LEGACY_SESSION_KEY
 	});
+	await upsertPennySessionIndex(session);
+	return session;
 }
 
 async function readFirstUserMessage(sessionKey: string): Promise<string | null> {
@@ -194,4 +210,5 @@ export async function deletePennySession(key: string): Promise<void> {
 	await deleteGatewaySession({ key: sessionKey, deleteTranscript: true });
 	await deleteEngagementMemory(sessionKey);
 	await deleteSessionArtifacts(sessionKey);
+	await deletePennySessionIndex(sessionKey);
 }

@@ -119,7 +119,8 @@ describe('SessionClient', () => {
 		await client.deleteSession(SESSION_KEY);
 
 		const fullListReads = fetchMock.mock.calls.filter(
-			([input, init]) => String(input) === '/api/sessions' && init?.method === undefined
+			([input, init]) =>
+				String(input) === '/api/sessions/index' && init?.method === undefined
 		);
 		expect(fullListReads).toHaveLength(0);
 	});
@@ -143,6 +144,6 @@ describe('SessionClient', () => {
 
 		await client.initSidebar();
 
-		expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(['/api/sessions']);
+		expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(['/api/sessions/index']);
 	});
 });

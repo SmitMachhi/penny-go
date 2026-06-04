@@ -36,6 +36,7 @@ type RefreshOptions = {
 
 const LABEL_PATCH_RETRY_LIMIT = 3;
 const DEFAULT_SESSION_TITLE = 'New chat';
+const SESSION_INDEX_PATH = '/api/sessions/index';
 
 export function createInitialSessionState(): SessionClientState {
 	return {
@@ -76,7 +77,7 @@ export class SessionClient {
 			this.state.loading = true;
 		}
 		try {
-			const payload = await apiJson<SessionsResponse>('/api/sessions');
+			const payload = await apiJson<SessionsResponse>(SESSION_INDEX_PATH);
 			this.state.sessions = mergeSessionListFromServer(payload.sessions ?? [], priorSessions);
 			this.state.error = null;
 		} catch (error) {

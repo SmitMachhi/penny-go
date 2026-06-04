@@ -1,4 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { listGatewaySessions, createGatewaySession, fetchChatHistory, patchGatewaySession } =
 	vi.hoisted(() => ({
@@ -29,11 +33,26 @@ import {
 import { LEGACY_SESSION_KEY } from './session-key.js';
 
 describe('session orchestration', () => {
-	beforeEach(() => {
+	let repoRoot = '';
+	let previousRepoRoot: string | undefined;
+
+	beforeEach(async () => {
+		previousRepoRoot = process.env.PENNY_REPO_ROOT;
+		repoRoot = await mkdtemp(join(tmpdir(), 'penny-session-orchestration-'));
+		process.env.PENNY_REPO_ROOT = repoRoot;
 		listGatewaySessions.mockReset();
 		createGatewaySession.mockReset();
 		fetchChatHistory.mockReset();
 		patchGatewaySession.mockReset();
+	});
+
+	afterEach(async () => {
+		if (previousRepoRoot === undefined) {
+			delete process.env.PENNY_REPO_ROOT;
+		} else {
+			process.env.PENNY_REPO_ROOT = previousRepoRoot;
+		}
+		await rm(repoRoot, { recursive: true, force: true });
 	});
 
 	it('lists penny sessions sorted by updatedAt', async () => {

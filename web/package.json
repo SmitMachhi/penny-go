@@ -28,6 +28,9 @@
 		"vitest": "^4.1.7"
 	},
 	"dependencies": {
+		"@fontsource-variable/jetbrains-mono": "^5.2.8",
+		"@fontsource-variable/plus-jakarta-sans": "^5.2.8",
+		"@fontsource-variable/sora": "^5.2.8",
 		"@lucide/svelte": "^1.16.0",
 		"@penny/shared": "file:../shared",
 		"bits-ui": "^2.18.1",

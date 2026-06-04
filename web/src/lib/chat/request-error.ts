@@ -9,6 +9,18 @@ export type ClassifiedRequestError = {
 const NETWORK_UNREACHABLE_MESSAGE =
 	'Penny could not reach the server. Is the dev server running?';
 
+const GATEWAY_MISSING_SCOPE_PREFIX = 'missing scope: ';
+
+const GATEWAY_MISSING_SCOPE_USER_MESSAGE =
+	'Penny is not allowed to perform this action on the OpenClaw gateway. Restart the dev server after updating gateway connect scopes.';
+
+function humanizeGatewayErrorMessage(message: string): string {
+	if (message.startsWith(GATEWAY_MISSING_SCOPE_PREFIX)) {
+		return GATEWAY_MISSING_SCOPE_USER_MESSAGE;
+	}
+	return message;
+}
+
 function parseNestedErrorMessage(message: string): string {
 	const trimmed = message.trim();
 	if (!trimmed.startsWith('{')) {
@@ -17,7 +29,7 @@ function parseNestedErrorMessage(message: string): string {
 	try {
 		const parsed = JSON.parse(trimmed) as { message?: unknown };
 		if (typeof parsed.message === 'string' && parsed.message.trim()) {
-			return parsed.message.trim();
+			return humanizeGatewayErrorMessage(parsed.message.trim());
 		}
 	} catch {
 		return message;
@@ -37,7 +49,8 @@ export function classifyRequestError(error: unknown, fallback: string): Classifi
 		return { kind: 'network', message: NETWORK_UNREACHABLE_MESSAGE, retryable: true };
 	}
 	if (error instanceof Error) {
-		return { kind: 'http', message: parseNestedErrorMessage(error.message), retryable: false };
+		const message = humanizeGatewayErrorMessage(parseNestedErrorMessage(error.message));
+		return { kind: 'http', message, retryable: false };
 	}
 	return { kind: 'http', message: fallback, retryable: false };
 }

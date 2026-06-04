@@ -11,6 +11,8 @@
 	<title>{APP_TITLE}</title>
 	<meta name="description" content="Funding scout for Canadian teams" />
 	<meta name="application-name" content={APP_TITLE} />
+	<meta name="theme-color" content="#3A6CF5" media="(prefers-color-scheme: light)" />
+	<meta name="theme-color" content="#4A7DF7" media="(prefers-color-scheme: dark)" />
 </svelte:head>
 
 <ModeWatcher defaultMode="system" />

@@ -1,8 +1,14 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/plus-jakarta-sans/wght.css';
+@import '@fontsource-variable/sora/wght.css';
+@import '@fontsource-variable/jetbrains-mono/wght.css';
 
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
+	--font-sans: 'Plus Jakarta Sans Variable', ui-sans-serif, system-ui, sans-serif;
+	--font-display: 'Sora Variable', var(--font-sans);
+	--font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 	--color-card: var(--card);
@@ -17,49 +23,71 @@
 	--color-discovery: var(--discovery);
 	--color-discovery-foreground: var(--discovery-foreground);
 	--color-destructive: var(--destructive);
+	--color-penny-brand: var(--penny-brand);
+	--color-penny-brand-deep: var(--penny-brand-deep);
+	--color-penny-brand-muted: var(--penny-brand-muted);
+	--color-penny-brand-subtle: var(--penny-brand-subtle);
+	--color-ring: var(--ring);
 	--radius-lg: var(--radius);
 	--penny-chat-max-width: 48rem;
 	--penny-canvas-inline-padding: 1rem;
 	--penny-thread-gap: 1.75rem;
 	--penny-user-bubble: var(--user-bubble);
-	--penny-thinking-stream-max-height: 18rem;
+	--penny-thinking-stream-max-height: min(40vh, 28rem);
 	--penny-thinking-idle-max-height: 12rem;
 }
 
 :root {
+	/* Penny icon blue (#3A6CF5) and companions */
+	--penny-brand: oklch(0.578 0.213 265.1);
+	--penny-brand-deep: oklch(0.539 0.214 265);
+	--penny-brand-foreground: oklch(1 0 0);
+	--penny-brand-muted: oklch(0.965 0.02 265);
+	--penny-brand-subtle: oklch(0.94 0.04 265);
+	--penny-ink: oklch(0.289 0 90);
+
 	--background: oklch(1 0 0);
-	--foreground: oklch(0.2 0 0);
+	--foreground: var(--penny-ink);
 	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.2 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.45 0 0);
-	--border: oklch(0.9 0 0);
-	--user-bubble: oklch(0.96 0.01 75);
-	--primary: oklch(0.2 0 0);
-	--primary-foreground: oklch(1 0 0);
-	--accent: oklch(0.96 0 0);
-	--accent-foreground: oklch(0.2 0 0);
-	--discovery: oklch(0.45 0 0);
-	--discovery-foreground: oklch(1 0 0);
+	--card-foreground: var(--penny-ink);
+	--muted: var(--penny-brand-muted);
+	--muted-foreground: oklch(0.45 0.03 265);
+	--border: oklch(0.88 0.025 265);
+	--user-bubble: var(--penny-brand-subtle);
+	--primary: var(--penny-brand);
+	--primary-foreground: var(--penny-brand-foreground);
+	--accent: var(--penny-brand-subtle);
+	--accent-foreground: oklch(0.32 0.08 265);
+	--discovery: var(--penny-brand);
+	--discovery-foreground: var(--penny-brand-foreground);
+	--ring: var(--penny-brand);
 	--destructive: oklch(0.55 0.2 25);
 	--radius: 0.75rem;
 }
 
 .dark {
+	--penny-brand: oklch(0.66 0.17 265);
+	--penny-brand-deep: oklch(0.55 0.19 265);
+	--penny-brand-foreground: oklch(0.99 0 0);
+	--penny-brand-muted: oklch(0.22 0.04 265);
+	--penny-brand-subtle: oklch(0.28 0.08 265);
+	--penny-ink: oklch(0.95 0 0);
+
 	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.95 0 0);
+	--foreground: var(--penny-ink);
 	--card: oklch(0.18 0 0);
-	--card-foreground: oklch(0.95 0 0);
-	--muted: oklch(0.22 0 0);
-	--muted-foreground: oklch(0.65 0 0);
-	--border: oklch(0.28 0 0);
-	--user-bubble: oklch(0.26 0 0);
-	--primary: oklch(0.95 0 0);
-	--primary-foreground: oklch(0.145 0 0);
-	--accent: oklch(0.24 0 0);
-	--accent-foreground: oklch(0.95 0 0);
-	--discovery: oklch(0.65 0 0);
-	--discovery-foreground: oklch(0.145 0 0);
+	--card-foreground: var(--penny-ink);
+	--muted: var(--penny-brand-muted);
+	--muted-foreground: oklch(0.68 0.04 265);
+	--border: oklch(0.32 0.05 265);
+	--user-bubble: var(--penny-brand-subtle);
+	--primary: var(--penny-brand);
+	--primary-foreground: var(--penny-brand-foreground);
+	--accent: var(--penny-brand-subtle);
+	--accent-foreground: oklch(0.92 0.03 265);
+	--discovery: var(--penny-brand);
+	--discovery-foreground: var(--penny-brand-foreground);
+	--ring: var(--penny-brand);
 	--destructive: oklch(0.62 0.18 25);
 }
 
@@ -69,7 +97,13 @@
 	}
 
 	body {
-		@apply bg-background text-foreground antialiased;
+		@apply bg-background font-sans text-foreground antialiased;
+		font-optical-sizing: auto;
+	}
+
+	:focus-visible {
+		outline: 2px solid color-mix(in oklch, var(--ring) 45%, transparent);
+		outline-offset: 2px;
 	}
 }
 
@@ -151,7 +185,7 @@
 	}
 
 	.penny-composer-dock {
-		@apply shrink-0 border-t border-border/60 bg-background px-3 pb-3 pt-2;
+		@apply shrink-0 border-t border-primary/15 bg-background px-3 pb-3 pt-2;
 	}
 
 	.penny-composer-dock > :global(form) {
@@ -167,7 +201,23 @@
 		display: none;
 	}
 
+	.penny-thinking-trace-scroll {
+		scrollbar-width: thin;
+		scrollbar-color: color-mix(in oklch, var(--penny-brand) 35%, transparent) transparent;
+	}
+
+	.penny-thinking-trace-scroll::-webkit-scrollbar {
+		display: block;
+		width: 6px;
+	}
+
+	.penny-thinking-trace-scroll::-webkit-scrollbar-thumb {
+		border-radius: 999px;
+		background: color-mix(in oklch, var(--penny-brand) 35%, transparent);
+	}
+
 	.penny-stream-cursor {
+		@apply text-primary;
 		animation: penny-stream-cursor 1s ease-in-out infinite;
 	}
 
@@ -205,7 +255,7 @@
 	}
 
 	.penny-markdown :is(h1, h2, h3, h4) {
-		@apply font-semibold tracking-tight text-foreground;
+		@apply font-display font-semibold tracking-tight text-foreground;
 	}
 
 	.penny-markdown h1 {
@@ -241,20 +291,25 @@
 	}
 
 	.penny-markdown a {
-		@apply font-medium text-foreground underline underline-offset-2;
+		@apply font-medium text-primary underline decoration-primary/35 underline-offset-2 transition-colors;
+	}
+
+	.penny-markdown a:hover,
+	.penny-markdown a:focus-visible {
+		@apply text-penny-brand-deep decoration-primary/60;
 	}
 
 	.penny-markdown a.penny-link-preview {
-		@apply inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full border border-border bg-muted/70 px-2.5 py-0.5 text-xs font-medium text-foreground no-underline transition-colors;
+		@apply inline-flex max-w-full cursor-pointer items-center gap-1 rounded-full border border-primary/20 bg-penny-brand-subtle px-2.5 py-0.5 text-xs font-medium text-primary no-underline transition-colors;
 	}
 
 	.penny-markdown a.penny-link-preview:hover,
 	.penny-markdown a.penny-link-preview:focus-visible {
-		@apply border-foreground/25 bg-muted underline decoration-foreground/40 underline-offset-2;
+		@apply border-primary/35 bg-penny-brand-muted text-penny-brand-deep underline decoration-primary/40 underline-offset-2;
 	}
 
 	.penny-markdown a.penny-link-preview:focus-visible {
-		@apply outline-2 outline-offset-2 outline-foreground/30;
+		@apply outline-2 outline-offset-2 outline-ring/40;
 	}
 
 	.penny-link-preview__label {
@@ -314,7 +369,7 @@
 	}
 
 	.penny-markdown blockquote {
-		@apply border-l-2 border-border pl-3 text-muted-foreground;
+		@apply border-l-2 border-primary/35 pl-3 text-muted-foreground;
 	}
 
 	.penny-markdown-table-wrap {

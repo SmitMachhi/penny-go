@@ -5,18 +5,18 @@
 	import type { ChatMessage } from '$lib/chat/messages.js';
 	import { enhanceLinkPreviews } from '$lib/chat/link-preview-action.js';
 	import { renderMarkdown } from '$lib/chat/markdown.js';
-	import ArtifactChip from '$lib/components/artifacts/ArtifactChip.svelte';
+	import ArtifactPlanNudge from '$lib/components/chat/ArtifactPlanNudge.svelte';
 	import { cn } from '$lib/utils.js';
 
 	const COPY_FEEDBACK_MS = 2000;
 
 	type Props = {
 		message: ChatMessage;
-		artifacts?: ArtifactSummary[];
+		planNudgeArtifact?: ArtifactSummary | null;
 		onOpenArtifact?: (artifactId: string) => void;
 	};
 
-	let { message, artifacts = [], onOpenArtifact }: Props = $props();
+	let { message, planNudgeArtifact = null, onOpenArtifact }: Props = $props();
 
 	let copied = $state(false);
 
@@ -26,12 +26,6 @@
 
 	const hasTable = $derived(
 		message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text)
-	);
-
-	const linkedArtifacts = $derived(
-		(message.artifactIds ?? [])
-			.map((artifactId) => artifacts.find((artifact) => artifact.artifactId === artifactId))
-			.filter((artifact): artifact is ArtifactSummary => artifact !== undefined)
 	);
 
 	async function copyMessageText(): Promise<void> {
@@ -54,7 +48,7 @@
 			class={cn(
 				'mb-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-muted-foreground',
 				'opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100',
-				'hover:bg-muted hover:text-foreground'
+				'hover:bg-penny-brand-subtle hover:text-primary'
 			)}
 			aria-label={copied ? 'Copied' : 'Copy message'}
 			onclick={() => void copyMessageText()}
@@ -81,17 +75,16 @@
 				{@html html}
 			</div>
 		{/key}
-		{#if linkedArtifacts.length > 0 && onOpenArtifact}
-			<div class="mt-3 flex flex-col gap-2">
-				{#each linkedArtifacts as artifact (artifact.artifactId)}
-					<ArtifactChip {artifact} onOpen={onOpenArtifact} />
-				{/each}
-			</div>
+		{#if planNudgeArtifact && onOpenArtifact}
+			<ArtifactPlanNudge
+				artifact={planNudgeArtifact}
+				onOpen={() => onOpenArtifact(planNudgeArtifact.artifactId)}
+			/>
 		{/if}
 		<div class="mt-2 flex items-center">
 			<button
 				type="button"
-				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-penny-brand-subtle hover:text-primary"
 				aria-label={copied ? 'Copied' : 'Copy response'}
 				onclick={() => void copyMessageText()}
 			>

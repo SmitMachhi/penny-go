@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	CHAT_NEAR_BOTTOM_THRESHOLD_PX,
+	CHAT_THREAD_IDLE_BOTTOM_PADDING_PX,
+	computeTurnFocusSpacerHeightPx,
 	distanceFromThreadBottom,
 	isThreadNearBottom,
+	resolveThreadBottomSpacerHeightPx,
 	scrollThreadToBottom
 } from './chat-thread-scroll.js';
 
@@ -49,6 +52,28 @@ describe('isThreadNearBottom', () => {
 	it('is false when far from the bottom', () => {
 		const element = mockThreadElement({ scrollHeight: 1000, scrollTop: 0, clientHeight: 400 });
 		expect(isThreadNearBottom(element, CHAT_NEAR_BOTTOM_THRESHOLD_PX)).toBe(false);
+	});
+});
+
+describe('computeTurnFocusSpacerHeightPx', () => {
+	it('scales with thread viewport height within bounds', () => {
+		expect(computeTurnFocusSpacerHeightPx(900)).toBe(405);
+		expect(computeTurnFocusSpacerHeightPx(200)).toBe(120);
+		expect(computeTurnFocusSpacerHeightPx(2000)).toBe(480);
+	});
+});
+
+describe('resolveThreadBottomSpacerHeightPx', () => {
+	it('uses idle padding when not sending', () => {
+		expect(
+			resolveThreadBottomSpacerHeightPx({ sending: false, threadClientHeightPx: 800 })
+		).toBe(CHAT_THREAD_IDLE_BOTTOM_PADDING_PX);
+	});
+
+	it('uses focus spacer while sending', () => {
+		expect(
+			resolveThreadBottomSpacerHeightPx({ sending: true, threadClientHeightPx: 800 })
+		).toBe(360);
 	});
 });
 

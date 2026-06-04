@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { Brain, ChevronRight } from '@lucide/svelte';
 
 	import type { ToolActivity } from '$lib/chat/messages.js';
@@ -23,6 +24,7 @@
 	}: Props = $props();
 
 	let internalExpanded = $state(false);
+	let traceEl = $state<HTMLDivElement | null>(null);
 	const isControlled = $derived(onToggle !== undefined);
 	const expanded = $derived(isControlled ? controlledExpanded : internalExpanded);
 
@@ -41,7 +43,7 @@
 		if (expanded) {
 			return 'Thought';
 		}
-		return 'Thought for a moment';
+		return 'How Penny researched this';
 	});
 
 	function handleToggle(): void {
@@ -51,13 +53,27 @@
 		}
 		internalExpanded = !internalExpanded;
 	}
+
+	$effect(() => {
+		if (!streaming || !expanded || !traceEl) {
+			return;
+		}
+		void text;
+		void tools.length;
+		void tick().then(() => {
+			if (!traceEl) {
+				return;
+			}
+			traceEl.scrollTop = traceEl.scrollHeight;
+		});
+	});
 </script>
 
 {#if hasContent}
 	<div class="w-full">
 		<button
 			type="button"
-			class="flex items-center gap-1.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+			class="flex items-center gap-1.5 py-1 text-sm text-muted-foreground transition-colors hover:text-primary"
 			onclick={handleToggle}
 		>
 			<Brain class={cn('h-4 w-4 shrink-0', streaming && 'animate-pulse')} />
@@ -73,11 +89,12 @@
 
 		{#if expanded}
 			<div
+				bind:this={traceEl}
 				class={cn(
-					'penny-overlay-scroll mt-2 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground',
+					'mt-2 text-sm leading-relaxed whitespace-pre-wrap text-muted-foreground',
 					streaming
-						? 'max-h-[var(--penny-thinking-stream-max-height)] overflow-y-auto'
-						: 'max-h-[var(--penny-thinking-idle-max-height)] overflow-y-auto'
+						? 'penny-thinking-trace-scroll max-h-[var(--penny-thinking-stream-max-height)] overflow-y-auto'
+						: 'penny-overlay-scroll max-h-[var(--penny-thinking-idle-max-height)] overflow-y-auto'
 				)}
 			>
 				{text}

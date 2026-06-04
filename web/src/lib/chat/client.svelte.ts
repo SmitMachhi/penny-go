@@ -1,7 +1,17 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { abortChatRun, fetchArtifacts, fetchHealth, fetchHistory, sendChatMessage } from '$lib/chat/client-api.js';
-import { appendAssistantMessage, appendUserMessage, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
+import {
+	appendAssistantMessage,
+	appendUserMessage,
+	applyCachedSessionThread,
+	clearChatSessionState,
+	createInitialChatState,
+	prepareSessionSwitchState,
+	resetRunState,
+	startRunState,
+	type ChatClientState
+} from '$lib/chat/client-state.js';
 import { stripTrailingAssistantMessages } from '$lib/chat/display-messages.js';
 import { finalizeRunTrace } from '$lib/chat/client-run-trace.js';
 import {
@@ -11,6 +21,7 @@ import {
 import { createChatStreamConnection, type ChatStreamConnection } from '$lib/chat/client-stream-connection.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
+import { readSessionThreadCache, writeSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 const HEALTH_POLL_MS = 30_000;
@@ -27,6 +38,7 @@ export class ChatClient {
 	private runRecoveryTimer: ReturnType<typeof setTimeout> | null = null;
 	private expectedUserMessageCount = 0;
 	private onGatewayRecovered: (() => void) | null = null;
+	private abortRequested = false;
 
 	async bootstrap(): Promise<void> {
 		await this.refreshHealth();
@@ -62,13 +74,14 @@ export class ChatClient {
 
 	async clearSession(): Promise<void> {
 		const requestId = ++this.historyRequestId;
-		await this.abortRunBeforeSessionReset();
+		void this.abortRunBeforeSessionReset();
 		if (requestId !== this.historyRequestId) {
 			return;
 		}
 		this.dispose();
 		clearChatSessionState(this.state);
 		this.activeRunId = null;
+		this.abortRequested = false;
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 	}
@@ -76,13 +89,17 @@ export class ChatClient {
 	openArtifact(artifactId: string): void {
 		this.state.activeArtifactId = artifactId;
 		this.state.artifactPanelOpen = true;
+		this.state.artifactPanelDismissed = false;
 		if (this.state.artifacts.length === 0 && this.state.sessionKey) {
 			void this.loadArtifacts();
 		}
+		this.persistActiveSessionCache();
 	}
 
 	closeArtifactPanel(): void {
 		this.state.artifactPanelOpen = false;
+		this.state.artifactPanelDismissed = true;
+		this.persistActiveSessionCache();
 	}
 
 	toggleArtifactPanel(): void {
@@ -123,34 +140,52 @@ export class ChatClient {
 			return;
 		}
 		if (this.state.sending) {
-			await this.abortActiveRun();
+			void this.abortActiveRun();
 		}
+		this.persistActiveSessionCache();
 		this.dispose();
 		this.historyRequestId += 1;
-		prepareSessionSwitchState(this.state, sessionKey);
+		const cached = readSessionThreadCache(sessionKey);
+		if (cached) {
+			applyCachedSessionThread(this.state, sessionKey, cached);
+		} else {
+			prepareSessionSwitchState(this.state, sessionKey);
+			this.state.loading = true;
+		}
 		this.activeRunId = null;
+		this.abortRequested = false;
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
-		await this.loadHistory();
 		this.connectStream();
+		void this.loadHistory();
 		void this.loadArtifacts();
 	}
 
 	async loadHistory(): Promise<void> {
-		if (!this.state.sessionKey || this.state.sending) {
+		if (!this.state.sessionKey) {
 			return;
 		}
 		const sessionKey = this.state.sessionKey;
 		const requestId = ++this.historyRequestId;
-		this.state.loading = true;
+		const showBlockingLoad = this.state.messages.length === 0;
+		if (showBlockingLoad) {
+			this.state.loading = true;
+		} else {
+			this.state.historyRefreshing = true;
+		}
 		try {
 			const payload = await fetchHistory(sessionKey);
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
 				return;
 			}
-			this.state.messages = payload.messages;
+			const localUserCount = this.state.messages.filter((entry) => entry.role === 'user').length;
+			const remoteUserCount = payload.messages.filter((entry) => entry.role === 'user').length;
+			if (localUserCount <= remoteUserCount) {
+				this.state.messages = payload.messages;
+			}
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
+			this.persistActiveSessionCache();
 		} catch (error) {
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
 				return;
@@ -159,6 +194,7 @@ export class ChatClient {
 		} finally {
 			if (requestId === this.historyRequestId && sessionKey === this.state.sessionKey) {
 				this.state.loading = false;
+				this.state.historyRefreshing = false;
 			}
 		}
 	}
@@ -175,6 +211,7 @@ export class ChatClient {
 			}
 			applyLoadedArtifacts(this.state, payload.artifacts);
 			this.state.operationError = null;
+			this.persistActiveSessionCache();
 		} catch (error) {
 			if (sessionKey !== this.state.sessionKey) {
 				return;
@@ -205,8 +242,14 @@ export class ChatClient {
 		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
 		this.pendingRunArtifactIds = [];
 		appendUserMessage(this.state, trimmed);
+		this.persistActiveSessionCache();
 		try {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
+			if (this.abortRequested) {
+				this.activeRunId = payload.runId;
+				void this.persistAbort(payload.runId);
+				return true;
+			}
 			if (this.state.sending) {
 				this.activeRunId = payload.runId;
 				this.expectedUserMessageCount = userMessageCount + 1;
@@ -217,16 +260,24 @@ export class ChatClient {
 			this.clearRunRecovery();
 			this.state.messages = previousMessages;
 			this.state.sending = false;
+			this.abortRequested = false;
 			this.state.operationError = formatClientError(error, 'failed to send message');
+			this.persistActiveSessionCache();
 			return false;
 		}
 	}
 
 	async abortActiveRun(): Promise<void> {
-		if (!this.activeRunId || !this.state.sessionKey) {
+		if (!this.state.sending && !this.activeRunId) {
 			return;
 		}
-		await abortChatRun({ sessionKey: this.state.sessionKey, runId: this.activeRunId });
+		const runId = this.activeRunId;
+		this.abortRequested = true;
+		this.applyOptimisticAbort();
+		if (runId && this.state.sessionKey) {
+			this.abortRequested = false;
+			void this.persistAbort(runId);
+		}
 	}
 
 	private connectStream(): void {
@@ -259,20 +310,22 @@ export class ChatClient {
 		if (!sessionKey || (runId !== null && runId !== payload.runId)) {
 			return;
 		}
-		await this.loadArtifacts();
-		if (sessionKey !== this.state.sessionKey || (this.activeRunId !== null && this.activeRunId !== payload.runId)) {
-			return;
-		}
-		syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
+		const thinkingTrace = finalizeRunTrace(this.state.runTrace, payload.text);
 		this.state.messages = stripTrailingAssistantMessages(this.state.messages);
-		appendAssistantMessage(
-			this.state,
-			payload.text,
-			this.pendingRunArtifactIds,
-			{ thinkingTrace: finalizeRunTrace(this.state.runTrace, payload.text) }
-		);
+		appendAssistantMessage(this.state, payload.text, this.pendingRunArtifactIds, { thinkingTrace });
 		this.state.operationError = null;
 		this.resetRun();
+		this.persistActiveSessionCache();
+		void this.loadArtifacts().then(() => {
+			if (sessionKey !== this.state.sessionKey) {
+				return;
+			}
+			if (runId !== null && this.activeRunId !== null && this.activeRunId !== runId) {
+				return;
+			}
+			syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
+			this.persistActiveSessionCache();
+		});
 	}
 
 	private async refreshArtifactsAfterBrief(): Promise<void> {
@@ -288,8 +341,45 @@ export class ChatClient {
 		this.clearRunRecovery();
 		resetRunState(this.state);
 		this.activeRunId = null;
+		this.abortRequested = false;
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
+		this.persistActiveSessionCache();
+	}
+
+	private applyOptimisticAbort(): void {
+		this.clearRunRecovery();
+		resetRunState(this.state);
+		this.activeRunId = null;
+		this.artifactVersionSnapshot = new Map();
+		this.pendingRunArtifactIds = [];
+		this.persistActiveSessionCache();
+	}
+
+	private async persistAbort(runId: string): Promise<void> {
+		const sessionKey = this.state.sessionKey;
+		if (!sessionKey) {
+			return;
+		}
+		try {
+			await abortChatRun({ sessionKey, runId });
+		} catch (error) {
+			this.state.operationError = formatClientError(error, 'failed to stop response');
+		}
+	}
+
+	private persistActiveSessionCache(): void {
+		if (!this.state.sessionKey) {
+			return;
+		}
+		writeSessionThreadCache(this.state.sessionKey, {
+			sessionId: this.state.sessionId,
+			messages: this.state.messages,
+			artifacts: this.state.artifacts,
+			activeArtifactId: this.state.activeArtifactId,
+			artifactPanelOpen: this.state.artifactPanelOpen,
+			artifactPanelDismissed: this.state.artifactPanelDismissed
+		});
 	}
 
 	private scheduleRunRecovery(expectedUserMessageCount: number): void {
@@ -329,14 +419,12 @@ export class ChatClient {
 				this.scheduleRunRecovery(expectedUserMessageCount);
 				return;
 			}
-			await this.loadArtifacts();
-			if (!this.state.sending || sessionKey !== this.state.sessionKey) {
-				return;
-			}
 			this.state.messages = stripTrailingAssistantMessages(this.state.messages);
 			appendAssistantMessage(this.state, assistant.text, assistant.artifactIds ?? [], {});
 			this.state.operationError = null;
 			this.resetRun();
+			this.persistActiveSessionCache();
+			void this.loadArtifacts();
 		} catch {
 			if (this.state.sending) {
 				this.scheduleRunRecovery(expectedUserMessageCount);
@@ -346,12 +434,18 @@ export class ChatClient {
 
 	private async abortRunBeforeSessionReset(): Promise<void> {
 		if (!this.activeRunId || !this.state.sessionKey) {
+			if (this.state.sending) {
+				this.applyOptimisticAbort();
+			}
 			return;
 		}
+		const runId = this.activeRunId;
+		this.applyOptimisticAbort();
 		try {
-			await this.abortActiveRun();
+			await abortChatRun({ sessionKey: this.state.sessionKey, runId });
 		} catch (error) {
 			this.state.operationError = formatClientError(error, 'failed to abort active run');
 		}
 	}
 }
+

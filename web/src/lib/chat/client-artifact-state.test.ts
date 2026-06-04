@@ -44,6 +44,20 @@ describe('client artifact state', () => {
 		expect(pendingIds).toEqual([]);
 	});
 
+	it('does not open the artifact panel when the user dismissed it', () => {
+		const state = createInitialChatState();
+		applyLoadedArtifacts(state, [artifact('brief', 1)]);
+		state.artifactPanelDismissed = true;
+		const snapshot = snapshotArtifactVersions(state.artifacts);
+		applyLoadedArtifacts(state, [artifact('brief', 2)]);
+		const pendingIds: string[] = [];
+
+		syncChangedLatestArtifact(state, pendingIds, snapshot);
+
+		expect(state.artifactPanelOpen).toBe(false);
+		expect(pendingIds).toEqual(['brief']);
+	});
+
 	it('links the latest artifact when the run changes its version', () => {
 		const state = createInitialChatState();
 		applyLoadedArtifacts(state, [artifact('brief', 1)]);

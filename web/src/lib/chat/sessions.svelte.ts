@@ -1,6 +1,7 @@
 import { isLabelInUseMessage, uniqueSessionLabel } from '@penny/shared/session-label-unique';
 import { titleFromFirstMessage } from '@penny/shared/session-title';
 
+import { forgetSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 import { apiJson } from '$lib/chat/api-client.js';
 import { formatClientError } from '$lib/chat/format-error.js';
 import {
@@ -77,7 +78,7 @@ export class SessionClient {
 	async refresh(options?: RefreshOptions): Promise<void> {
 		const silent = options?.silent === true;
 		const priorSessions = this.state.sessions;
-		if (!silent) {
+		if (!silent && priorSessions.length === 0) {
 			this.state.loading = true;
 		}
 		try {
@@ -120,7 +121,7 @@ export class SessionClient {
 		this.state.sessions = upsertSessionView(this.state.sessions, {
 			key,
 			title,
-			titleStatus: 'ready',
+			titleStatus: 'loading',
 			updatedAt: Date.now(),
 			isLegacy: session?.isLegacy ?? false
 		});
@@ -236,10 +237,8 @@ export class SessionClient {
 				throw new Error('failed to create session');
 			}
 			const session = payload.session;
-			await this.refresh({ silent: true });
-			if (!this.state.sessions.some((entry) => entry.key === session.key)) {
-				this.state.sessions = upsertSessionView(this.state.sessions, session);
-			}
+			this.state.sessions = upsertSessionView(this.state.sessions, session);
+			void this.refresh({ silent: true });
 			return session;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to create session');
@@ -261,7 +260,7 @@ export class SessionClient {
 			this.state.sessions = upsertSessionView(this.state.sessions, {
 				...session,
 				title: uniqueLabel,
-				titleStatus: 'ready',
+				titleStatus: 'loading',
 				updatedAt: Date.now()
 			});
 		}
@@ -290,15 +289,23 @@ export class SessionClient {
 	}
 
 	async deleteSession(key: string): Promise<boolean> {
+		const previousSessions = this.state.sessions;
+		const wasTitled = this.titledSessions.has(key);
+		this.state.sessions = previousSessions.filter((session) => session.key !== key);
+		this.titledSessions.delete(key);
+		forgetSessionThreadCache(key);
 		try {
 			await apiJson(`/api/sessions/${encodeURIComponent(key)}`, {
 				method: 'DELETE'
 			});
-			this.state.sessions = this.state.sessions.filter((session) => session.key !== key);
-			this.titledSessions.delete(key);
-			await this.refresh({ silent: true });
+			this.state.error = null;
+			void this.refresh({ silent: true });
 			return true;
 		} catch (error) {
+			this.state.sessions = previousSessions;
+			if (wasTitled) {
+				this.titledSessions.add(key);
+			}
 			this.state.error = formatClientError(error, 'failed to delete session');
 			return false;
 		}

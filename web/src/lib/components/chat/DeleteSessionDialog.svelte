@@ -18,8 +18,7 @@
 		>
 			<h2 id="delete-session-title" class="text-lg font-semibold">Delete this chat?</h2>
 			<p class="mt-2 text-sm text-muted-foreground">
-				This removes the conversation and any notes Penny saved for this business. This can't be
-				undone.
+				This permanently deletes the chat and cannot be undone.
 			</p>
 			<div class="mt-6 flex justify-end gap-2">
 				<button

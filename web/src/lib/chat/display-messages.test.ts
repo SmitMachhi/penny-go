@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { messagesForDisplay, stripTrailingAssistantMessages } from './display-messages.js';
+import {
+	findLastAssistantMessageId,
+	messagesForDisplay,
+	stripTrailingAssistantMessages
+} from './display-messages.js';
 import type { ChatMessage } from './messages.js';
 
 const USER: ChatMessage = { id: 'u1', role: 'user', text: 'Fund my project' };
@@ -16,5 +20,15 @@ describe('display-messages', () => {
 
 	it('strips trailing assistant messages before finalizing a run', () => {
 		expect(stripTrailingAssistantMessages([USER, ASSISTANT])).toEqual([USER]);
+	});
+
+	it('finds the last assistant message id', () => {
+		const messages = [
+			USER,
+			ASSISTANT,
+			{ id: 'a2', role: 'assistant', text: 'Final' } satisfies ChatMessage
+		];
+		expect(findLastAssistantMessageId(messages)).toBe('a2');
+		expect(findLastAssistantMessageId([USER])).toBeNull();
 	});
 });

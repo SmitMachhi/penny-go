@@ -3,16 +3,23 @@
 	import { tick } from 'svelte';
 
 	import {
+		CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX,
 		isThreadNearBottom,
+		resolveThreadBottomSpacerHeightPx,
 		scrollThreadToBottom
 	} from '$lib/chat/chat-thread-scroll.js';
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { liveRunTraceText } from '$lib/chat/client-run-trace.js';
 	import {
-		CANVAS_EMPTY_HEADLINE,
-		CANVAS_EMPTY_SUBHEAD
+		HOME_HEADLINE,
+		HOME_SUBHEAD
 	} from '$lib/chat/starter-prompts.js';
-	import { messagesForDisplay } from '$lib/chat/display-messages.js';
+	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
+	import type { ChatMessage } from '$lib/chat/messages.js';
+	import {
+		findLastAssistantMessageId,
+		messagesForDisplay
+	} from '$lib/chat/display-messages.js';
 	import { consumePendingFirstMessage } from '$lib/chat/pending-first-message.js';
 	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
@@ -26,6 +33,7 @@
 	let draft = $state('');
 	let loadedRouteId = $state<string | null>(null);
 	let threadEl = $state<HTMLElement | undefined>(undefined);
+	let threadViewportHeightPx = $state(0);
 	let followThread = $state(false);
 	let suppressScrollPinUpdate = $state(false);
 
@@ -33,10 +41,51 @@
 	const displayMessages = $derived(messagesForDisplay(chat.state.messages, chat.state.sending));
 
 	const inputDisabled = $derived(!chat.state.connected);
-	const sendDisabled = $derived(
-		chat.state.sending || !chat.state.connected || chat.state.loading
+	const sendDisabled = $derived(chat.state.sending || !chat.state.connected);
+	const showThreadLoading = $derived(
+		chat.state.loading && chat.state.messages.length === 0 && !chat.state.sending
 	);
 	const liveTraceText = $derived(liveRunTraceText(chat.state.runTrace));
+	const latestArtifact = $derived(chat.state.artifacts[0] ?? null);
+	const lastAssistantMessageId = $derived(findLastAssistantMessageId(displayMessages));
+	const showPlanNudge = $derived(
+		latestArtifact !== null &&
+			!chat.state.artifactPanelOpen &&
+			lastAssistantMessageId !== null
+	);
+
+	const threadBottomSpacerHeightPx = $derived(
+		resolveThreadBottomSpacerHeightPx({
+			sending: chat.state.sending,
+			threadClientHeightPx: threadViewportHeightPx || CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX
+		})
+	);
+
+	$effect(() => {
+		if (!threadEl) {
+			threadViewportHeightPx = 0;
+			return;
+		}
+		const updateViewportHeight = () => {
+			threadViewportHeightPx = threadEl.clientHeight;
+		};
+		updateViewportHeight();
+		const observer = new ResizeObserver(updateViewportHeight);
+		observer.observe(threadEl);
+		return () => observer.disconnect();
+	});
+
+	function planNudgeForMessage(message: ChatMessage): ArtifactSummary | null {
+		if (!showPlanNudge || message.id !== lastAssistantMessageId || !latestArtifact) {
+			return null;
+		}
+		const linked = (message.artifactIds ?? [])
+			.map((artifactId) =>
+				chat.state.artifacts.find((artifact) => artifact.artifactId === artifactId)
+			)
+			.filter((artifact): artifact is ArtifactSummary => artifact !== undefined);
+		return linked[0] ?? latestArtifact;
+	}
 
 	async function pinThreadToBottom(behavior: ScrollBehavior = 'smooth'): Promise<void> {
 		followThread = true;
@@ -63,6 +112,7 @@
 		}
 		void displayMessages.length;
 		void chat.state.sending;
+		void threadBottomSpacerHeightPx;
 		void liveTraceText;
 		void chat.state.tools.length;
 		void chat.state.runTraceExpanded;
@@ -135,6 +185,26 @@
 		}
 	}
 
+	async function startWithPrompt(prompt: string): Promise<void> {
+		if (sendDisabled) {
+			return;
+		}
+		const trimmed = prompt.trim();
+		if (!trimmed) {
+			return;
+		}
+		const isFirstMessage = chat.state.messages.length === 0;
+		followThread = true;
+		const sent = await chat.sendMessage(trimmed);
+		if (!sent) {
+			return;
+		}
+		await pinThreadToBottom('smooth');
+		if (isFirstMessage && chat.state.sessionKey) {
+			sessions.setTitleFromFirstMessage(chat.state.sessionKey, trimmed);
+		}
+	}
+
 	function handleKeydown(event: KeyboardEvent) {
 		if (event.key === 'Enter' && !event.shiftKey && !sendDisabled) {
 			event.preventDefault();
@@ -142,9 +212,6 @@
 		}
 	}
 
-	function applyStarterPrompt(prompt: string): void {
-		draft = prompt;
-	}
 </script>
 
 <div class="penny-chat-bg flex min-h-0 flex-1 overflow-hidden">
@@ -156,19 +223,22 @@
 				style="gap: var(--penny-thread-gap)"
 				onscroll={handleThreadScroll}
 			>
-				{#if chat.state.loading}
+				{#if showThreadLoading}
 					<p class="text-[0.9375rem] text-muted-foreground">Loading conversation…</p>
 				{:else if chat.state.messages.length === 0}
 					<div class="space-y-6 py-8 text-center">
 						<div class="space-y-2">
-							<h2 class="text-2xl font-semibold tracking-tight text-foreground">
-								{CANVAS_EMPTY_HEADLINE}
+							<h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
+								{HOME_HEADLINE}
 							</h2>
 							<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">
-								{CANVAS_EMPTY_SUBHEAD}
+								{HOME_SUBHEAD}
 							</p>
 						</div>
-						<StarterPromptChips disabled={sendDisabled} onSelect={applyStarterPrompt} />
+						<StarterPromptChips
+							disabled={sendDisabled}
+							onStart={(prompt) => void startWithPrompt(prompt)}
+						/>
 					</div>
 				{/if}
 
@@ -178,22 +248,30 @@
 					{/if}
 					<MessageBubble
 						{message}
-						artifacts={chat.state.artifacts}
+						planNudgeArtifact={planNudgeForMessage(message)}
 						onOpenArtifact={(artifactId) => chat.openArtifact(artifactId)}
 					/>
 				{/each}
 
 				{#if chat.state.sending}
-					<ThinkingPanel
-						text={liveTraceText}
-						tools={chat.state.tools}
-						expanded={chat.state.runTraceExpanded}
-						streaming={true}
-						onToggle={() => {
-							chat.state.runTraceExpanded = !chat.state.runTraceExpanded;
-						}}
-					/>
+					<div class="penny-turn-focus-anchor w-full">
+						<ThinkingPanel
+							text={liveTraceText}
+							tools={chat.state.tools}
+							expanded={chat.state.runTraceExpanded}
+							streaming={true}
+							onToggle={() => {
+								chat.state.runTraceExpanded = !chat.state.runTraceExpanded;
+							}}
+						/>
+					</div>
 				{/if}
+
+				<div
+					class="shrink-0"
+					aria-hidden="true"
+					style:height="{threadBottomSpacerHeightPx}px"
+				></div>
 			</section>
 
 			<div class="penny-composer-dock">

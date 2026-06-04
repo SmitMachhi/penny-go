@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { ChevronRight, PanelLeftClose, SquarePen } from '@lucide/svelte';
+	import { PanelLeftClose, SquarePen } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { chatPathFromSessionKey, routeIdFromSessionKey } from '$lib/chat/session-routes.js';
@@ -48,15 +48,18 @@
 			return;
 		}
 		const deletedKey = pendingDeleteKey;
-		pendingDeleteKey = null;
 		const wasActive = routeIdFromSessionKey(deletedKey) === activeRouteId;
-		const ok = await sessions.deleteSession(deletedKey);
-		if (!ok) {
-			return;
-		}
+		pendingDeleteKey = null;
 		if (wasActive) {
-			await chat.clearSession();
+			void chat.clearSession();
 			await goto('/');
+		}
+		const ok = await sessions.deleteSession(deletedKey);
+		if (!ok && wasActive) {
+			const path = chatPathFromSessionKey(deletedKey);
+			if (path) {
+				await goto(path);
+			}
 		}
 	}
 </script>
@@ -72,7 +75,7 @@
 
 <aside
 	class={cn(
-		'z-50 flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-muted/40',
+		'z-50 flex h-full w-[260px] shrink-0 flex-col border-r border-border bg-penny-brand-muted/60',
 		sessions.state.sidebarOpen
 			? 'fixed inset-y-0 left-0 border-r border-border'
 			: 'hidden',
@@ -103,9 +106,8 @@
 		</Button>
 	</div>
 
-	<div class="flex items-center gap-0.5 px-3 pb-1 pt-1">
+	<div class="px-3 pb-1 pt-1">
 		<span class="text-sm font-semibold text-foreground">Recents</span>
-		<ChevronRight class="h-4 w-4 text-muted-foreground" aria-hidden="true" />
 	</div>
 
 	<div class="flex-1 space-y-1 overflow-y-auto px-2 pb-2 penny-overlay-scroll">

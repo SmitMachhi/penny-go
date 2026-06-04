@@ -52,7 +52,9 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 		case 'artifact.update':
 			upsertArtifact(handlers.state, payload.artifact);
 			handlers.state.activeArtifactId = payload.artifact.artifactId;
-			handlers.state.artifactPanelOpen = true;
+			if (!handlers.state.artifactPanelDismissed) {
+				handlers.state.artifactPanelOpen = true;
+			}
 			rememberArtifactId(handlers.pendingRunArtifactIds, payload.artifact.artifactId);
 			break;
 		case 'chat.final':

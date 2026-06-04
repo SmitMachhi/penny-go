@@ -11,6 +11,7 @@
 		disabled?: boolean;
 		sendDisabled?: boolean;
 		sending?: boolean;
+		showDisclaimer?: boolean;
 		onSubmit: () => void;
 		onStop?: () => void;
 		onKeydown?: (event: KeyboardEvent) => void;
@@ -21,6 +22,7 @@
 		disabled = false,
 		sendDisabled = false,
 		sending = false,
+		showDisclaimer = false,
 		onSubmit,
 		onStop,
 		onKeydown
@@ -51,7 +53,7 @@
 	}}
 >
 	<div
-		class="flex items-end gap-2 rounded-[1.75rem] border border-border bg-background px-3 py-2"
+		class="flex items-end gap-2 rounded-[1.75rem] border border-border bg-background px-3 py-2 transition-[border-color,box-shadow] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15"
 	>
 		<textarea
 			bind:this={textareaEl}
@@ -70,7 +72,7 @@
 			{#if sending}
 				<button
 					type="button"
-					class="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-40"
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
 					aria-label="Stop response"
 					onclick={() => onStop?.()}
 				>
@@ -79,7 +81,7 @@
 			{:else}
 				<button
 					type="submit"
-					class="flex h-9 w-9 items-center justify-center rounded-full bg-foreground text-background transition-opacity hover:opacity-90 disabled:opacity-25"
+					class="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-25"
 					disabled={!canSend}
 					aria-label="Send message"
 				>
@@ -88,5 +90,7 @@
 			{/if}
 		</div>
 	</div>
-	<p class="mt-2 text-center text-xs text-muted-foreground/80">{CHAT_DISCLAIMER}</p>
+	{#if showDisclaimer}
+		<p class="mt-2 text-center text-xs text-muted-foreground/80">{CHAT_DISCLAIMER}</p>
+	{/if}
 </form>

@@ -16,15 +16,15 @@
 	let draft = $state('');
 	let starting = $state(false);
 
-	const composerDisabled = $derived(starting || !chat.state.connected);
+	const composerDisabled = $derived(!chat.state.connected);
 
 	onMount(() => {
 		void chat.clearSession();
 	});
 
-	async function handleSend() {
-		const message = draft.trim();
-		if (!message || starting || !chat.state.connected) {
+	async function beginChat(message: string): Promise<void> {
+		const trimmed = message.trim();
+		if (!trimmed || starting || !chat.state.connected) {
 			return;
 		}
 
@@ -34,21 +34,23 @@
 		try {
 			const created = await sessions.createSession();
 			if (!created) {
-				draft = message;
 				return;
 			}
 
 			const path = chatPathFromSessionKey(created.key);
 			if (!path) {
-				draft = message;
 				return;
 			}
 
-			stashPendingFirstMessage({ sessionKey: created.key, message });
+			stashPendingFirstMessage({ sessionKey: created.key, message: trimmed });
 			await goto(path);
 		} finally {
 			starting = false;
 		}
+	}
+
+	async function handleSend() {
+		await beginChat(draft);
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
@@ -57,25 +59,28 @@
 			void handleSend();
 		}
 	}
-
-	function applyStarterPrompt(prompt: string): void {
-		draft = prompt;
-	}
 </script>
 
 <main class="penny-canvas-surface flex flex-1 flex-col items-center justify-center py-12">
 	<div class="penny-chat-column w-full space-y-8">
 		<div class="space-y-2 text-center">
-			<h2 class="text-3xl font-semibold tracking-tight text-foreground">{HOME_HEADLINE}</h2>
+			<h2 class="font-display text-3xl font-semibold tracking-tight text-foreground">
+				{HOME_HEADLINE}
+			</h2>
 			<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">{HOME_SUBHEAD}</p>
 		</div>
 
-		<StarterPromptChips disabled={composerDisabled} onSelect={applyStarterPrompt} />
+		<StarterPromptChips
+			disabled={composerDisabled || starting}
+			showExamples={false}
+			onStart={(prompt) => void beginChat(prompt)}
+		/>
 
 		<ChatComposer
 			bind:draft
 			disabled={composerDisabled}
-			sending={false}
+			sending={starting}
+			showDisclaimer={true}
 			onSubmit={() => void handleSend()}
 			onKeydown={handleKeydown}
 		/>

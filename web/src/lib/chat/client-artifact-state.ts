@@ -30,8 +30,10 @@ export function syncChangedLatestArtifact(
 	if (!latest || snapshot.get(latest.artifactId) === latest.version) {
 		return;
 	}
-	state.artifactPanelOpen = true;
 	state.activeArtifactId = latest.artifactId;
+	if (!state.artifactPanelDismissed) {
+		state.artifactPanelOpen = true;
+	}
 	rememberArtifactId(artifactIds, latest.artifactId);
 }
 

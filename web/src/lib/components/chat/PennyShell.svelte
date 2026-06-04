@@ -114,7 +114,7 @@
 
 	<div class="flex min-h-0 min-w-0 flex-1 flex-col">
 		<header
-			class="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-border/70 px-3 md:px-4"
+			class="flex h-12 shrink-0 items-center justify-between gap-3 border-b border-primary/15 px-3 md:px-4"
 		>
 			<div class="flex min-w-0 items-center gap-2">
 				{#if showSidebarBrand}
@@ -144,7 +144,7 @@
 				{#if chat.state.artifacts.length > 0}
 					<Button
 						variant={chat.state.artifactPanelOpen ? 'default' : 'outline'}
-						class="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-[6.75rem] sm:px-3"
+						class="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-auto sm:min-w-[7.5rem] sm:px-3"
 						aria-expanded={chat.state.artifactPanelOpen}
 						aria-label="Toggle funding plan panel"
 						onclick={() => chat.toggleArtifactPanel()}
@@ -154,20 +154,26 @@
 						{:else}
 							<PanelRight class="h-4 w-4" />
 						{/if}
-						<span class="hidden sm:inline">Plan</span>
+						<span class="hidden sm:inline">Funding plan</span>
 					</Button>
 				{/if}
-				<span
-					class={cn(
-						'rounded-full px-2 py-0.5 text-xs',
-						chat.state.connected
-							? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
-							: 'bg-destructive/15 text-destructive'
-					)}
-					title={chat.state.connectionError ?? undefined}
-				>
-					{chat.state.connected ? 'Online' : 'Offline'}
-				</span>
+				{#if !chat.state.connected}
+					<div class="flex items-center gap-2">
+						<span
+							class="max-w-[10rem] truncate text-xs text-destructive sm:max-w-xs"
+							title={chat.state.connectionError ?? undefined}
+						>
+							Not connected
+						</span>
+						<Button
+							variant="outline"
+							class="h-8 px-2.5 text-xs"
+							onclick={() => void chat.refreshHealth()}
+						>
+							Retry
+						</Button>
+					</div>
+				{/if}
 				<ThemeToggle />
 			</div>
 		</header>

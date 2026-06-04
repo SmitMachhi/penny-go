@@ -22,12 +22,12 @@ describe('classifyRequestError', () => {
 		expect(classifyRequestError(error, 'timed out').kind).toBe('abort');
 	});
 
-	it('extracts message from gateway json errors', () => {
+	it('humanizes gateway missing-scope errors', () => {
 		const result = classifyRequestError(
 			new Error('{"code":"INVALID_REQUEST","message":"missing scope: operator.admin"}'),
 			'fallback'
 		);
-		expect(result.message).toBe('missing scope: operator.admin');
+		expect(result.message).toContain('not allowed to perform this action');
 	});
 
 	it('uses fallback for unknown errors', () => {

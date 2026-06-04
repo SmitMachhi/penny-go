@@ -15,7 +15,9 @@ export type ChatClientState = {
 	tools: ToolActivity[];
 	artifacts: ArtifactSummary[];
 	artifactPanelOpen: boolean;
+	artifactPanelDismissed: boolean;
 	activeArtifactId: string | null;
+	historyRefreshing: boolean;
 	connectionError: string | null;
 	operationError: string | null;
 };
@@ -33,7 +35,9 @@ export function createInitialChatState(): ChatClientState {
 		tools: [],
 		artifacts: [],
 		artifactPanelOpen: false,
+		artifactPanelDismissed: false,
 		activeArtifactId: null,
+		historyRefreshing: false,
 		connectionError: null,
 		operationError: null
 	};
@@ -101,5 +105,31 @@ export function startRunState(state: ChatClientState): void {
 function resetArtifactState(state: ChatClientState): void {
 	state.artifacts = [];
 	state.artifactPanelOpen = false;
+	state.artifactPanelDismissed = false;
 	state.activeArtifactId = null;
+}
+
+export function applyCachedSessionThread(
+	state: ChatClientState,
+	sessionKey: string,
+	cached: {
+		sessionId: string | null;
+		messages: ChatMessage[];
+		artifacts: ArtifactSummary[];
+		activeArtifactId: string | null;
+		artifactPanelOpen: boolean;
+		artifactPanelDismissed: boolean;
+	}
+): void {
+	state.sessionKey = sessionKey;
+	state.sessionId = cached.sessionId;
+	state.messages = [...cached.messages];
+	state.artifacts = [...cached.artifacts];
+	state.activeArtifactId = cached.activeArtifactId;
+	state.artifactPanelOpen = cached.artifactPanelOpen;
+	state.artifactPanelDismissed = cached.artifactPanelDismissed;
+	state.loading = false;
+	state.historyRefreshing = true;
+	state.operationError = null;
+	resetRunState(state);
 }

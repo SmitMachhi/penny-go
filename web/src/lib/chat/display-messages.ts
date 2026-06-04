@@ -9,6 +9,16 @@ export function findLastUserMessageIndex(messages: readonly ChatMessage[]): numb
 	return -1;
 }
 
+export function findLastAssistantMessageId(messages: readonly ChatMessage[]): string | null {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (message?.role === 'assistant') {
+			return message.id;
+		}
+	}
+	return null;
+}
+
 /** Hide gateway-persisted assistant partials while a run is still streaming live. */
 export function messagesForDisplay(
 	messages: readonly ChatMessage[],

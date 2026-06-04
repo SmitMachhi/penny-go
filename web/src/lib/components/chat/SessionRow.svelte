@@ -79,19 +79,27 @@
 			type="button"
 			class={cn(
 				'w-full rounded-lg px-3 py-2 text-left transition-colors',
-				active ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60'
+				active ? 'bg-penny-brand-subtle text-primary' : 'hover:bg-penny-brand-subtle/70'
 			)}
 			onclick={onSelect}
 			ondblclick={startRename}
 		>
-			<p class="truncate text-sm font-medium">{session.title}</p>
+			<p class="truncate text-sm font-medium">
+				{session.title}
+				{#if session.titleStatus === 'loading'}
+					<span class="text-muted-foreground"> …</span>
+				{/if}
+			</p>
 		</button>
 	{/if}
 
 	<div class="absolute right-1 top-1" bind:this={menuRoot}>
 		<button
 			type="button"
-			class="rounded-md p-1 opacity-0 transition-opacity hover:bg-background/80 group-hover:opacity-100"
+			class={cn(
+				'rounded-md p-1 transition-opacity hover:bg-background/80',
+				active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+			)}
 			aria-label="Session actions"
 			onclick={(event) => {
 				event.stopPropagation();

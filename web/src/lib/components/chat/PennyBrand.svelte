@@ -16,8 +16,8 @@
 <a
 	href="/"
 	class={cn(
-		'flex min-w-0 items-center gap-2 font-semibold tracking-tight text-foreground hover:opacity-80',
-		compact ? 'text-lg' : 'text-xl',
+		'flex min-w-0 items-center gap-2 font-display font-semibold tracking-[-0.02em] text-foreground transition-colors hover:text-primary',
+		compact ? 'text-xl' : 'text-2xl',
 		className
 	)}
 >

@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import type { ArtifactSummary } from './artifacts.js';
 import { ChatClient } from './client.svelte.js';
+import type { SsePayload } from './stream-events.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
 const OTHER_SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
@@ -8,6 +10,11 @@ const SESSION_ID = 'session-1';
 const RUN_ID = 'run-1';
 const MESSAGE = 'hello penny';
 const FIRST_ABORT_REQUEST = 1;
+const ARTIFACT_ID = '00000000-0000-4000-8000-000000000001';
+
+type ChatClientInternals = {
+	finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void>;
+};
 
 function jsonResponse(body: unknown): Response {
 	return Response.json(body);
@@ -15,6 +22,18 @@ function jsonResponse(body: unknown): Response {
 
 function requestPath(input: RequestInfo | URL): string {
 	return String(input);
+}
+
+function artifact(version: number): ArtifactSummary {
+	return {
+		artifactId: ARTIFACT_ID,
+		title: 'Loaded brief',
+		programCount: 0,
+		version,
+		latestVersion: version,
+		updatedAt: '2026-06-01T00:00:00.000Z',
+		pdfAvailable: false
+	};
 }
 
 describe('ChatClient', () => {
@@ -206,5 +225,42 @@ describe('ChatClient', () => {
 
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(client.state.sessionKey).toBe(SESSION_KEY);
+	});
+
+	it('does not reopen unchanged artifacts after a final reply', async () => {
+		const reloadedArtifact = { ...artifact(1), title: 'Reloaded brief' };
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			if (path.startsWith('/api/artifacts')) {
+				return jsonResponse({ artifacts: [reloadedArtifact] });
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.artifacts = [artifact(1)];
+		client.state.activeArtifactId = ARTIFACT_ID;
+		client.state.artifactPanelOpen = false;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+
+		await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
+			type: 'chat.final',
+			runId: RUN_ID,
+			text: 'No artifact update.'
+		});
+		await vi.waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith(
+				`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`,
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			)
+		);
+		await vi.waitFor(() => expect(client.state.artifacts[0]?.title).toBe('Reloaded brief'));
+
+		expect(client.state.artifactPanelOpen).toBe(false);
 	});
 });

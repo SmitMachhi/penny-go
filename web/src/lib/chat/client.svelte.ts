@@ -330,9 +330,11 @@ export class ChatClient {
 		if (!sessionKey || (runId !== null && runId !== payload.runId)) {
 			return;
 		}
+		const artifactVersionSnapshot = this.artifactVersionSnapshot;
+		const pendingRunArtifactIds = [...this.pendingRunArtifactIds];
 		const thinkingTrace = finalizeRunTrace(this.state.runTrace, payload.text);
 		this.state.messages = stripTrailingAssistantMessages(this.state.messages);
-		appendAssistantMessage(this.state, payload.text, this.pendingRunArtifactIds, { thinkingTrace });
+		appendAssistantMessage(this.state, payload.text, pendingRunArtifactIds, { thinkingTrace });
 		this.state.operationError = null;
 		this.resetRun();
 		this.persistActiveSessionCache();
@@ -340,12 +342,12 @@ export class ChatClient {
 			if (sessionKey !== this.state.sessionKey) {
 				return;
 			}
-			if (runId !== null && this.activeRunId !== null && this.activeRunId !== runId) {
-				return;
-			}
-			syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot);
-			this.persistActiveSessionCache();
-		});
+				if (runId !== null && this.activeRunId !== null && this.activeRunId !== runId) {
+					return;
+				}
+				syncChangedLatestArtifact(this.state, pendingRunArtifactIds, artifactVersionSnapshot);
+				this.persistActiveSessionCache();
+			});
 	}
 
 	private async refreshArtifactsAfterBrief(): Promise<void> {
@@ -468,4 +470,3 @@ export class ChatClient {
 		}
 	}
 }
-

@@ -4,6 +4,24 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const HTML_HEADERS = { 'content-type': 'text/html' };
 const REDIRECT_STATUS = 302;
+const PUBLIC_TEST_ADDRESS = '93.184.216.34';
+const LOOPBACK_TEST_ADDRESS = '127.0.0.1';
+
+type LookupAddress = {
+	address: string;
+	family: 4 | 6;
+};
+
+type DnsLookup = (
+	hostname: string,
+	options: { all: true; verbatim: true }
+) => Promise<LookupAddress[]>;
+
+const dnsLookupMock = vi.hoisted(() => vi.fn<DnsLookup>());
+
+vi.mock('node:dns/promises', () => ({
+	lookup: dnsLookupMock
+}));
 
 function inputToUrl(input: RequestInfo | URL): string {
 	if (input instanceof URL) {
@@ -18,6 +36,8 @@ function inputToUrl(input: RequestInfo | URL): string {
 describe('fetchLinkPreview', () => {
 	beforeEach(() => {
 		clearLinkPreviewCacheForTests();
+		dnsLookupMock.mockReset();
+		dnsLookupMock.mockResolvedValue([{ address: PUBLIC_TEST_ADDRESS, family: 4 }]);
 	});
 
 	afterEach(() => {
@@ -40,6 +60,21 @@ describe('fetchLinkPreview', () => {
 			new URL('https://example.ca/start'),
 			expect.objectContaining({ redirect: 'manual' })
 		);
+	});
+
+	it('rejects hostnames that resolve to blocked addresses', async () => {
+		const fetchMock = vi.fn(
+			async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
+				new Response('<html><head><title>Private page</title></head></html>', {
+					status: 200,
+					headers: HTML_HEADERS
+				})
+		);
+		dnsLookupMock.mockResolvedValueOnce([{ address: LOOPBACK_TEST_ADDRESS, family: 4 }]);
+		vi.stubGlobal('fetch', fetchMock);
+
+		await expect(fetchLinkPreview('https://example.ca/start')).rejects.toThrow(ValidationError);
+		expect(fetchMock).not.toHaveBeenCalled();
 	});
 
 	it('follows validated public redirects', async () => {

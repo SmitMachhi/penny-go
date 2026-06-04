@@ -1,7 +1,9 @@
+import { lookup } from 'node:dns/promises';
+
 import type { LinkPreview } from '$lib/link-preview/types.js';
 import { ValidationError } from '$lib/server/api-error.js';
 import { parseLinkPreviewFromHtml } from '$lib/server/link-preview-parse.js';
-import { parsePreviewableUrl } from '$lib/server/link-preview-url.js';
+import { isBlockedPreviewHostname, parsePreviewableUrl } from '$lib/server/link-preview-url.js';
 
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_HTML_BYTES = 512_000;
@@ -82,7 +84,8 @@ async function downloadHtml(initialUrl: URL): Promise<DownloadedHtml> {
 	}
 }
 
-function fetchPreviewUrl(url: URL, signal: AbortSignal): Promise<Response> {
+async function fetchPreviewUrl(url: URL, signal: AbortSignal): Promise<Response> {
+	await assertPublicResolvedAddresses(url);
 	return fetch(url, {
 		signal,
 		headers: {
@@ -91,6 +94,16 @@ function fetchPreviewUrl(url: URL, signal: AbortSignal): Promise<Response> {
 		},
 		redirect: 'manual'
 	});
+}
+
+async function assertPublicResolvedAddresses(url: URL): Promise<void> {
+	const addresses = await lookup(url.hostname, { all: true, verbatim: true });
+	if (addresses.length === 0) {
+		throw new ValidationError('url host is not allowed');
+	}
+	if (addresses.some((entry) => isBlockedPreviewHostname(entry.address.toLowerCase()))) {
+		throw new ValidationError('url host is not allowed');
+	}
 }
 
 function isRedirectResponse(response: Response): boolean {

@@ -48,7 +48,7 @@ export function parsePreviewableUrl(raw: string): URL {
 	return parsed;
 }
 
-function assertPublicHostname(hostname: string): void {
+export function isBlockedPreviewHostname(hostname: string): boolean {
 	if (
 		hostname === LOCALHOST_HOST ||
 		hostname === LOOPBACK_IPV4 ||
@@ -58,14 +58,18 @@ function assertPublicHostname(hostname: string): void {
 		hostname.endsWith('.localhost') ||
 		hostname.endsWith('.local')
 	) {
-		throw new ValidationError('url host is not allowed');
+		return true;
 	}
 
 	if (isBlockedIpv4(hostname)) {
-		throw new ValidationError('url host is not allowed');
+		return true;
 	}
 
-	if (hostname.startsWith('[') && hostname.includes(':')) {
+	return hostname.includes(':');
+}
+
+function assertPublicHostname(hostname: string): void {
+	if (isBlockedPreviewHostname(hostname)) {
 		throw new ValidationError('url host is not allowed');
 	}
 }

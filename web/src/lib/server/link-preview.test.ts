@@ -2,6 +2,7 @@ import { ValidationError } from '$lib/server/api-error.js';
 import {
 	clearLinkPreviewCacheForTests,
 	fetchLinkPreview,
+	LINK_PREVIEW_CACHE_MAX_ENTRIES,
 	setLinkPreviewTransportForTests
 } from '$lib/server/link-preview.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -180,5 +181,28 @@ describe('fetchLinkPreview', () => {
 		expect(preview.title).toBe('Public page');
 		expect(preview.favicon).toBeNull();
 		expect(dnsLookupMock).toHaveBeenCalledWith('icons.example', { all: true, verbatim: true });
+	});
+
+	it('evicts the oldest preview cache entry when the cache is full', async () => {
+		expect(LINK_PREVIEW_CACHE_MAX_ENTRIES).toBeGreaterThan(0);
+		const transportMock = vi.fn<PreviewTransport>(
+			async (url) =>
+				Promise.resolve({
+					status: 200,
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode(
+						`<html><head><title>${url.pathname}</title></head></html>`
+					)
+				})
+		);
+		setLinkPreviewTransportForTests(transportMock);
+
+		for (let index = 0; index <= LINK_PREVIEW_CACHE_MAX_ENTRIES; index += 1) {
+			await fetchLinkPreview(`https://example.ca/page-${index}`);
+		}
+		const callsAfterFill = transportMock.mock.calls.length;
+		await fetchLinkPreview('https://example.ca/page-0');
+
+		expect(transportMock).toHaveBeenCalledTimes(callsAfterFill + 1);
 	});
 });

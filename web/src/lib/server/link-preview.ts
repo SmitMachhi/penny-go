@@ -16,6 +16,7 @@ import { isBlockedPreviewHostname, parsePreviewableUrl } from '$lib/server/link-
 const FETCH_TIMEOUT_MS = 8_000;
 const MAX_HTML_BYTES = 512_000;
 const CACHE_TTL_MS = 3_600_000;
+export const LINK_PREVIEW_CACHE_MAX_ENTRIES = 128;
 const MAX_REDIRECTS = 5;
 const USER_AGENT = 'PennyLinkPreview/1.0';
 const HTTP_PROTOCOL = 'http:';
@@ -66,18 +67,53 @@ let previewTransport: PreviewTransport = requestPinnedPreviewUrl;
 export async function fetchLinkPreview(rawUrl: string): Promise<LinkPreview> {
 	const url = parsePreviewableUrl(rawUrl);
 	const cacheKey = url.toString();
-	const cached = previewCache.get(cacheKey);
-	if (cached && cached.expiresAt > Date.now()) {
-		return cached.preview;
+	const cached = readCachedPreview(cacheKey);
+	if (cached) {
+		return cached;
 	}
 
-		const downloaded = await downloadHtml(url);
-		const preview = await sanitizePreviewFavicon(
-			parseLinkPreviewFromHtml(downloaded.html, downloaded.url)
-		);
-		previewCache.set(cacheKey, { preview, expiresAt: Date.now() + CACHE_TTL_MS });
-		return preview;
+	const downloaded = await downloadHtml(url);
+	const preview = await sanitizePreviewFavicon(
+		parseLinkPreviewFromHtml(downloaded.html, downloaded.url)
+	);
+	writeCachedPreview(cacheKey, preview);
+	return preview;
+}
+
+function readCachedPreview(cacheKey: string): LinkPreview | null {
+	const cached = previewCache.get(cacheKey);
+	if (!cached) {
+		return null;
 	}
+	if (cached.expiresAt <= Date.now()) {
+		previewCache.delete(cacheKey);
+		return null;
+	}
+	previewCache.delete(cacheKey);
+	previewCache.set(cacheKey, cached);
+	return cached.preview;
+}
+
+function writeCachedPreview(cacheKey: string, preview: LinkPreview): void {
+	const now = Date.now();
+	previewCache.set(cacheKey, { preview, expiresAt: now + CACHE_TTL_MS });
+	pruneExpiredPreviewCache(now);
+	while (previewCache.size > LINK_PREVIEW_CACHE_MAX_ENTRIES) {
+		const oldestKey = previewCache.keys().next().value;
+		if (!oldestKey) {
+			return;
+		}
+		previewCache.delete(oldestKey);
+	}
+}
+
+function pruneExpiredPreviewCache(now: number): void {
+	for (const [cacheKey, cached] of previewCache) {
+		if (cached.expiresAt <= now) {
+			previewCache.delete(cacheKey);
+		}
+	}
+}
 
 async function downloadHtml(initialUrl: URL): Promise<DownloadedHtml> {
 	const controller = new AbortController();

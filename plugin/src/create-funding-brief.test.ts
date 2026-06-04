@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
@@ -7,6 +7,7 @@ import test from 'node:test';
 import { validateCreateFundingArtifactInput } from '@penny/shared/artifact-validation';
 import {
 	DOCUMENT_MD_FILENAME,
+	LEGACY_BRIEF_FILENAME,
 	META_FILENAME,
 	PDF_FILENAME,
 	resolveArtifactFilePath
@@ -20,6 +21,8 @@ import {
 } from './services/artifact-storage.js';
 
 const SESSION_UUID = '550e8400-e29b-41d4-a716-446655440000';
+const FAKE_PDF_BYTES = 'rendered pdf bytes';
+const EXECUTABLE_FILE_MODE = 0o755;
 
 function sampleArtifactInput() {
 	return {
@@ -47,6 +50,25 @@ Acme SaaS is an Ontario software company exploring non-dilutive support for prod
 			urlsChecked: ['https://nrc.canada.ca/en/support-technology-innovation']
 		}
 	};
+}
+
+async function writeFakePdfRenderer(repoRoot: string): Promise<string> {
+	const fakePythonPath = join(repoRoot, 'fake-python');
+	await writeFile(
+		fakePythonPath,
+		`#!/usr/bin/env python3
+import json
+import sys
+
+payload = json.loads(sys.stdin.read())
+with open(payload["pdfPath"], "w", encoding="utf-8") as pdf:
+    pdf.write("${FAKE_PDF_BYTES}")
+print(json.dumps({"success": True}))
+`,
+		'utf8'
+	);
+	await chmod(fakePythonPath, EXECUTABLE_FILE_MODE);
+	return fakePythonPath;
 }
 
 test('buildArtifactMetaRecord derives programCount from evidence', () => {
@@ -167,4 +189,40 @@ test('persistArtifactFilesAllowPdfFailure clears stale pdf on failed update', as
 	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
 	assert.equal(stored?.title, 'Updated brief');
 	assert.equal(stored?.pdfAvailable, false);
+});
+
+test('persistArtifactFilesAllowPdfFailure preserves rendered pdf on storage failure', async () => {
+	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
+	assert.equal(validation.ok, true);
+	if (!validation.ok) {
+		return;
+	}
+
+	const repoRoot = await mkdtemp(join(tmpdir(), 'penny-artifact-storage-fail-'));
+	const fakePythonPath = await writeFakePdfRenderer(repoRoot);
+	const artifactId = '6ba7b814-9dad-41d4-a716-446655440000';
+	const legacyBriefPath = resolveArtifactFilePath(
+		repoRoot,
+		SESSION_UUID,
+		artifactId,
+		LEGACY_BRIEF_FILENAME
+	);
+	await mkdir(legacyBriefPath, { recursive: true });
+
+	await assert.rejects(
+		persistArtifactFilesAllowPdfFailure({
+			config: { repoRoot, pythonPath: fakePythonPath },
+			repoRoot,
+			params: { ...validation.value, sessionUuid: SESSION_UUID, artifactId },
+			artifactId,
+			version: 1,
+			createdAt: '2026-05-24T12:00:00.000Z',
+			updatedAt: '2026-05-24T12:00:00.000Z'
+		})
+	);
+
+	const pdfPath = resolveArtifactFilePath(repoRoot, SESSION_UUID, artifactId, PDF_FILENAME);
+	assert.equal(await readFile(pdfPath, 'utf8'), FAKE_PDF_BYTES);
+	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
+	assert.equal(stored?.pdfAvailable, true);
 });

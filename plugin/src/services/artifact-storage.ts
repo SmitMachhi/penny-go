@@ -56,6 +56,13 @@ const INDEX_LOCK_MAX_ATTEMPTS = 10;
 const INDEX_LOCK_RETRY_MS = 50;
 const INDEX_LOCK_STALE_MS = 30_000;
 
+class PdfRenderError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'PdfRenderError';
+	}
+}
+
 export function createArtifactId(): string {
 	return randomUUID();
 }
@@ -139,23 +146,32 @@ export async function persistArtifactFiles(input: PersistArtifactInput): Promise
 	const printHtml = renderMarkdownToPrintHtml(pdfMarkdown, meta.title);
 	await writeFile(renderHtmlPath, printHtml, 'utf8');
 
-	const pdfResult = await renderArtifactPdfFromHtml(
-		input.config,
-		renderHtmlPath,
-		pdfPath,
-		input.signal
-	);
-
-	await rm(renderHtmlPath, { force: true });
-
-	if (!pdfResult.success) {
-		throw new Error(pdfResult.error ?? 'pdf_render_failed');
-	}
+	await renderPdfOrThrow(input, renderHtmlPath, pdfPath);
 
 	await removeLegacyArtifactFiles(input.repoRoot, input.params.sessionUuid, input.artifactId);
 	await upsertSessionArtifactIndex(input.repoRoot, meta);
 
 	return { meta, documentPath, pdfPath, metaPath };
+}
+
+async function renderPdfOrThrow(
+	input: PersistArtifactInput,
+	renderHtmlPath: string,
+	pdfPath: string
+): Promise<void> {
+	let pdfResult: { success: boolean; error?: string } | undefined;
+	try {
+		pdfResult = await renderArtifactPdfFromHtml(input.config, renderHtmlPath, pdfPath, input.signal);
+	} catch (error) {
+		const message = error instanceof Error ? error.message : 'pdf_render_failed';
+		throw new PdfRenderError(message);
+	} finally {
+		await rm(renderHtmlPath, { force: true }).catch(() => undefined);
+	}
+
+	if (!pdfResult.success) {
+		throw new PdfRenderError(pdfResult.error ?? 'pdf_render_failed');
+	}
 }
 
 export async function persistArtifactFilesAllowPdfFailure(
@@ -165,14 +181,17 @@ export async function persistArtifactFilesAllowPdfFailure(
 		const result = await persistArtifactFiles(input);
 		return { ...result, pdfOk: true };
 	} catch (error) {
+		if (!(error instanceof PdfRenderError)) {
+			throw error;
+		}
 		const message = error instanceof Error ? error.message : 'pdf_render_failed';
-			const meta = buildArtifactMetaRecord(
-				input.params,
-				input.artifactId,
-				input.version,
-				{ createdAt: input.createdAt, updatedAt: input.updatedAt },
-				false
-			);
+		const meta = buildArtifactMetaRecord(
+			input.params,
+			input.artifactId,
+			input.version,
+			{ createdAt: input.createdAt, updatedAt: input.updatedAt },
+			false
+		);
 		const artifactDir = resolveArtifactDir(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await mkdir(artifactDir, { recursive: true });
 		const documentPath = resolveArtifactFilePath(
@@ -187,15 +206,15 @@ export async function persistArtifactFilesAllowPdfFailure(
 			input.artifactId,
 			META_FILENAME
 		);
-			const pdfPath = resolveArtifactFilePath(
-				input.repoRoot,
-				input.params.sessionUuid,
-				input.artifactId,
-				PDF_FILENAME
-			);
-			await rm(pdfPath, { force: true });
-			await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
-			await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
+		const pdfPath = resolveArtifactFilePath(
+			input.repoRoot,
+			input.params.sessionUuid,
+			input.artifactId,
+			PDF_FILENAME
+		);
+		await rm(pdfPath, { force: true });
+		await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
+		await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
 		await removeLegacyArtifactFiles(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await upsertSessionArtifactIndex(input.repoRoot, meta);
 		return {
@@ -254,12 +273,12 @@ async function upsertSessionArtifactIndex(repoRoot: string, meta: ArtifactMetaRe
 		sessionUuid: meta.sessionUuid,
 		title: meta.title,
 		programCount: meta.programCount,
-			version: meta.version,
-			triggerReason: meta.triggerReason,
-			createdAt: meta.createdAt,
-			updatedAt: meta.updatedAt,
-			pdfAvailable: meta.pdfAvailable
-		};
+		version: meta.version,
+		triggerReason: meta.triggerReason,
+		createdAt: meta.createdAt,
+		updatedAt: meta.updatedAt,
+		pdfAvailable: meta.pdfAvailable
+	};
 
 	await withSessionIndexLock(indexPath, async () => {
 		let entries: ArtifactIndexEntry[] = [];

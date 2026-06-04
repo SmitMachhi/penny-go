@@ -2,6 +2,7 @@
 		import { ExternalLink } from '@lucide/svelte';
 
 		import { loadPdfObjectUrl, type PdfObjectUrl } from '$lib/chat/pdf-preview.js';
+		import { markPennyTiming } from '$lib/chat/performance-metrics.js';
 
 		type Props = {
 			artifactId: string;
@@ -44,6 +45,7 @@
 				preview = loadedPreview;
 				previewObjectUrl = loadedPreview.objectUrl;
 				previewReady = true;
+				markPennyTiming('pdf_preview_ready');
 			} catch {
 				if (!cancelled) {
 					loadError = 'Could not load PDF preview.';

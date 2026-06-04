@@ -4,6 +4,7 @@
 	import { FileText, Menu, PanelLeft, X } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
+	import { markPennyTiming } from '$lib/chat/performance-metrics.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import PennyBrand from '$lib/components/chat/PennyBrand.svelte';
 	import SessionSidebar from '$lib/components/chat/SessionSidebar.svelte';
@@ -70,6 +71,7 @@
 	}
 
 	onMount(() => {
+		markPennyTiming('app_boot');
 		void Promise.all([chat.bootstrap(), sessions.initSidebar()]);
 		chat.startHealthPolling();
 

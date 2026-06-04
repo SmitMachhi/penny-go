@@ -5,6 +5,7 @@ export async function GET(event) {
 	return withApiJsonEvent(
 		event,
 		async ({ url }) => getChatHistory(url.searchParams.get('sessionKey')),
-		'failed to load history'
+		'failed to load history',
+		{ timingName: 'history' }
 	);
 }

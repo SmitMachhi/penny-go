@@ -5,6 +5,7 @@ export async function GET(event) {
 	return withApiJsonEvent(
 		event,
 		async ({ url }) => getSessionArtifacts(url.searchParams.get('sessionKey')),
-		'failed to list artifacts'
+		'failed to list artifacts',
+		{ timingName: 'artifacts' }
 	);
 }

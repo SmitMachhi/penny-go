@@ -14,7 +14,8 @@ export async function POST(event) {
 			const body = await readGenerateTitleBody(request);
 			const session = await generatePennySessionTitle(key, body.firstMessage);
 			return { session };
-		},
-		'failed to generate session title'
-	);
+			},
+			'failed to generate session title',
+			{ timingName: 'generate_title' }
+		);
 }

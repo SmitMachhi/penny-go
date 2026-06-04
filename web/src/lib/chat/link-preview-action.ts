@@ -14,6 +14,11 @@ let activeRequest = 0;
 
 const clientCache = new Map<string, LinkPreview>();
 
+type PreviewAnchor = {
+	href: string;
+	dataset: { previewUrl?: string | undefined };
+};
+
 export function enhanceLinkPreviews(node: HTMLElement): { destroy: () => void } {
 	const show = (anchor: HTMLAnchorElement) => {
 		clearTimeout(hideTimer ?? undefined);
@@ -93,8 +98,22 @@ export function enhanceLinkPreviews(node: HTMLElement): { destroy: () => void } 
 	};
 }
 
+export function resolvePreviewUrlForAnchor(anchor: PreviewAnchor): string | null {
+	const previewUrl = anchor.dataset.previewUrl;
+	if (!previewUrl) {
+		return null;
+	}
+	try {
+		const href = new URL(anchor.href).toString();
+		const preview = new URL(previewUrl, href).toString();
+		return href === preview ? preview : null;
+	} catch {
+		return null;
+	}
+}
+
 async function openPreview(anchor: HTMLAnchorElement): Promise<void> {
-	const url = anchor.dataset.previewUrl;
+	const url = resolvePreviewUrlForAnchor(anchor);
 	if (!url) {
 		return;
 	}

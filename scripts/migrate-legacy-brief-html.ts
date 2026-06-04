@@ -1,7 +1,7 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { BRIEF_FILENAME, SLIDES_FILENAME } from '../shared/penny-paths.ts';
+import { LEGACY_BRIEF_FILENAME, LEGACY_SLIDES_FILENAME } from '../shared/penny-paths.ts';
 import { isLegacySlideHtml } from '../shared/funding-brief-html.ts';
 import { renderFundingBriefDocumentHtml } from '../shared/funding-brief-document.ts';
 import type { FundingBriefRecord } from '../shared/funding-brief-types.ts';
@@ -15,7 +15,7 @@ async function migrateArtifact(slidesPath: string): Promise<boolean> {
 		return false;
 	}
 
-	const briefPath = join(slidesPath, '..', BRIEF_FILENAME);
+	const briefPath = join(slidesPath, '..', LEGACY_BRIEF_FILENAME);
 	let record: FundingBriefRecord;
 	try {
 		record = JSON.parse(await readFile(briefPath, 'utf8')) as FundingBriefRecord;
@@ -44,7 +44,7 @@ async function main(): Promise<void> {
 			if (!artifactEntry.isDirectory()) {
 				continue;
 			}
-			const slidesPath = join(sessionDir, artifactEntry.name, SLIDES_FILENAME);
+			const slidesPath = join(sessionDir, artifactEntry.name, LEGACY_SLIDES_FILENAME);
 			try {
 				const fileStat = await stat(slidesPath);
 				if (!fileStat.isFile()) {

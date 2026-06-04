@@ -35,6 +35,7 @@
 		clearPendingFirstMessage,
 		peekPendingFirstMessage
 	} from '$lib/chat/pending-first-message.js';
+	import { hydrateSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
@@ -214,14 +215,15 @@
 		if (loadedRouteId === routeId) {
 			return;
 		}
-		loadedRouteId = routeId;
-		followThread = false;
-		const sessionKey = sessionKeyFromRouteId(routeId);
+			loadedRouteId = routeId;
+			followThread = false;
+			const sessionKey = sessionKeyFromRouteId(routeId);
 			if (!sessionKey) {
 				return;
 			}
 			const targetRouteId = routeId;
 			void (async () => {
+				await hydrateSessionThreadCache(sessionKey);
 				await chat.switchSession(sessionKey);
 				if (
 					!isPendingFirstMessageRouteCurrent({
@@ -235,9 +237,9 @@
 					return;
 				}
 				const pending = peekPendingFirstMessage(sessionKey);
-			if (!pending || chat.state.sending) {
-				return;
-			}
+				if (!pending || chat.state.sending) {
+					return;
+				}
 			followThread = true;
 			const sent = await chat.sendMessage(pending, { skipHistoryReload: true });
 			if (sent) {

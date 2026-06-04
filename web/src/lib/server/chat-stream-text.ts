@@ -30,6 +30,10 @@ export function clearStreamingText(runId: string): void {
 	runStreamText.delete(runId);
 }
 
+export function readStreamingText(runId: string): string {
+	return runStreamText.get(runId) ?? '';
+}
+
 export function clearAllStreamingText(): void {
 	runStreamText.clear();
 }

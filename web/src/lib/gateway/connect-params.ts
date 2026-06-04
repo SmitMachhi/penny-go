@@ -11,9 +11,9 @@ export function buildConnectParams(token: string) {
 			version: CLIENT_VERSION,
 			platform: 'node',
 			mode: 'backend'
-		},
-		role: 'operator',
-		scopes: ['operator.admin', 'operator.read', 'operator.write'],
+			},
+			role: 'operator',
+			scopes: ['operator.read', 'operator.write'],
 		caps: [],
 		commands: [],
 		permissions: {},

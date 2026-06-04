@@ -3,8 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { buildConnectParams } from './connect-params.js';
 
 describe('buildConnectParams', () => {
-	it('requests admin scope for session delete and rename', () => {
+	it('requests least-privilege operator chat scopes', () => {
 		const params = buildConnectParams('test-token');
-		expect(params.scopes).toEqual(['operator.admin', 'operator.read', 'operator.write']);
+		expect(params.scopes).toEqual(['operator.read', 'operator.write']);
 	});
 });

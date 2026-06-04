@@ -143,6 +143,22 @@ describe('fetchLinkPreview', () => {
 		);
 	});
 
+	it('rejects dns results with private hex ipv4-mapped ipv6 addresses', async () => {
+		const transportMock = vi.fn<PreviewTransport>(
+			async () =>
+				Promise.resolve({
+					status: 200,
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode('<html><head><title>Private mapped page</title></head></html>')
+				})
+		);
+		dnsLookupMock.mockResolvedValueOnce([{ address: '::ffff:7f00:1', family: 6 }]);
+		setLinkPreviewTransportForTests(transportMock);
+
+		await expect(fetchLinkPreview('https://example.ca/start')).rejects.toThrow(ValidationError);
+		expect(transportMock).not.toHaveBeenCalled();
+	});
+
 	it('drops favicon urls that resolve to blocked addresses', async () => {
 		const transportMock = vi.fn<PreviewTransport>(
 			async () =>

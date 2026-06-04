@@ -40,6 +40,11 @@ describe('parsePreviewableUrl', () => {
 		expect(() => parsePreviewableUrl('http://[fe80::1]/')).toThrow(ValidationError);
 	});
 
+	it('rejects private ipv4-mapped ipv6 hosts', () => {
+		expect(() => parsePreviewableUrl('http://[::ffff:7f00:1]/')).toThrow(ValidationError);
+		expect(() => parsePreviewableUrl('http://[::ffff:a00:1]/')).toThrow(ValidationError);
+	});
+
 	it('rejects credentials in urls', () => {
 		expect(() => parsePreviewableUrl('https://user:pass@example.com')).toThrow(ValidationError);
 	});

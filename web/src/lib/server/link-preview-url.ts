@@ -53,6 +53,12 @@ const IPV6_MULTICAST_MASK = 0xff00;
 const IPV6_MULTICAST_PREFIX = 0xff00;
 const IPV6_DOCUMENTATION_FIRST_SEGMENT = 0x2001;
 const IPV6_DOCUMENTATION_SECOND_SEGMENT = 0x0db8;
+const IPV4_MAPPED_IPV6_PREFIX = '::ffff:';
+const IPV4_COMPATIBLE_IPV6_PREFIX = '::';
+const IPV4_OCTET_SHIFT_BITS = 8;
+const IPV4_OCTET_MASK = 0xff;
+const IPV4_MAPPED_SEGMENT_COUNT = 2;
+const IPV4_MAPPED_SEGMENT_MAX = 0xffff;
 
 export function parsePreviewableUrl(raw: string): URL {
 	const trimmed = raw.trim();
@@ -142,6 +148,10 @@ function isBlockedIpv6(hostname: string): boolean {
 	if (embeddedIpv4 && isBlockedIpv4(embeddedIpv4)) {
 		return true;
 	}
+	const hexMappedIpv4 = readHexMappedIpv4(normalized);
+	if (hexMappedIpv4 && isBlockedIpv4(hexMappedIpv4)) {
+		return true;
+	}
 	const [first, second] = readIpv6LeadingSegments(normalized);
 	return (
 		(first & IPV6_UNIQUE_LOCAL_MASK) === IPV6_UNIQUE_LOCAL_PREFIX ||
@@ -161,6 +171,39 @@ function stripIpv6Brackets(hostname: string): string {
 function readEmbeddedIpv4(hostname: string): string | null {
 	const match = /(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/.exec(hostname);
 	return match?.[1] ?? null;
+}
+
+function readHexMappedIpv4(hostname: string): string | null {
+	const mappedTail = hostname.startsWith(IPV4_MAPPED_IPV6_PREFIX)
+		? hostname.slice(IPV4_MAPPED_IPV6_PREFIX.length)
+		: null;
+	const compatibleTail =
+		!mappedTail && hostname.startsWith(IPV4_COMPATIBLE_IPV6_PREFIX)
+			? hostname.slice(IPV4_COMPATIBLE_IPV6_PREFIX.length)
+			: null;
+	const tail = mappedTail ?? compatibleTail;
+	if (!tail || tail.includes('.')) {
+		return null;
+	}
+	const segments = tail.split(':');
+	if (segments.length !== IPV4_MAPPED_SEGMENT_COUNT) {
+		return null;
+	}
+	const high = Number.parseInt(segments[0] ?? '', HEX_RADIX);
+	const low = Number.parseInt(segments[1] ?? '', HEX_RADIX);
+	if (!isIpv4MappedSegment(high) || !isIpv4MappedSegment(low)) {
+		return null;
+	}
+	return [
+		(high >> IPV4_OCTET_SHIFT_BITS) & IPV4_OCTET_MASK,
+		high & IPV4_OCTET_MASK,
+		(low >> IPV4_OCTET_SHIFT_BITS) & IPV4_OCTET_MASK,
+		low & IPV4_OCTET_MASK
+	].join('.');
+}
+
+function isIpv4MappedSegment(value: number): boolean {
+	return !Number.isNaN(value) && value >= 0 && value <= IPV4_MAPPED_SEGMENT_MAX;
 }
 
 function readIpv6LeadingSegments(hostname: string): [number, number] {

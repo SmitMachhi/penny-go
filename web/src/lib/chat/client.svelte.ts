@@ -1,6 +1,8 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
-import { abortChatRun, fetchArtifacts, fetchHealth, sendChatMessage } from '$lib/chat/client-api.js';
+import { abortChatRun, fetchArtifacts, sendChatMessage } from '$lib/chat/client-api.js';
+import { refreshGatewayHealth } from '$lib/chat/client-health.js';
+import { persistSessionThreadCache } from '$lib/chat/client-session-cache.js';
 import { countUserMessages, hasPendingReply } from '$lib/chat/client-thread-reconcile.js';
 import { fetchHistoryWithRetry } from '$lib/chat/history-fetch-retry.js';
 import {
@@ -28,11 +30,10 @@ import {
 import { createChatStreamConnection, type ChatStreamConnection } from '$lib/chat/client-stream-connection.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
-import { readSessionThreadCache, writeSessionThreadCache } from '$lib/chat/session-thread-cache.js';
+import { readSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 const HEALTH_POLL_MS = 30_000;
-const GATEWAY_OFFLINE_MESSAGE = 'OpenClaw gateway is unavailable';
 
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
@@ -100,13 +101,13 @@ export class ChatClient {
 		if (this.state.sessionKey) {
 			void this.loadArtifacts();
 		}
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 	}
 
 	closeArtifactPanel(): void {
 		this.state.artifactPanelOpen = false;
 		this.state.artifactPanelDismissed = true;
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 	}
 
 	toggleArtifactPanel(): void {
@@ -123,36 +124,23 @@ export class ChatClient {
 
 	async refreshHealth(): Promise<void> {
 		const wasConnected = this.state.connected;
-		try {
-			const payload = await fetchHealth();
-			this.state.connected = payload.ok === true;
-			if (this.state.connected) {
-				this.state.connectionError = null;
-				if (!wasConnected) {
-					this.onGatewayRecovered?.();
-				}
-				this.ensureStreamConnected();
-			} else {
-				this.state.connectionError = payload.message ?? GATEWAY_OFFLINE_MESSAGE;
-			}
-		} catch (error) {
-			this.state.connected = false;
-			this.state.connectionError = formatClientError(error, GATEWAY_OFFLINE_MESSAGE);
-		}
+		await refreshGatewayHealth({
+			state: this.state,
+			wasConnected,
+			onRecovered: this.onGatewayRecovered,
+			ensureStreamConnected: () => this.ensureStreamConnected()
+		});
 	}
 
 	async switchSession(sessionKey: string): Promise<void> {
 		if (this.state.sessionKey === sessionKey) {
 			this.ensureStreamConnected();
-			if (this.state.artifacts.length === 0) {
-				void this.loadArtifacts();
-			}
 			return;
 		}
 		if (this.state.sending) {
 			void this.abortActiveRun();
 		}
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 		this.dispose();
 		this.historyRequestId += 1;
 		const cached = readSessionThreadCache(sessionKey);
@@ -168,7 +156,6 @@ export class ChatClient {
 		this.pendingRunArtifactIds = [];
 		this.connectStream();
 		void this.loadHistory();
-		void this.loadArtifacts();
 	}
 
 	async loadHistory(): Promise<void> {
@@ -199,7 +186,7 @@ export class ChatClient {
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
 			this.reconcileThreadAfterHistory(payload.messages, sessionKey);
-			this.persistActiveSessionCache();
+			persistSessionThreadCache(this.state);
 		} catch (error) {
 			if (requestId !== this.historyRequestId || sessionKey !== this.state.sessionKey) {
 				return;
@@ -225,7 +212,7 @@ export class ChatClient {
 			}
 			applyLoadedArtifacts(this.state, payload.artifacts);
 			this.state.operationError = null;
-			this.persistActiveSessionCache();
+			persistSessionThreadCache(this.state);
 		} catch (error) {
 			if (sessionKey !== this.state.sessionKey) {
 				return;
@@ -258,7 +245,7 @@ export class ChatClient {
 		this.artifactVersionSnapshot = snapshotArtifactVersions(this.state.artifacts);
 		this.pendingRunArtifactIds = [];
 		appendUserMessage(this.state, trimmed);
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 		try {
 			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
 			if (this.abortRequested) {
@@ -283,7 +270,7 @@ export class ChatClient {
 			this.abortRequested = false;
 			this.expectedUserMessageCount = 0;
 			this.state.operationError = formatClientError(error, 'failed to send message');
-			this.persistActiveSessionCache();
+			persistSessionThreadCache(this.state);
 			return false;
 		}
 	}
@@ -355,17 +342,8 @@ export class ChatClient {
 		appendAssistantMessage(this.state, payload.text, pendingRunArtifactIds, { thinkingTrace });
 		this.state.operationError = null;
 		this.resetRun();
-		this.persistActiveSessionCache();
-		void this.loadArtifacts().then(() => {
-			if (sessionKey !== this.state.sessionKey) {
-				return;
-			}
-				if (runId !== null && this.activeRunId !== null && this.activeRunId !== runId) {
-					return;
-				}
-				syncChangedLatestArtifact(this.state, pendingRunArtifactIds, artifactVersionSnapshot);
-				this.persistActiveSessionCache();
-			});
+		syncChangedLatestArtifact(this.state, pendingRunArtifactIds, artifactVersionSnapshot);
+		persistSessionThreadCache(this.state);
 	}
 
 	private async refreshArtifactsAfterBrief(): Promise<void> {
@@ -386,7 +364,7 @@ export class ChatClient {
 		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 	}
 
 	private applyOptimisticAbort(): void {
@@ -397,7 +375,7 @@ export class ChatClient {
 		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
-		this.persistActiveSessionCache();
+		persistSessionThreadCache(this.state);
 	}
 
 	private async persistAbort(runId: string): Promise<void> {
@@ -410,20 +388,6 @@ export class ChatClient {
 		} catch (error) {
 			this.state.operationError = formatClientError(error, 'failed to stop response');
 		}
-	}
-
-	private persistActiveSessionCache(): void {
-		if (!this.state.sessionKey) {
-			return;
-		}
-		writeSessionThreadCache(this.state.sessionKey, {
-			sessionId: this.state.sessionId,
-			messages: this.state.messages,
-			artifacts: this.state.artifacts,
-			activeArtifactId: this.state.activeArtifactId,
-			artifactPanelOpen: this.state.artifactPanelOpen,
-			artifactPanelDismissed: this.state.artifactPanelDismissed
-		});
 	}
 
 	private scheduleRunRecovery(expectedUserMessageCount: number): void {
@@ -495,7 +459,7 @@ export class ChatClient {
 				const localUserCount = countUserMessages(this.state.messages);
 				if (localUserCount < historyUserCount) {
 					this.state.messages = payload.messages;
-					this.persistActiveSessionCache();
+					persistSessionThreadCache(this.state);
 				}
 				this.scheduleRunRecovery(expectedUserMessageCount);
 				return;
@@ -509,7 +473,7 @@ export class ChatClient {
 			}
 			this.state.operationError = null;
 			this.resetRun();
-			this.persistActiveSessionCache();
+			persistSessionThreadCache(this.state);
 			void this.loadArtifacts();
 		} catch {
 			if (this.state.sending) {

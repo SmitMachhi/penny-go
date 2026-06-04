@@ -234,7 +234,34 @@ describe('ChatClient', () => {
 		expect(client.state.sessionKey).toBe(SESSION_KEY);
 	});
 
-	it('does not reopen unchanged artifacts after a final reply', async () => {
+	it('loads history without listing artifacts when switching sessions', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path.startsWith('/api/chat/history')) {
+				return jsonResponse({ sessionKey: SESSION_KEY, sessionId: SESSION_ID, messages: [] });
+			}
+			if (path.startsWith('/api/artifacts')) {
+				throw new Error('artifacts should not load on session switch');
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		await client.switchSession(SESSION_KEY);
+
+		await vi.waitFor(() =>
+			expect(fetchMock).toHaveBeenCalledWith(
+				`/api/chat/history?sessionKey=${encodeURIComponent(SESSION_KEY)}`,
+				expect.objectContaining({ signal: expect.any(AbortSignal) })
+			)
+		);
+		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).not.toContain(
+			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+		);
+	});
+
+	it('does not reload unchanged artifacts after a final reply', async () => {
 		const reloadedArtifact = { ...artifact(1), title: 'Reloaded brief' };
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			const path = requestPath(input);
@@ -260,14 +287,11 @@ describe('ChatClient', () => {
 			runId: RUN_ID,
 			text: 'No artifact update.'
 		});
-		await vi.waitFor(() =>
-			expect(fetchMock).toHaveBeenCalledWith(
-				`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`,
-				expect.objectContaining({ signal: expect.any(AbortSignal) })
-			)
-		);
-		await vi.waitFor(() => expect(client.state.artifacts[0]?.title).toBe('Reloaded brief'));
 
+		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).not.toContain(
+			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+		);
+		expect(client.state.artifacts[0]?.title).toBe('Loaded brief');
 		expect(client.state.artifactPanelOpen).toBe(false);
 	});
 

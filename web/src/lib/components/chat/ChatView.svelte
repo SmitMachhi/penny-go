@@ -211,13 +211,6 @@
 	});
 
 	$effect(() => {
-		const key = chat.state.sessionKey;
-		if (key && routeId && chat.state.artifacts.length === 0 && !chat.state.loading) {
-			void chat.loadArtifacts();
-		}
-	});
-
-	$effect(() => {
 		if (loadedRouteId === routeId) {
 			return;
 		}

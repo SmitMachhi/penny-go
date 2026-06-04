@@ -9,7 +9,7 @@ const COVER_FACT_P_PATTERN = new RegExp(
 
 const VERDICT_PATTERN = /<p><strong>Verdict:<\/strong>\s*([^<]*)<\/p>/gi;
 const NEXT_STEP_PATTERN = /<p><strong>Next step:<\/strong>\s*([^<]*)<\/p>/gi;
-const PROGRAM_HEADING_PATTERN = /<h3>(\d+\.\s*[^<]*)<\/h3>/gi;
+const PROGRAM_OR_SECTION_BOUNDARY_PATTERN = /<h3>(\d+\.\s*[^<]*)<\/h3>|<h2>/gi;
 
 const VERDICT_CLASS_BY_VALUE: Record<string, string> = {
 	'pursue now': 'artifact-verdict artifact-verdict--pursue',
@@ -39,31 +39,42 @@ function wrapVerdictAndNextStepParagraphs(html: string): string {
 function wrapProgramHeadings(html: string): string {
 	const parts: string[] = [];
 	let lastIndex = 0;
-	const matches = [...html.matchAll(PROGRAM_HEADING_PATTERN)];
+	let programOpen = false;
+	let foundProgram = false;
 
-	for (const match of matches) {
+	for (const match of html.matchAll(PROGRAM_OR_SECTION_BOUNDARY_PATTERN)) {
 		const start = match.index ?? 0;
 		if (start > lastIndex) {
 			parts.push(html.slice(lastIndex, start));
 		}
+		if (match[0] === '<h2>') {
+			if (programOpen) {
+				parts.push('</section>');
+				programOpen = false;
+			}
+			parts.push(match[0]);
+			lastIndex = start + match[0].length;
+			continue;
+		}
+		if (programOpen) {
+			parts.push('</section>');
+		}
+		foundProgram = true;
+		programOpen = true;
 		parts.push('<section class="program-block">');
 		parts.push(match[0]);
 		lastIndex = start + match[0].length;
 	}
 
-	if (matches.length === 0) {
+	if (!foundProgram) {
 		return html;
 	}
 
 	parts.push(html.slice(lastIndex));
-	let wrapped = parts.join('');
-	wrapped = wrapped.replace(/<section class="program-block">/g, (value, index) => {
-		if (index === 0) {
-			return value;
-		}
-		return '</section>' + value;
-	});
-	return `${wrapped}</section>`;
+	if (programOpen) {
+		parts.push('</section>');
+	}
+	return parts.join('');
 }
 
 /** Split inline cover facts so each **Label:** starts its own markdown block. */

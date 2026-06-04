@@ -171,6 +171,33 @@ test('renderMarkdownToPrintHtml highlights verdict and next step', () => {
 	assert.match(html, /artifact-next-step/);
 });
 
+test('renderMarkdownToPrintHtml closes program blocks before later sections', () => {
+	const html = renderMarkdownToPrintHtml(
+		[
+			'## Programs to pursue',
+			'',
+			'### 1. IRAP',
+			'',
+			'**Verdict:** Pursue now',
+			'',
+			'### 2. CanExport',
+			'',
+			'**Verdict:** Explore',
+			'',
+			'## Strategy',
+			'',
+			'Call advisors this week.'
+		].join('\n'),
+		{ title: 'Test', version: 1, preparedAt: '2026-06-02T12:00:00.000Z' }
+	);
+
+	assert.doesNotMatch(html, /<\/section><section class="program-block"><h3>1\./);
+	assert.match(
+		html,
+		/<section class="program-block"><h3>2\. CanExport<\/h3>[\s\S]*?<\/section>\s*<h2>Strategy<\/h2>/
+	);
+});
+
 test('renderMarkdownToPrintHtml strips active html before printing', () => {
 	const html = renderMarkdownToPrintHtml(
 		[

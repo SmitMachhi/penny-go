@@ -54,7 +54,6 @@
 				sessions.setTitleFromFirstMessage(chat.state.sessionKey, firstUserMessage.text);
 			}
 			sessions.bumpActiveSession(chat.state.sessionKey);
-			void sessions.refresh({ silent: true });
 		}
 		wasSending = chat.state.sending;
 	});
@@ -72,9 +71,7 @@
 
 	onMount(() => {
 		void Promise.all([chat.bootstrap(), sessions.initSidebar()]);
-		chat.startHealthPolling(() => {
-			void sessions.refresh({ silent: true });
-		});
+		chat.startHealthPolling();
 
 		const onVisibilityChange = () => {
 			if (document.visibilityState !== 'visible' || !page.params.id || !chat.state.sessionKey) {

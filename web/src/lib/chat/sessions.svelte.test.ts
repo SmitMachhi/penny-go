@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SessionClient } from './sessions.svelte.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
+const OTHER_SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440002';
 const INITIAL_UPDATED_AT = 100;
 const TITLE = 'Ontario SaaS grant help';
 
@@ -87,5 +88,61 @@ describe('SessionClient', () => {
 			typeof init?.body === 'string' ? (JSON.parse(init.body) as { label?: string }) : {};
 		expect(body.label).toBe('yo (2)');
 		expect(client.state.error).toBeNull();
+	});
+
+	it('does not refresh the full session list after local CRUD succeeds', async () => {
+		const session = {
+			key: SESSION_KEY,
+			title: 'New chat',
+			titleStatus: 'ready' as const,
+			updatedAt: INITIAL_UPDATED_AT,
+			isLegacy: false
+		};
+		const fetchMock = vi.fn<typeof fetch>(async (input, init) => {
+			const path = String(input);
+			if (path === '/api/sessions' && init?.method === 'POST') {
+				return jsonResponse({ session });
+			}
+			if (path.includes(encodeURIComponent(SESSION_KEY)) && init?.method === 'PATCH') {
+				return jsonResponse({});
+			}
+			if (path.includes(encodeURIComponent(SESSION_KEY)) && init?.method === 'DELETE') {
+				return jsonResponse({});
+			}
+			return jsonResponse({ sessions: [] });
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new SessionClient();
+
+		await client.createSession();
+		await client.renameSession(SESSION_KEY, TITLE);
+		await client.deleteSession(SESSION_KEY);
+
+		const fullListReads = fetchMock.mock.calls.filter(
+			([input, init]) => String(input) === '/api/sessions' && init?.method === undefined
+		);
+		expect(fullListReads).toHaveLength(0);
+	});
+
+	it('does not backfill titles when initializing the sidebar', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () =>
+			jsonResponse({
+				sessions: [
+					{
+						key: OTHER_SESSION_KEY,
+						title: 'New chat',
+						titleStatus: 'ready',
+						updatedAt: INITIAL_UPDATED_AT,
+						isLegacy: false
+					}
+				]
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new SessionClient();
+
+		await client.initSidebar();
+
+		expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(['/api/sessions']);
 	});
 });

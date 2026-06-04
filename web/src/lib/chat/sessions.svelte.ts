@@ -22,10 +22,6 @@ type CreateSessionResponse = {
 	session?: PennySession;
 };
 
-type GenerateTitleResponse = {
-	session?: PennySession;
-};
-
 export type SessionClientState = {
 	sessions: PennySession[];
 	loading: boolean;
@@ -36,10 +32,8 @@ export type SessionClientState = {
 
 type RefreshOptions = {
 	silent?: boolean;
-	backfillTitles?: boolean;
 };
 
-const TITLE_BACKFILL_LIMIT = 5;
 const LABEL_PATCH_RETRY_LIMIT = 3;
 const DEFAULT_SESSION_TITLE = 'New chat';
 
@@ -72,7 +66,7 @@ export class SessionClient {
 	private titledSessions = new Set<string>();
 
 	async initSidebar(): Promise<void> {
-		await this.refresh({ backfillTitles: true });
+		await this.refresh();
 	}
 
 	async refresh(options?: RefreshOptions): Promise<void> {
@@ -85,9 +79,6 @@ export class SessionClient {
 			const payload = await apiJson<SessionsResponse>('/api/sessions');
 			this.state.sessions = mergeSessionListFromServer(payload.sessions ?? [], priorSessions);
 			this.state.error = null;
-			if (options?.backfillTitles) {
-				this.backfillPendingTitles();
-			}
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to load sessions');
 		} finally {
@@ -189,43 +180,6 @@ export class SessionClient {
 		}
 	}
 
-	private backfillPendingTitles(): void {
-		const pending = this.state.sessions
-			.filter(
-				(session) =>
-					session.title === DEFAULT_SESSION_TITLE &&
-					!session.isLegacy &&
-					!this.titledSessions.has(session.key)
-			)
-			.slice(0, TITLE_BACKFILL_LIMIT);
-		for (const session of pending) {
-			void this.backfillTitleFromHistory(session.key);
-		}
-	}
-
-	private async backfillTitleFromHistory(key: string): Promise<void> {
-		if (this.titledSessions.has(key)) {
-			return;
-		}
-		try {
-			const payload = await apiJson<GenerateTitleResponse>(
-				`/api/sessions/${encodeURIComponent(key)}/generate-title`,
-				{
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({})
-				}
-			);
-			if (!payload.session || payload.session.title === DEFAULT_SESSION_TITLE) {
-				return;
-			}
-			this.titledSessions.add(key);
-			this.state.sessions = replaceSessionView(this.state.sessions, payload.session);
-		} catch {
-			// Backfill is best-effort for older untitled chats.
-		}
-	}
-
 	async createSession(): Promise<PennySession | null> {
 		try {
 			const payload = await apiJson<CreateSessionResponse>('/api/sessions', {
@@ -238,7 +192,6 @@ export class SessionClient {
 			}
 			const session = payload.session;
 			this.state.sessions = upsertSessionView(this.state.sessions, session);
-			void this.refresh({ silent: true });
 			return session;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to create session');
@@ -277,7 +230,6 @@ export class SessionClient {
 			}
 			this.titledSessions.add(key);
 			this.state.error = null;
-			await this.refresh({ silent: true });
 			return true;
 		} catch (error) {
 			if (previousSession) {
@@ -299,7 +251,6 @@ export class SessionClient {
 				method: 'DELETE'
 			});
 			this.state.error = null;
-			void this.refresh({ silent: true });
 			return true;
 		} catch (error) {
 			this.state.sessions = previousSessions;

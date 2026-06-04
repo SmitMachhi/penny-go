@@ -7,6 +7,7 @@ import { createFundingBriefTool } from './tools/create-funding-brief-tool.js';
 
 const SESSION_UUID = '550e8400-e29b-41d4-a716-446655440000';
 const SESSION_KEY = buildPennySessionKey(SESSION_UUID);
+const LOCAL_SESSION_KEY = 'penny-opportunity-backed';
 
 const sampleParams = {
 	title: 'Ontario SaaS funding brief',
@@ -37,6 +38,17 @@ test('createFundingBriefTool rejects missing penny session key', async () => {
 test('createFundingBriefTool rejects markdown without actionable steps', async () => {
 	const tool = createFundingBriefTool({ repoRoot: '/tmp/penny-go' }, SESSION_KEY);
 	const result = await tool.execute('call-2', {
+		...sampleParams,
+		bodyMarkdown: '# Summary only\n\nNo checklist here.'
+	});
+	const details = result.details as Record<string, unknown>;
+	assert.equal(details.success, false);
+	assert.equal(details.error, 'validation_failed');
+});
+
+test('createFundingBriefTool accepts local penny session ids before validation', async () => {
+	const tool = createFundingBriefTool({ repoRoot: '/tmp/penny-go' }, LOCAL_SESSION_KEY);
+	const result = await tool.execute('call-3', {
 		...sampleParams,
 		bodyMarkdown: '# Summary only\n\nNo checklist here.'
 	});

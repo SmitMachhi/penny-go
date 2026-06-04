@@ -17,16 +17,17 @@ marked.setOptions({
 marked.use({
 	renderer: {
 		link({ href, title, text }) {
-			const safeHref = escapeHtmlAttribute(href ?? '');
+			const rawHref = href ?? '';
+			const safeHref = escapeHtmlAttribute(rawHref);
 			const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
 			const linkText = escapeHtmlAttribute(text);
 
-			if (isPreviewableHref(href)) {
-				return renderPreviewLinkHtml(href, text, title);
+			if (rawHref.includes('/api/artifacts/')) {
+				return `<a href="${safeHref}"${titleAttr}>${linkText}</a>`;
 			}
 
-			if (href?.includes('/api/artifacts/')) {
-				return `<a href="${safeHref}"${titleAttr}>${linkText}</a>`;
+			if (isPreviewableHref(rawHref)) {
+				return renderPreviewLinkHtml(rawHref, text, title);
 			}
 
 			return `<a href="${safeHref}"${titleAttr} target="_blank" rel="noopener noreferrer">${linkText}</a>`;

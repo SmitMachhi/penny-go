@@ -1,5 +1,9 @@
 import { ValidationError } from '$lib/server/api-error.js';
-import { clearLinkPreviewCacheForTests, fetchLinkPreview } from '$lib/server/link-preview.js';
+import {
+	clearLinkPreviewCacheForTests,
+	fetchLinkPreview,
+	setLinkPreviewTransportForTests
+} from '$lib/server/link-preview.js';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const HTML_HEADERS = { 'content-type': 'text/html' };
@@ -16,6 +20,11 @@ type DnsLookup = (
 	hostname: string,
 	options: { all: true; verbatim: true }
 ) => Promise<LookupAddress[]>;
+type PreviewTransport = (
+	url: URL,
+	address: string,
+	signal: AbortSignal
+) => Promise<{ status: number; headers: Headers; body: Uint8Array }>;
 
 const dnsLookupMock = vi.hoisted(() => vi.fn<DnsLookup>());
 
@@ -42,65 +51,72 @@ describe('fetchLinkPreview', () => {
 
 	afterEach(() => {
 		vi.unstubAllGlobals();
+		setLinkPreviewTransportForTests(null);
 	});
 
 	it('rejects redirects to blocked hosts', async () => {
-		const fetchMock = vi.fn(
-			async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
-				new Response(null, {
+		const transportMock = vi.fn<PreviewTransport>(
+			async () =>
+				Promise.resolve({
 					status: REDIRECT_STATUS,
-					headers: { location: 'http://127.0.0.1/private' }
+					headers: new Headers({ location: 'http://127.0.0.1/private' }),
+					body: new Uint8Array()
 				})
 		);
-		vi.stubGlobal('fetch', fetchMock);
+		setLinkPreviewTransportForTests(transportMock);
 
 		await expect(fetchLinkPreview('https://example.ca/start')).rejects.toThrow(ValidationError);
-		expect(fetchMock).toHaveBeenCalledOnce();
-		expect(fetchMock).toHaveBeenCalledWith(
+		expect(transportMock).toHaveBeenCalledOnce();
+		expect(transportMock).toHaveBeenCalledWith(
 			new URL('https://example.ca/start'),
-			expect.objectContaining({ redirect: 'manual' })
+			PUBLIC_TEST_ADDRESS,
+			expect.any(AbortSignal)
 		);
 	});
 
 	it('rejects hostnames that resolve to blocked addresses', async () => {
-		const fetchMock = vi.fn(
-			async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> =>
-				new Response('<html><head><title>Private page</title></head></html>', {
+		const transportMock = vi.fn<PreviewTransport>(
+			async () =>
+				Promise.resolve({
 					status: 200,
-					headers: HTML_HEADERS
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode('<html><head><title>Private page</title></head></html>')
 				})
 		);
 		dnsLookupMock.mockResolvedValueOnce([{ address: LOOPBACK_TEST_ADDRESS, family: 4 }]);
-		vi.stubGlobal('fetch', fetchMock);
+		setLinkPreviewTransportForTests(transportMock);
 
 		await expect(fetchLinkPreview('https://example.ca/start')).rejects.toThrow(ValidationError);
-		expect(fetchMock).not.toHaveBeenCalled();
+		expect(transportMock).not.toHaveBeenCalled();
 	});
 
 	it('follows validated public redirects', async () => {
-		const fetchMock = vi.fn(
-			async (input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
-				if (inputToUrl(input) === 'https://example.ca/start') {
-					return new Response(null, {
+		const transportMock = vi.fn<PreviewTransport>(
+			async (url) => {
+				if (inputToUrl(url) === 'https://example.ca/start') {
+					return Promise.resolve({
 						status: REDIRECT_STATUS,
-						headers: { location: '/final' }
+						headers: new Headers({ location: '/final' }),
+						body: new Uint8Array()
 					});
 				}
-				return new Response('<html><head><title>Final page</title></head></html>', {
+				return Promise.resolve({
 					status: 200,
-					headers: HTML_HEADERS
+					headers: new Headers(HTML_HEADERS),
+					body: new TextEncoder().encode('<html><head><title>Final page</title></head></html>')
 				});
 			}
 		);
-		vi.stubGlobal('fetch', fetchMock);
+		setLinkPreviewTransportForTests(transportMock);
 
 		const preview = await fetchLinkPreview('https://example.ca/start');
 
 		expect(preview.title).toBe('Final page');
-		expect(fetchMock).toHaveBeenCalledTimes(2);
-		expect(fetchMock).toHaveBeenLastCalledWith(
+		expect(transportMock).toHaveBeenCalledTimes(2);
+		expect(transportMock).toHaveBeenLastCalledWith(
 			new URL('https://example.ca/final'),
-			expect.objectContaining({ redirect: 'manual' })
+			PUBLIC_TEST_ADDRESS,
+			expect.any(AbortSignal)
 		);
 	});
 });

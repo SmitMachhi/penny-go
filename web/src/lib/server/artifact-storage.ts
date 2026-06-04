@@ -1,38 +1,100 @@
-import { readFile, readdir, rm, stat } from 'node:fs/promises';
+import { readFile, readdir, rm } from 'node:fs/promises';
 
 import {
+	repairVersionPdfFromLegacy,
+	resolveArtifactPdfPaths,
+	resolveReadableArtifactPdfPath
+} from '@penny/shared/artifact-pdf-locations';
+import {
+	ensureArtifactFormatV5,
+	isValidArtifactVersion,
+	listArtifactVersionNumbers,
+	normalizeArtifactMetaRecord
+} from '@penny/shared/artifact-validation';
+import type { ArtifactVersionSnapshot } from '@penny/shared/artifact-types';
+import {
 	META_FILENAME,
-	PDF_FILENAME,
+	VERSION_META_FILENAME,
 	isValidArtifactId,
 	resolveArtifactFilePath,
+	resolveArtifactVersionFilePath,
 	resolveSessionArtifactIndexPath,
 	resolveSessionArtifactsDir
 } from '@penny/shared/penny-paths';
 
+import type { ArtifactSummary, ArtifactVersionSummary } from '$lib/chat/artifacts.js';
 import { parsePennySessionUuid } from '$lib/server/session-key.js';
 import { resolvePennyRepoRootFromEnv } from '$lib/server/penny-config.js';
-import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 
 export type ArtifactMeta = {
 	artifactId: string;
 	sessionUuid: string;
 	title: string;
 	programCount: number;
-	version: number;
+	latestVersion: number;
 	triggerReason: 'auto' | 'user_requested';
 	createdAt: string;
 	updatedAt: string;
 	pdfAvailable?: boolean;
 };
 
-export function toArtifactSummary(meta: ArtifactMeta): ArtifactSummary {
+export type ArtifactDetail = {
+	artifact: ArtifactSummary;
+	versions: ArtifactVersionSummary[];
+};
+
+type LegacyArtifactMeta = ArtifactMeta & { version?: number };
+
+export function toArtifactSummary(meta: ArtifactMeta, pdfAvailable: boolean): ArtifactSummary {
 	return {
 		artifactId: meta.artifactId,
 		title: meta.title,
 		programCount: meta.programCount,
-		version: meta.version,
+		version: meta.latestVersion,
+		latestVersion: meta.latestVersion,
 		updatedAt: meta.updatedAt,
-		pdfAvailable: meta.pdfAvailable ?? true
+		pdfAvailable
+	};
+}
+
+function normalizeWebArtifactMeta(raw: unknown): ArtifactMeta | null {
+	const record = normalizeArtifactMetaRecord(raw);
+	if (!record) {
+		return null;
+	}
+	return {
+		artifactId: record.artifactId,
+		sessionUuid: record.sessionUuid,
+		title: record.title,
+		programCount: record.programCount,
+		latestVersion: record.latestVersion,
+		triggerReason: record.triggerReason,
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
+		pdfAvailable: record.pdfAvailable
+	};
+}
+
+function normalizeIndexEntry(raw: LegacyArtifactMeta): ArtifactMeta | null {
+	const latestVersion =
+		typeof raw.latestVersion === 'number'
+			? raw.latestVersion
+			: typeof raw.version === 'number'
+				? raw.version
+				: null;
+	if (!latestVersion) {
+		return null;
+	}
+	return {
+		artifactId: raw.artifactId,
+		sessionUuid: raw.sessionUuid,
+		title: raw.title,
+		programCount: raw.programCount,
+		latestVersion,
+		triggerReason: raw.triggerReason,
+		createdAt: raw.createdAt,
+		updatedAt: raw.updatedAt,
+		pdfAvailable: raw.pdfAvailable
 	};
 }
 
@@ -47,12 +109,30 @@ export async function listSessionArtifacts(sessionKey: string): Promise<Artifact
 	let indexEntries: ArtifactMeta[] = [];
 	try {
 		const raw = await readFile(indexPath, 'utf8');
-		indexEntries = JSON.parse(raw) as ArtifactMeta[];
+		const parsed = JSON.parse(raw) as LegacyArtifactMeta[];
+		indexEntries = parsed.flatMap((entry) => {
+			const normalized = normalizeIndexEntry(entry);
+			return normalized ? [normalized] : [];
+		});
 	} catch {
 		indexEntries = [];
 	}
 
 	return mergeArtifactMetas(indexEntries, await scanSessionArtifactMetas(sessionKey));
+}
+
+export async function listSessionArtifactSummaries(sessionKey: string): Promise<ArtifactSummary[]> {
+	const metas = await listSessionArtifacts(sessionKey);
+	return Promise.all(
+		metas.map(async (meta) => {
+			const pdfAvailable = await artifactPdfExists(
+				sessionKey,
+				meta.artifactId,
+				meta.latestVersion
+			);
+			return toArtifactSummary(meta, pdfAvailable);
+		})
+	);
 }
 
 export async function getArtifactMeta(
@@ -73,26 +153,95 @@ export async function getArtifactMeta(
 	return readArtifactMetaFile(sessionKey, artifactId);
 }
 
-export async function readArtifactPdfBytes(
+export async function getArtifactDetail(
 	sessionKey: string,
 	artifactId: string
-): Promise<Buffer> {
+): Promise<ArtifactDetail | null> {
+	const meta = await getArtifactMeta(sessionKey, artifactId);
+	if (!meta) {
+		return null;
+	}
+
+	const versions = await listArtifactVersions(sessionKey, artifactId);
+	const pdfAvailable = await artifactPdfExists(sessionKey, artifactId, meta.latestVersion);
+	return {
+		artifact: toArtifactSummary(meta, pdfAvailable),
+		versions
+	};
+}
+
+export async function listArtifactVersions(
+	sessionKey: string,
+	artifactId: string
+): Promise<ArtifactVersionSummary[]> {
 	const sessionUuid = requireSessionUuid(sessionKey);
 	const repoRoot = resolvePennyRepoRootFromEnv();
-	const pdfPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, PDF_FILENAME);
+	await ensureArtifactFormatV5({ repoRoot, sessionUuid, artifactId });
+
+	const versionNumbers = await listArtifactVersionNumbers(repoRoot, sessionUuid, artifactId);
+	const summaries: ArtifactVersionSummary[] = [];
+
+	for (const version of versionNumbers) {
+		const pdfReady = await artifactPdfExists(sessionKey, artifactId, version);
+		const snapshot = await readVersionSnapshot(sessionKey, artifactId, version);
+		if (snapshot) {
+			summaries.push(toVersionSummary(snapshot, pdfReady));
+			continue;
+		}
+		const meta = await readArtifactMetaFile(sessionKey, artifactId);
+		if (meta && version === meta.latestVersion) {
+			summaries.push({
+				version,
+				title: meta.title,
+				updatedAt: meta.updatedAt,
+				pdfAvailable: pdfReady
+			});
+		}
+	}
+
+	return summaries;
+}
+
+export async function readArtifactPdfBytes(
+	sessionKey: string,
+	artifactId: string,
+	version?: number
+): Promise<Buffer> {
+	const pdfPath = await resolveArtifactPdfReadPath(sessionKey, artifactId, version);
+	if (!pdfPath) {
+		throw new Error('pdf_not_available');
+	}
 	return readFile(pdfPath);
 }
 
-export async function artifactPdfExists(sessionKey: string, artifactId: string): Promise<boolean> {
+export async function artifactPdfExists(
+	sessionKey: string,
+	artifactId: string,
+	version?: number
+): Promise<boolean> {
+	const pdfPath = await resolveArtifactPdfReadPath(sessionKey, artifactId, version);
+	return pdfPath !== null;
+}
+
+async function resolveArtifactPdfReadPath(
+	sessionKey: string,
+	artifactId: string,
+	version?: number
+): Promise<string | null> {
 	const sessionUuid = requireSessionUuid(sessionKey);
 	const repoRoot = resolvePennyRepoRootFromEnv();
-	const pdfPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, PDF_FILENAME);
-	try {
-		const fileStat = await stat(pdfPath);
-		return fileStat.isFile() && fileStat.size > 0;
-	} catch {
-		return false;
+	const meta = await getArtifactMeta(sessionKey, artifactId);
+	if (!meta) {
+		return null;
 	}
+	const resolvedVersion = version ?? meta.latestVersion;
+	if (!isValidArtifactVersion(resolvedVersion, meta.latestVersion)) {
+		return null;
+	}
+
+	const paths = resolveArtifactPdfPaths(repoRoot, sessionUuid, artifactId, resolvedVersion);
+	await repairVersionPdfFromLegacy(paths);
+	return resolveReadableArtifactPdfPath(paths);
 }
 
 export async function getLatestSessionArtifact(sessionKey: string): Promise<ArtifactMeta | null> {
@@ -130,12 +279,57 @@ export async function readArtifactMetaFile(
 
 	const repoRoot = resolvePennyRepoRootFromEnv();
 	try {
+		await ensureArtifactFormatV5({ repoRoot, sessionUuid, artifactId });
+	} catch {
+		// Migration is best-effort; still attempt to read meta.json.
+	}
+
+	try {
 		const metaPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, META_FILENAME);
 		const raw = await readFile(metaPath, 'utf8');
-		return JSON.parse(raw) as ArtifactMeta;
+		return normalizeWebArtifactMeta(JSON.parse(raw) as unknown);
 	} catch {
 		return null;
 	}
+}
+
+async function readVersionSnapshot(
+	sessionKey: string,
+	artifactId: string,
+	version: number
+): Promise<ArtifactVersionSnapshot | null> {
+	const sessionUuid = parsePennySessionUuid(sessionKey);
+	if (!sessionUuid) {
+		return null;
+	}
+
+	const repoRoot = resolvePennyRepoRootFromEnv();
+	try {
+		const snapshotPath = resolveArtifactVersionFilePath(
+			repoRoot,
+			sessionUuid,
+			artifactId,
+			version,
+			VERSION_META_FILENAME
+		);
+		const raw = await readFile(snapshotPath, 'utf8');
+		return JSON.parse(raw) as ArtifactVersionSnapshot;
+	} catch {
+		return null;
+	}
+}
+
+function toVersionSummary(
+	snapshot: ArtifactVersionSnapshot,
+	pdfAvailable: boolean
+): ArtifactVersionSummary {
+	return {
+		version: snapshot.version,
+		title: snapshot.title,
+		updatedAt: snapshot.createdAt,
+		pdfAvailable,
+		changeSummary: snapshot.changeSummary
+	};
 }
 
 async function scanSessionArtifactMetas(sessionKey: string): Promise<ArtifactMeta[]> {

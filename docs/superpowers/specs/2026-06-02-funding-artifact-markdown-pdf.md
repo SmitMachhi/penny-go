@@ -1,6 +1,6 @@
 # Funding Artifact: Markdown → PDF
 
-**Status:** Draft (for review)  
+**Status:** Draft (for review) — **web panel and versioning amended by** `2026-06-04-funding-consultant-memo.md`  
 **Date:** 2026-06-02  
 **Supersedes:** `2026-06-02-funding-brief-document.md`, `2026-06-02-funding-strategy-document.md`, redundant `brief.json` content model
 
@@ -217,6 +217,19 @@ Not appended to `document.md`. Included in PDF converter input.
 
 1. **md→PDF toolchain** — pandoc vs alternatives; must handle GFM tables + task lists.  
 2. **Panel label** — “Funding brief & strategy” (recommended) vs “Funding strategy”.  
+
+---
+
+## Amendment (2026-06-04)
+
+See **`2026-06-04-funding-consultant-memo.md`** for approved direction on:
+
+- **Immutable version folders** (`versions/{n}/`) — supersedes single-file overwrite + monolithic `version` in root only  
+- **WYSIWYG panel** — PDF preview bytes === download bytes (withdraws separate “work panel” spec)  
+- **Print design system** — consultant memo CSS, structure pass, cover/version line  
+- **`formatVersion` 5** — `latestVersion`, `meta.snapshot.json`, optional `changeSummary`  
+
+This document’s three-layer model (`Penny → markdown → PDF`) and `document.md` canonical rule remain unchanged.
 
 ---
 

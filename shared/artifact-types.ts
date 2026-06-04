@@ -22,7 +22,7 @@ export type ArtifactMetaRecord = {
 	artifactId: string;
 	sessionUuid: string;
 	title: string;
-	version: number;
+	latestVersion: number;
 	formatVersion: number;
 	triggerReason: ArtifactTriggerReason;
 	createdAt: string;
@@ -33,12 +33,25 @@ export type ArtifactMetaRecord = {
 	evidence?: ArtifactEvidence;
 };
 
+export type ArtifactVersionSnapshot = {
+	version: number;
+	title: string;
+	triggerReason: ArtifactTriggerReason;
+	createdAt: string;
+	programCount: number;
+	pdfAvailable: boolean;
+	verification: ArtifactVerification;
+	evidence?: ArtifactEvidence;
+	changeSummary?: string;
+};
+
 export type CreateFundingArtifactInput = {
 	title: string;
 	triggerReason: ArtifactTriggerReason;
 	bodyMarkdown: string;
 	verification: ArtifactVerification;
 	evidence?: ArtifactEvidence;
+	changeSummary?: string;
 };
 
 export type CreateFundingArtifactParams = CreateFundingArtifactInput & {

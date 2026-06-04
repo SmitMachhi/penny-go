@@ -32,7 +32,7 @@ export async function createFundingBriefAction(
 		? await loadArtifactMetaRecord(repoRoot, params.sessionUuid, artifactId)
 		: null;
 
-	const version = existing ? existing.version + 1 : 1;
+	const version = existing ? existing.latestVersion + 1 : 1;
 	const createdAt = existing?.createdAt ?? now;
 
 	const fullParams: CreateFundingArtifactParams = {
@@ -71,6 +71,7 @@ export async function createFundingBriefAction(
 		programCount: persisted.meta.programCount,
 		documentPath: persisted.documentPath,
 		pdfPath: persisted.pdfPath,
-		version
+		version,
+		latestVersion: persisted.meta.latestVersion
 	};
 }

@@ -66,6 +66,12 @@ export const createFundingBriefParameters = Type.Object({
     urlsChecked: Type.Array(Type.String()),
     notes: Type.Optional(Type.String()),
   }),
+  changeSummary: Type.Optional(
+    Type.String({
+      description:
+        "One sentence describing what changed in this revision (recommended on updates).",
+    }),
+  ),
 });
 
 export const createFundingBriefToolDefinition = {

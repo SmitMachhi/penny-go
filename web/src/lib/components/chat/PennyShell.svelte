@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onDestroy, onMount } from 'svelte';
-	import { Menu, PanelLeft, PanelRight, PanelRightClose, X } from '@lucide/svelte';
+	import { FileText, Menu, PanelLeft, X } from '@lucide/svelte';
 
 	import { ChatClient } from '$lib/chat/client.svelte.js';
 	import { setPennyContext } from '$lib/chat/penny-context.js';
@@ -144,17 +144,13 @@
 				{#if chat.state.artifacts.length > 0}
 					<Button
 						variant={chat.state.artifactPanelOpen ? 'default' : 'outline'}
-						class="h-8 w-8 shrink-0 px-0 sm:h-9 sm:w-auto sm:min-w-[7.5rem] sm:px-3"
+						size="icon"
+						class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
 						aria-expanded={chat.state.artifactPanelOpen}
 						aria-label="Toggle funding plan panel"
 						onclick={() => chat.toggleArtifactPanel()}
 					>
-						{#if chat.state.artifactPanelOpen}
-							<PanelRightClose class="h-4 w-4" />
-						{:else}
-							<PanelRight class="h-4 w-4" />
-						{/if}
-						<span class="hidden sm:inline">Funding plan</span>
+						<FileText class="h-4 w-4" />
 					</Button>
 				{/if}
 				{#if !chat.state.connected}

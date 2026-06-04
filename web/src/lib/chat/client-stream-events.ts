@@ -30,6 +30,7 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 
 	switch (payload.type) {
 		case 'chat.delta':
+			handlers.state.streamingAnswerText = payload.text;
 			applyCommentaryDelta(handlers.state.runTrace, payload.text, {
 				replace: payload.replace
 			});

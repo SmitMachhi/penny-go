@@ -1,108 +1,103 @@
 <script lang="ts">
-	import { cn } from '$lib/utils.js';
+	import { ExternalLink } from '@lucide/svelte';
 
 	type Props = {
 		artifactId: string;
 		sessionKey: string;
+		version: number;
 		pdfAvailable: boolean;
 	};
 
-	let { artifactId, sessionKey, pdfAvailable }: Props = $props();
+	let { artifactId, sessionKey, version, pdfAvailable }: Props = $props();
 
-	let pageUrls = $state<string[]>([]);
-	let loading = $state(true);
 	let loadError = $state<string | null>(null);
+	let previewUrl = $state<string | null>(null);
 
 	const pdfUrl = $derived(
-		`/api/artifacts/${artifactId}?sessionKey=${encodeURIComponent(sessionKey)}&preview=pdf`
+		`/api/artifacts/${artifactId}?sessionKey=${encodeURIComponent(sessionKey)}&preview=pdf&version=${version}`
 	);
 
 	$effect(() => {
 		const url = pdfUrl;
+		const available = pdfAvailable;
 		let cancelled = false;
+		let objectUrl: string | null = null;
 
-		loading = true;
 		loadError = null;
-		pageUrls = [];
+		previewUrl = null;
 
-		if (!pdfAvailable) {
-			loading = false;
+		if (!available) {
 			return;
 		}
 
 		void (async () => {
 			try {
-				const pdfjs = await import('pdfjs-dist');
-				const workerModule = await import('pdfjs-dist/build/pdf.worker.min.mjs?url');
-				pdfjs.GlobalWorkerOptions.workerSrc = workerModule.default;
-
-				const pdfDocument = await pdfjs.getDocument(url).promise;
-				const renderedPages: string[] = [];
-
-				for (let pageNumber = 1; pageNumber <= pdfDocument.numPages; pageNumber += 1) {
-					if (cancelled) {
-						return;
-					}
-
-					const page = await pdfDocument.getPage(pageNumber);
-					const viewport = page.getViewport({ scale: 1.35 });
-					const canvas = window.document.createElement('canvas');
-					const context = canvas.getContext('2d');
-
-					if (!context) {
-						throw new Error('canvas_context_unavailable');
-					}
-
-					canvas.width = viewport.width;
-					canvas.height = viewport.height;
-
-					await page.render({ canvas, canvasContext: context, viewport }).promise;
-					renderedPages.push(canvas.toDataURL('image/png'));
+				const response = await fetch(url);
+				if (!response.ok) {
+					throw new Error(`pdf_fetch_${response.status}`);
 				}
-
-				if (!cancelled) {
-					pageUrls = renderedPages;
+				const blob = await response.blob();
+				if (cancelled) {
+					return;
 				}
-			} catch (error) {
+				objectUrl = URL.createObjectURL(blob);
+				previewUrl = objectUrl;
+			} catch {
 				if (!cancelled) {
-					loadError = error instanceof Error ? error.message : 'Failed to load PDF preview';
-				}
-			} finally {
-				if (!cancelled) {
-					loading = false;
+					loadError = 'Could not load PDF preview.';
 				}
 			}
 		})();
 
 		return () => {
 			cancelled = true;
+			if (objectUrl) {
+				URL.revokeObjectURL(objectUrl);
+			}
 		};
 	});
+
+	function openInNewTab(): void {
+		window.open(pdfUrl, '_blank', 'noopener,noreferrer');
+	}
 </script>
 
-<div class="absolute inset-0 overflow-y-auto bg-muted/30">
-	{#if loading}
-		<div class="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
-			Loading PDF…
+<div class="absolute inset-0 flex min-h-0 flex-col bg-muted/30">
+	{#if !pdfAvailable}
+		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
+			PDF is still generating. Refresh in a moment or ask Penny to update the memo.
 		</div>
 	{:else if loadError}
-		<div class="flex h-full items-center justify-center px-4 text-center text-sm text-destructive">
-			{loadError}
+		<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-sm">
+			<p class="text-destructive">{loadError}</p>
+			<button
+				type="button"
+				class="inline-flex items-center gap-1.5 font-medium text-foreground underline underline-offset-2"
+				onclick={openInNewTab}
+			>
+				<ExternalLink class="h-3.5 w-3.5" />
+				Open PDF in new tab
+			</button>
 		</div>
-	{:else if pageUrls.length === 0}
-		<div class="flex h-full items-center justify-center px-4 text-sm text-muted-foreground">
-				PDF unavailable.
-			</div>
+	{:else if !previewUrl}
+		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
+			Loading memo…
+		</div>
 	{:else}
-		<div class="flex flex-col items-center gap-4 p-4">
-			{#each pageUrls as pageUrl, index (index)}
-				<img
-					src={pageUrl}
-					alt={`Page ${index + 1}`}
-					class={cn('w-full max-w-full rounded-md border border-border bg-white shadow-sm')}
-					loading="lazy"
-				/>
-			{/each}
+		<div class="flex shrink-0 items-center justify-end gap-2 border-b border-border/60 px-3 py-1.5">
+			<button
+				type="button"
+				class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
+				onclick={openInNewTab}
+			>
+				<ExternalLink class="h-3 w-3" />
+				Open in new tab
+			</button>
 		</div>
+		<iframe
+			title="Funding memo preview"
+			src={previewUrl}
+			class="min-h-0 w-full flex-1 border-0 bg-white"
+		></iframe>
 	{/if}
 </div>

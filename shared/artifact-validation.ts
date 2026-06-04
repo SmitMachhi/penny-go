@@ -1,15 +1,35 @@
+import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
+
 import type {
 	ArtifactEvidence,
 	ArtifactEvidenceProgram,
+	ArtifactMetaRecord,
 	ArtifactTriggerReason,
 	ArtifactValidationError,
 	ArtifactValidationResult,
+	ArtifactVersionSnapshot,
 	CreateFundingArtifactInput,
+	CreateFundingArtifactParams,
 	FundingConfidence
 } from './artifact-types.ts';
+import { repairVersionPdfFromLegacy, resolveArtifactPdfPaths } from './artifact-pdf-locations.ts';
+import {
+	DOCUMENT_MD_FILENAME,
+	formatArtifactVersionSegment,
+	META_FILENAME,
+	PDF_FILENAME,
+	resolveArtifactDir,
+	resolveArtifactFilePath,
+	resolveArtifactVersionDir,
+	resolveArtifactVersionFilePath,
+	VERSION_META_FILENAME,
+	VERSIONS_DIR
+} from '@penny/shared/penny-paths';
 
 export const MAX_EVIDENCE_PROGRAMS = 5;
-export const ARTIFACT_FORMAT_VERSION = 4;
+export const ARTIFACT_FORMAT_VERSION = 5;
+export const MAX_CHANGE_SUMMARY_LENGTH = 280;
 
 export const CONFIDENCE_LABELS = [
 	'verified_live',
@@ -185,7 +205,22 @@ function parseCreateInput(
 		});
 		return null;
 	}
-	return { title, bodyMarkdown, triggerReason, verification, evidence };
+	const changeSummary = readOptionalString(input.changeSummary);
+	if (changeSummary && changeSummary.length > MAX_CHANGE_SUMMARY_LENGTH) {
+		errors.push({
+			field: 'changeSummary',
+			message: `at most ${MAX_CHANGE_SUMMARY_LENGTH} characters`
+		});
+		return null;
+	}
+	return {
+		title,
+		bodyMarkdown,
+		triggerReason,
+		verification,
+		evidence,
+		changeSummary
+	};
 }
 
 export function validateCreateFundingArtifactInput(input: unknown): ArtifactValidationResult {
@@ -196,3 +231,264 @@ export function validateCreateFundingArtifactInput(input: unknown): ArtifactVali
 	const value = parseCreateInput(input, errors);
 	return errors.length > 0 || !value ? { ok: false, errors } : { ok: true, value };
 }
+
+type LegacyArtifactMetaRecord = ArtifactMetaRecord & { version?: number };
+
+export function resolveLatestVersion(meta: LegacyArtifactMetaRecord): number {
+	if (typeof meta.latestVersion === 'number' && meta.latestVersion >= 1) {
+		return meta.latestVersion;
+	}
+	if (typeof meta.version === 'number' && meta.version >= 1) {
+		return meta.version;
+	}
+	return 1;
+}
+
+export function normalizeArtifactMetaRecord(raw: unknown): ArtifactMetaRecord | null {
+	if (typeof raw !== 'object' || raw === null) {
+		return null;
+	}
+	const record = raw as LegacyArtifactMetaRecord;
+	if (
+		typeof record.artifactId !== 'string' ||
+		typeof record.sessionUuid !== 'string' ||
+		typeof record.title !== 'string' ||
+		typeof record.formatVersion !== 'number' ||
+		typeof record.triggerReason !== 'string' ||
+		typeof record.createdAt !== 'string' ||
+		typeof record.updatedAt !== 'string' ||
+		typeof record.programCount !== 'number' ||
+		typeof record.verification !== 'object' ||
+		record.verification === null
+	) {
+		return null;
+	}
+
+	const latestVersion = resolveLatestVersion(record);
+	return {
+		artifactId: record.artifactId,
+		sessionUuid: record.sessionUuid,
+		title: record.title,
+		latestVersion,
+		formatVersion: record.formatVersion,
+		triggerReason: record.triggerReason,
+		createdAt: record.createdAt,
+		updatedAt: record.updatedAt,
+		programCount: record.programCount,
+		pdfAvailable: record.pdfAvailable ?? true,
+		verification: record.verification,
+		evidence: record.evidence
+	};
+}
+
+export function buildArtifactMetaRecord(
+	params: CreateFundingArtifactParams,
+	artifactId: string,
+	latestVersion: number,
+	timestamps: { createdAt: string; updatedAt: string },
+	pdfAvailable = true
+): ArtifactMetaRecord {
+	const programCount = params.evidence?.programs?.length ?? 0;
+	return {
+		artifactId,
+		sessionUuid: params.sessionUuid,
+		title: params.title,
+		latestVersion,
+		formatVersion: ARTIFACT_FORMAT_VERSION,
+		triggerReason: params.triggerReason,
+		createdAt: timestamps.createdAt,
+		updatedAt: timestamps.updatedAt,
+		programCount,
+		pdfAvailable,
+		verification: params.verification,
+		evidence: params.evidence
+	};
+}
+
+export function buildArtifactVersionSnapshot(
+	params: CreateFundingArtifactParams,
+	version: number,
+	updatedAt: string,
+	pdfAvailable: boolean
+): ArtifactVersionSnapshot {
+	const programCount = params.evidence?.programs?.length ?? 0;
+	return {
+		version,
+		title: params.title,
+		triggerReason: params.triggerReason,
+		createdAt: updatedAt,
+		programCount,
+		pdfAvailable,
+		verification: params.verification,
+		evidence: params.evidence,
+		changeSummary: params.changeSummary
+	};
+}
+
+type MigrateArtifactOptions = {
+	repoRoot: string;
+	sessionUuid: string;
+	artifactId: string;
+};
+
+export async function ensureArtifactFormatV5(
+	options: MigrateArtifactOptions
+): Promise<ArtifactMetaRecord | null> {
+	const metaPath = resolveArtifactFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		META_FILENAME
+	);
+	let rawMeta: unknown;
+	try {
+		rawMeta = JSON.parse(await readFile(metaPath, 'utf8')) as unknown;
+	} catch {
+		return null;
+	}
+
+	const normalized = normalizeArtifactMetaRecord(rawMeta);
+	if (!normalized) {
+		return null;
+	}
+
+	const existingVersions = await listArtifactVersionNumbers(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId
+	);
+	if (normalized.formatVersion >= ARTIFACT_FORMAT_VERSION && existingVersions.length > 0) {
+		await repairVersionPdfFromLegacy(
+			resolveArtifactPdfPaths(
+				options.repoRoot,
+				options.sessionUuid,
+				options.artifactId,
+				normalized.latestVersion
+			)
+		);
+		return normalized;
+	}
+
+	return migrateFlatArtifactToVersioned(options, normalized, rawMeta);
+}
+
+async function migrateFlatArtifactToVersioned(
+	options: MigrateArtifactOptions,
+	normalized: ArtifactMetaRecord,
+	rawMeta: unknown
+): Promise<ArtifactMetaRecord> {
+	const latestVersion = resolveLatestVersion(
+		typeof rawMeta === 'object' && rawMeta !== null ? (rawMeta as ArtifactMetaRecord) : normalized
+	);
+	const versionDir = resolveArtifactVersionDir(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		latestVersion
+	);
+	await mkdir(versionDir, { recursive: true });
+
+	const legacyDocumentPath = resolveArtifactFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		DOCUMENT_MD_FILENAME
+	);
+	const legacyPdfPath = resolveArtifactFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		PDF_FILENAME
+	);
+	const versionDocumentPath = resolveArtifactVersionFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		latestVersion,
+		DOCUMENT_MD_FILENAME
+	);
+	const versionPdfPath = resolveArtifactVersionFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		latestVersion,
+		PDF_FILENAME
+	);
+
+	await copyIfExists(legacyDocumentPath, versionDocumentPath);
+	await copyIfExists(legacyPdfPath, versionPdfPath);
+
+	const snapshot = buildArtifactVersionSnapshot(
+		{
+			sessionUuid: normalized.sessionUuid,
+			title: normalized.title,
+			triggerReason: normalized.triggerReason,
+			bodyMarkdown: '',
+			verification: normalized.verification,
+			evidence: normalized.evidence
+		},
+		latestVersion,
+		normalized.updatedAt,
+		normalized.pdfAvailable
+	);
+	const snapshotPath = resolveArtifactVersionFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		latestVersion,
+		VERSION_META_FILENAME
+	);
+	await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+
+	const upgraded: ArtifactMetaRecord = {
+		...normalized,
+		latestVersion,
+		formatVersion: ARTIFACT_FORMAT_VERSION
+	};
+	const metaPath = resolveArtifactFilePath(
+		options.repoRoot,
+		options.sessionUuid,
+		options.artifactId,
+		META_FILENAME
+	);
+	await writeFile(metaPath, `${JSON.stringify(upgraded, null, 2)}\n`, 'utf8');
+
+	await rm(legacyDocumentPath, { force: true });
+	await rm(legacyPdfPath, { force: true });
+
+	return upgraded;
+}
+
+async function copyIfExists(sourcePath: string, destinationPath: string): Promise<void> {
+	try {
+		await stat(sourcePath);
+	} catch {
+		return;
+	}
+	await copyFile(sourcePath, destinationPath);
+}
+
+export async function listArtifactVersionNumbers(
+	repoRoot: string,
+	sessionUuid: string,
+	artifactId: string
+): Promise<number[]> {
+	const versionsRoot = resolve(resolveArtifactDir(repoRoot, sessionUuid, artifactId), VERSIONS_DIR);
+	let entries: string[] = [];
+	try {
+		entries = await readdir(versionsRoot);
+	} catch {
+		return [];
+	}
+
+	return entries
+		.map((entry) => Number.parseInt(entry, 10))
+		.filter((version) => Number.isInteger(version) && version >= 1)
+		.sort((left, right) => left - right);
+}
+
+export function isValidArtifactVersion(version: number, latestVersion: number): boolean {
+	return Number.isInteger(version) && version >= 1 && version <= latestVersion;
+}
+
+export { formatArtifactVersionSegment };

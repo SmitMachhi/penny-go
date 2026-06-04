@@ -11,6 +11,8 @@ export type ChatClientState = {
 	sessionId: string | null;
 	messages: ChatMessage[];
 	runTrace: RunTraceState;
+	/** Cumulative assistant reply while the run is in flight (from chat.delta). */
+	streamingAnswerText: string;
 	runTraceExpanded: boolean;
 	tools: ToolActivity[];
 	artifacts: ArtifactSummary[];
@@ -31,6 +33,7 @@ export function createInitialChatState(): ChatClientState {
 		sessionId: null,
 		messages: [],
 		runTrace: createEmptyRunTrace(),
+		streamingAnswerText: '',
 		runTraceExpanded: false,
 		tools: [],
 		artifacts: [],
@@ -90,6 +93,7 @@ export function appendAssistantMessage(
 export function resetRunState(state: ChatClientState): void {
 	state.sending = false;
 	state.runTrace = createEmptyRunTrace();
+	state.streamingAnswerText = '';
 	state.runTraceExpanded = false;
 	state.tools = [];
 }
@@ -98,7 +102,8 @@ export function startRunState(state: ChatClientState): void {
 	state.sending = true;
 	state.operationError = null;
 	state.runTrace = createEmptyRunTrace();
-	state.runTraceExpanded = true;
+	state.streamingAnswerText = '';
+	state.runTraceExpanded = false;
 	state.tools = [];
 }
 

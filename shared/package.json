@@ -7,7 +7,7 @@
     "#session-key": "./session-key.ts"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test artifact-paths.test.ts artifact.test.ts brief-markdown.test.ts funding-brief-html.test.ts funding-brief-playbook.test.ts funding-brief.test.ts loan-heuristic.test.ts session-key.test.ts session-label-unique.test.ts session-title.test.ts"
+    "test": "node --experimental-strip-types --test artifact-paths.test.ts artifact-pdf-locations.test.ts artifact.test.ts brief-markdown.test.ts funding-brief-html.test.ts funding-brief-playbook.test.ts funding-brief.test.ts loan-heuristic.test.ts session-key.test.ts session-label-unique.test.ts session-title.test.ts"
   },
   "dependencies": {
     "marked": "^18.0.4"
@@ -20,6 +20,7 @@
     "./artifact-types": "./artifact-types.ts",
     "./artifact-validation": "./artifact-validation.ts",
     "./artifact-markdown": "./artifact-markdown.ts",
+    "./artifact-pdf-locations": "./artifact-pdf-locations.ts",
     "./artifact-print-html": "./artifact-print-html.ts",
     "./penny-brand": "./penny-brand.ts",
     "./loan-heuristic.json": "./loan-heuristic.json"

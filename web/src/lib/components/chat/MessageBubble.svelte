@@ -13,10 +13,11 @@
 	type Props = {
 		message: ChatMessage;
 		planNudgeArtifact?: ArtifactSummary | null;
+		streaming?: boolean;
 		onOpenArtifact?: (artifactId: string) => void;
 	};
 
-	let { message, planNudgeArtifact = null, onOpenArtifact }: Props = $props();
+	let { message, planNudgeArtifact = null, streaming = false, onOpenArtifact }: Props = $props();
 
 	let copied = $state(false);
 
@@ -27,6 +28,33 @@
 	const hasTable = $derived(
 		message.role === 'assistant' && /\|/.test(message.text) && /\n\|[-:\s|]+\|/.test(message.text)
 	);
+
+	const ARTIFACT_DOWNLOAD_PATH_PATTERN = /\/api\/artifacts\/[^/]+\/download\b/i;
+
+	function handleAssistantClick(event: MouseEvent): void {
+		if (!onOpenArtifact) {
+			return;
+		}
+		const anchor = (event.target as Element | null)?.closest('a');
+		if (!anchor) {
+			return;
+		}
+		const href = anchor.getAttribute('href') ?? '';
+		if (!ARTIFACT_DOWNLOAD_PATH_PATTERN.test(href)) {
+			return;
+		}
+		event.preventDefault();
+		event.stopPropagation();
+		const artifactId = planNudgeArtifact?.artifactId ?? extractArtifactIdFromHref(href);
+		if (artifactId) {
+			onOpenArtifact(artifactId);
+		}
+	}
+
+	function extractArtifactIdFromHref(href: string): string | null {
+		const match = href.match(/\/api\/artifacts\/([^/?]+)/i);
+		return match?.[1] ?? null;
+	}
 
 	async function copyMessageText(): Promise<void> {
 		try {
@@ -66,13 +94,16 @@
 		</div>
 	</div>
 {:else}
-	<article class="w-full">
+	<article class="w-full" onclick={handleAssistantClick}>
 		{#key html}
 			<div
 				class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
 				use:enhanceLinkPreviews
 			>
 				{@html html}
+				{#if streaming}
+					<span class="penny-stream-cursor ml-0.5 inline-block">▌</span>
+				{/if}
 			</div>
 		{/key}
 		{#if planNudgeArtifact && onOpenArtifact}
@@ -81,19 +112,21 @@
 				onOpen={() => onOpenArtifact(planNudgeArtifact.artifactId)}
 			/>
 		{/if}
-		<div class="mt-2 flex items-center">
-			<button
-				type="button"
-				class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-penny-brand-subtle hover:text-primary"
-				aria-label={copied ? 'Copied' : 'Copy response'}
-				onclick={() => void copyMessageText()}
-			>
-				{#if copied}
-					<Check class="h-3.5 w-3.5" />
-				{:else}
-					<Copy class="h-3.5 w-3.5" />
-				{/if}
-			</button>
-		</div>
+		{#if !streaming}
+			<div class="mt-2 flex items-center">
+				<button
+					type="button"
+					class="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-penny-brand-subtle hover:text-primary"
+					aria-label={copied ? 'Copied' : 'Copy response'}
+					onclick={() => void copyMessageText()}
+				>
+					{#if copied}
+						<Check class="h-3.5 w-3.5" />
+					{:else}
+						<Copy class="h-3.5 w-3.5" />
+					{/if}
+				</button>
+			</div>
+		{/if}
 	</article>
 {/if}

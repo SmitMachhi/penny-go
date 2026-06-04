@@ -156,6 +156,46 @@
 	}
 }
 
+@keyframes penny-activity-enter {
+	from {
+		opacity: 0;
+		transform: translate3d(0, 4px, 0);
+	}
+	to {
+		opacity: 1;
+		transform: translate3d(0, 0, 0);
+	}
+}
+
+@keyframes penny-activity-breathe {
+	0%,
+	100% {
+		transform: translate3d(0, 0, 0) scale(1);
+	}
+	50% {
+		transform: translate3d(0, -1px, 0) scale(1.04);
+	}
+}
+
+@keyframes penny-activity-tool-pulse {
+	0%,
+	100% {
+		opacity: 0.65;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@keyframes penny-answer-enter {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
 @layer components {
 	.penny-chat-bg,
 	.penny-canvas-bg,
@@ -169,6 +209,19 @@
 
 	.penny-chat-workspace {
 		@apply flex min-h-0 min-w-0 flex-1 flex-row overflow-hidden;
+	}
+
+	.artifact-panel-resizer {
+		width: 6px;
+		cursor: col-resize;
+		touch-action: none;
+		background: transparent;
+		transition: background-color 150ms ease;
+	}
+
+	.artifact-panel-resizer:hover,
+	.artifact-panel-resizer:active {
+		background-color: color-mix(in oklab, var(--primary) 22%, transparent);
 	}
 
 	.penny-chat-column,
@@ -227,6 +280,54 @@
 
 	.penny-tool-capsule-icon--running {
 		animation: penny-tool-icon-spin 2.4s linear infinite;
+	}
+
+	.penny-activity-wrap {
+		overflow: hidden;
+		max-height: 2.75rem;
+		opacity: 1;
+		transition:
+			opacity 0.32s ease-out,
+			max-height 0.32s ease-out,
+			margin 0.32s ease-out;
+	}
+
+	.penny-activity-wrap--exit {
+		max-height: 0;
+		opacity: 0;
+		margin-bottom: 0;
+		pointer-events: none;
+	}
+
+	.penny-activity-avatar {
+		animation: penny-activity-breathe 2.4s ease-in-out infinite;
+	}
+
+	.penny-activity-status {
+		display: inline-block;
+		animation: penny-activity-enter 0.32s ease-out;
+	}
+
+	.penny-activity-tool--live {
+		animation: penny-activity-tool-pulse 1.4s ease-in-out infinite;
+	}
+
+	.penny-answer-enter {
+		animation: penny-answer-enter 0.36s ease-out;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.penny-activity-wrap,
+		.penny-activity-wrap--exit {
+			transition: none;
+		}
+
+		.penny-activity-avatar,
+		.penny-activity-status,
+		.penny-activity-tool--live,
+		.penny-answer-enter {
+			animation: none;
+		}
 	}
 
 	.penny-header-icon {

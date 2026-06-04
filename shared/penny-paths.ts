@@ -41,9 +41,11 @@ export function resolveWorkspaceRoot(repoRoot: string): string {
 }
 
 export const ARTIFACTS_SEGMENT = 'artifacts';
+export const VERSIONS_DIR = 'versions';
 export const DOCUMENT_MD_FILENAME = 'document.md';
 export const PDF_FILENAME = 'brief.pdf';
 export const META_FILENAME = 'meta.json';
+export const VERSION_META_FILENAME = 'meta.snapshot.json';
 export const INDEX_FILENAME = 'index.json';
 /** @deprecated Legacy artifacts only — migrate to document.md + meta.json */
 export const LEGACY_BRIEF_FILENAME = 'brief.json';
@@ -102,6 +104,40 @@ export function resolveArtifactFilePath(
 	const artifactDir = resolveArtifactDir(repoRoot, sessionUuid, artifactId);
 	const filePath = resolve(artifactDir, filename);
 	assertSafeChildPath(artifactDir, filePath);
+	return filePath;
+}
+
+export function formatArtifactVersionSegment(version: number): string {
+	if (!Number.isInteger(version) || version < 1) {
+		throw new Error('invalid_artifact_version');
+	}
+	return String(version);
+}
+
+export function resolveArtifactVersionDir(
+	repoRoot: string,
+	sessionUuid: string,
+	artifactId: string,
+	version: number
+): string {
+	const artifactDir = resolveArtifactDir(repoRoot, sessionUuid, artifactId);
+	const versionsRoot = resolve(artifactDir, VERSIONS_DIR);
+	const versionDir = resolve(versionsRoot, formatArtifactVersionSegment(version));
+	assertSafeChildPath(artifactDir, versionsRoot);
+	assertSafeChildPath(versionsRoot, versionDir);
+	return versionDir;
+}
+
+export function resolveArtifactVersionFilePath(
+	repoRoot: string,
+	sessionUuid: string,
+	artifactId: string,
+	version: number,
+	filename: string
+): string {
+	const versionDir = resolveArtifactVersionDir(repoRoot, sessionUuid, artifactId, version);
+	const filePath = resolve(versionDir, filename);
+	assertSafeChildPath(versionDir, filePath);
 	return filePath;
 }
 

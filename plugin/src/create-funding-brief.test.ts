@@ -7,10 +7,9 @@ import test from 'node:test';
 import { validateCreateFundingArtifactInput } from '@penny/shared/artifact-validation';
 import {
 	DOCUMENT_MD_FILENAME,
-	LEGACY_BRIEF_FILENAME,
 	META_FILENAME,
 	PDF_FILENAME,
-	resolveArtifactFilePath
+	resolveArtifactVersionFilePath
 } from '@penny/shared/penny-paths';
 
 import {
@@ -88,10 +87,11 @@ test('buildArtifactMetaRecord derives programCount from evidence', () => {
 		}
 	);
 	assert.equal(meta.programCount, 1);
-	assert.equal(meta.formatVersion, 4);
+	assert.equal(meta.formatVersion, 5);
+	assert.equal(meta.latestVersion, 1);
 });
 
-test('persistArtifactFilesAllowPdfFailure writes document.md and meta.json', async () => {
+test('persistArtifactFilesAllowPdfFailure writes versioned document.md and meta.json', async () => {
 	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
 	assert.equal(validation.ok, true);
 	if (!validation.ok) {
@@ -113,19 +113,20 @@ test('persistArtifactFilesAllowPdfFailure writes document.md and meta.json', asy
 	});
 
 	assert.equal(result.pdfOk, false);
-	assert.match(result.documentPath, new RegExp(`${DOCUMENT_MD_FILENAME}$`));
+	assert.match(result.documentPath, new RegExp(`versions/1/${DOCUMENT_MD_FILENAME}$`));
 	assert.match(result.metaPath, new RegExp(`${META_FILENAME}$`));
 
 	const documentMarkdown = await readFile(result.documentPath, 'utf8');
 	assert.match(documentMarkdown, /Call IRAP/);
 
 	const metaRaw = await readFile(result.metaPath, 'utf8');
-	const meta = JSON.parse(metaRaw) as { title: string; formatVersion: number };
+	const meta = JSON.parse(metaRaw) as { title: string; formatVersion: number; latestVersion: number };
 	assert.equal(meta.title, 'Ontario SaaS funding brief');
-	assert.equal(meta.formatVersion, 4);
+	assert.equal(meta.formatVersion, 5);
+	assert.equal(meta.latestVersion, 1);
 });
 
-test('persistArtifactFilesAllowPdfFailure bumps version on update', async () => {
+test('persistArtifactFilesAllowPdfFailure bumps latestVersion on update', async () => {
 	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
 	assert.equal(validation.ok, true);
 	if (!validation.ok) {
@@ -157,12 +158,22 @@ test('persistArtifactFilesAllowPdfFailure bumps version on update', async () => 
 	});
 
 	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
-	assert.equal(stored?.version, 2);
+	assert.equal(stored?.latestVersion, 2);
 	assert.equal(stored?.title, 'Updated brief');
-	assert.equal(stored?.formatVersion, 4);
+	assert.equal(stored?.formatVersion, 5);
+
+	const v1Document = resolveArtifactVersionFilePath(
+		repoRoot,
+		SESSION_UUID,
+		artifactId,
+		1,
+		DOCUMENT_MD_FILENAME
+	);
+	const v1Markdown = await readFile(v1Document, 'utf8');
+	assert.match(v1Markdown, /Ontario SaaS funding brief/);
 });
 
-test('persistArtifactFilesAllowPdfFailure clears stale pdf on failed update', async () => {
+test('persistArtifactFilesAllowPdfFailure keeps prior version pdf when update fails', async () => {
 	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
 	assert.equal(validation.ok, true);
 	if (!validation.ok) {
@@ -171,9 +182,15 @@ test('persistArtifactFilesAllowPdfFailure clears stale pdf on failed update', as
 
 	const repoRoot = await mkdtemp(join(tmpdir(), 'penny-artifact-stale-pdf-'));
 	const artifactId = '6ba7b814-9dad-41d4-a716-446655440000';
-	const pdfPath = resolveArtifactFilePath(repoRoot, SESSION_UUID, artifactId, PDF_FILENAME);
-	await mkdir(dirname(pdfPath), { recursive: true });
-	await writeFile(pdfPath, 'stale pdf bytes', 'utf8');
+	const v1PdfPath = resolveArtifactVersionFilePath(
+		repoRoot,
+		SESSION_UUID,
+		artifactId,
+		1,
+		PDF_FILENAME
+	);
+	await mkdir(dirname(v1PdfPath), { recursive: true });
+	await writeFile(v1PdfPath, 'v1 pdf bytes', 'utf8');
 
 	await persistArtifactFilesAllowPdfFailure({
 		config: { repoRoot, pythonPath: '/nonexistent/python' },
@@ -185,44 +202,41 @@ test('persistArtifactFilesAllowPdfFailure clears stale pdf on failed update', as
 		updatedAt: '2026-05-24T13:00:00.000Z'
 	});
 
-	await assert.rejects(stat(pdfPath), { code: 'ENOENT' });
+	await assert.doesNotReject(stat(v1PdfPath));
+	await assert.rejects(
+		stat(resolveArtifactVersionFilePath(repoRoot, SESSION_UUID, artifactId, 2, PDF_FILENAME)),
+		{ code: 'ENOENT' }
+	);
 	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
 	assert.equal(stored?.title, 'Updated brief');
 	assert.equal(stored?.pdfAvailable, false);
 });
 
-test('persistArtifactFilesAllowPdfFailure preserves rendered pdf on storage failure', async () => {
+test('persistArtifactFilesAllowPdfFailure writes versioned pdf when renderer succeeds', async () => {
 	const validation = validateCreateFundingArtifactInput(sampleArtifactInput());
 	assert.equal(validation.ok, true);
 	if (!validation.ok) {
 		return;
 	}
 
-	const repoRoot = await mkdtemp(join(tmpdir(), 'penny-artifact-storage-fail-'));
+	const repoRoot = await mkdtemp(join(tmpdir(), 'penny-artifact-pdf-'));
 	const fakePythonPath = await writeFakePdfRenderer(repoRoot);
 	const artifactId = '6ba7b814-9dad-41d4-a716-446655440000';
-	const legacyBriefPath = resolveArtifactFilePath(
+
+	const result = await persistArtifactFilesAllowPdfFailure({
+		config: { repoRoot, pythonPath: fakePythonPath },
 		repoRoot,
-		SESSION_UUID,
+		params: { ...validation.value, sessionUuid: SESSION_UUID, artifactId },
 		artifactId,
-		LEGACY_BRIEF_FILENAME
-	);
-	await mkdir(legacyBriefPath, { recursive: true });
+		version: 1,
+		createdAt: '2026-05-24T12:00:00.000Z',
+		updatedAt: '2026-05-24T12:00:00.000Z'
+	});
 
-	await assert.rejects(
-		persistArtifactFilesAllowPdfFailure({
-			config: { repoRoot, pythonPath: fakePythonPath },
-			repoRoot,
-			params: { ...validation.value, sessionUuid: SESSION_UUID, artifactId },
-			artifactId,
-			version: 1,
-			createdAt: '2026-05-24T12:00:00.000Z',
-			updatedAt: '2026-05-24T12:00:00.000Z'
-		})
-	);
-
-	const pdfPath = resolveArtifactFilePath(repoRoot, SESSION_UUID, artifactId, PDF_FILENAME);
+	assert.equal(result.pdfOk, true);
+	const pdfPath = resolveArtifactVersionFilePath(repoRoot, SESSION_UUID, artifactId, 1, PDF_FILENAME);
 	assert.equal(await readFile(pdfPath, 'utf8'), FAKE_PDF_BYTES);
 	const stored = await loadArtifactMetaRecord(repoRoot, SESSION_UUID, artifactId);
 	assert.equal(stored?.pdfAvailable, true);
+	assert.equal(stored?.latestVersion, 1);
 });

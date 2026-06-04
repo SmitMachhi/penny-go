@@ -190,6 +190,17 @@ describe('ChatClient', () => {
 
 		const client = new ChatClient();
 		client.state.sessionKey = SESSION_KEY;
+		client.state.artifacts = [
+			{
+				artifactId: '00000000-0000-4000-8000-000000000001',
+				title: 'Loaded brief',
+				programCount: 0,
+				version: 1,
+				latestVersion: 1,
+				updatedAt: '2026-06-01T00:00:00.000Z',
+				pdfAvailable: false
+			}
+		];
 
 		await client.switchSession(SESSION_KEY);
 

@@ -1,7 +1,8 @@
 # Funding Artifact Panel: Memory / Action List Doc
 
-**Status:** Draft (for review)  
+**Status:** Superseded — do not implement  
 **Date:** 2026-06-03  
+**Superseded by:** `2026-06-04-funding-consultant-memo.md` (WYSIWYG PDF memo + version snapshots; panel previews the downloadable file)  
 **Builds on:** `2026-06-02-funding-artifact-markdown-pdf.md`  
 **Amends:** Web panel UX only — content model (`document.md` → `brief.pdf`) unchanged
 

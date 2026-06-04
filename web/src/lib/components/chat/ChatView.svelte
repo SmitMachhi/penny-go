@@ -1,15 +1,24 @@
 <script lang="ts">
 	import { page } from '$app/state';
-	import { tick } from 'svelte';
+	import { onMount, tick } from 'svelte';
 
 	import {
-		CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX,
+		clampArtifactPanelWidth,
+		readStoredArtifactPanelWidth,
+		storeArtifactPanelWidth
+	} from '$lib/chat/artifact-panel-layout.js';
+
+	import {
 		isThreadNearBottom,
 		resolveThreadBottomSpacerHeightPx,
-		scrollThreadToBottom
+		scrollThreadToBottom,
+		scrollThreadToWorkingAnchor
 	} from '$lib/chat/chat-thread-scroll.js';
 	import { getPennyContext } from '$lib/chat/penny-context.js';
-	import { liveRunTraceText } from '$lib/chat/client-run-trace.js';
+	import {
+		extractRunStatusHeadline,
+		researchTraceText
+	} from '$lib/chat/run-status-headline.js';
 	import {
 		HOME_HEADLINE,
 		HOME_SUBHEAD
@@ -27,15 +36,55 @@
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
 	import MessageBubble from '$lib/components/chat/MessageBubble.svelte';
 	import StarterPromptChips from '$lib/components/chat/StarterPromptChips.svelte';
+	import PennyActiveTurn from '$lib/components/chat/PennyActiveTurn.svelte';
 	import ThinkingPanel from '$lib/components/chat/ThinkingPanel.svelte';
 
 	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let loadedRouteId = $state<string | null>(null);
 	let threadEl = $state<HTMLElement | undefined>(undefined);
-	let threadViewportHeightPx = $state(0);
+	let workingAnchorEl = $state<HTMLElement | undefined>(undefined);
 	let followThread = $state(false);
 	let suppressScrollPinUpdate = $state(false);
+	let artifactPanelWidthPx = $state(520);
+
+	const showArtifactPanelChrome = $derived(
+		chat.state.artifactPanelOpen && chat.state.artifacts.length > 0
+	);
+
+	onMount(() => {
+		artifactPanelWidthPx = readStoredArtifactPanelWidth(window.innerWidth);
+	});
+
+	function startArtifactPanelResize(event: PointerEvent): void {
+		event.preventDefault();
+		const startX = event.clientX;
+		const startWidth = artifactPanelWidthPx;
+		const handle = event.currentTarget;
+		if (!(handle instanceof HTMLElement)) {
+			return;
+		}
+
+		handle.setPointerCapture(event.pointerId);
+
+		const onMove = (moveEvent: PointerEvent) => {
+			const deltaPx = startX - moveEvent.clientX;
+			artifactPanelWidthPx = clampArtifactPanelWidth(
+				startWidth + deltaPx,
+				window.innerWidth
+			);
+		};
+
+		const onUp = () => {
+			handle.releasePointerCapture(event.pointerId);
+			handle.removeEventListener('pointermove', onMove);
+			handle.removeEventListener('pointerup', onUp);
+			storeArtifactPanelWidth(artifactPanelWidthPx, window.innerWidth);
+		};
+
+		handle.addEventListener('pointermove', onMove);
+		handle.addEventListener('pointerup', onUp);
+	}
 
 	const routeId = $derived(page.params.id ?? '');
 	const displayMessages = $derived(messagesForDisplay(chat.state.messages, chat.state.sending));
@@ -45,7 +94,19 @@
 	const showThreadLoading = $derived(
 		chat.state.loading && chat.state.messages.length === 0 && !chat.state.sending
 	);
-	const liveTraceText = $derived(liveRunTraceText(chat.state.runTrace));
+	const liveStatusHeadline = $derived(
+		extractRunStatusHeadline(chat.state.runTrace, chat.state.tools)
+	);
+	const liveResearchTrace = $derived(
+		researchTraceText(chat.state.runTrace, chat.state.streamingAnswerText)
+	);
+	const streamingAssistantMessage = $derived.by((): ChatMessage | null => {
+		const text = chat.state.streamingAnswerText.trim();
+		if (!chat.state.sending || !text) {
+			return null;
+		}
+		return { id: 'streaming-assistant', role: 'assistant', text };
+	});
 	const latestArtifact = $derived(chat.state.artifacts[0] ?? null);
 	const lastAssistantMessageId = $derived(findLastAssistantMessageId(displayMessages));
 	const showPlanNudge = $derived(
@@ -55,25 +116,8 @@
 	);
 
 	const threadBottomSpacerHeightPx = $derived(
-		resolveThreadBottomSpacerHeightPx({
-			sending: chat.state.sending,
-			threadClientHeightPx: threadViewportHeightPx || CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX
-		})
+		resolveThreadBottomSpacerHeightPx({ sending: chat.state.sending })
 	);
-
-	$effect(() => {
-		if (!threadEl) {
-			threadViewportHeightPx = 0;
-			return;
-		}
-		const updateViewportHeight = () => {
-			threadViewportHeightPx = threadEl.clientHeight;
-		};
-		updateViewportHeight();
-		const observer = new ResizeObserver(updateViewportHeight);
-		observer.observe(threadEl);
-		return () => observer.disconnect();
-	});
 
 	function planNudgeForMessage(message: ChatMessage): ArtifactSummary | null {
 		if (!showPlanNudge || message.id !== lastAssistantMessageId || !latestArtifact) {
@@ -94,7 +138,11 @@
 			return;
 		}
 		suppressScrollPinUpdate = true;
-		scrollThreadToBottom(threadEl, behavior);
+		if (chat.state.sending && workingAnchorEl) {
+			scrollThreadToWorkingAnchor(threadEl, workingAnchorEl, behavior);
+		} else {
+			scrollThreadToBottom(threadEl, behavior);
+		}
 		await tick();
 		suppressScrollPinUpdate = false;
 	}
@@ -113,7 +161,8 @@
 		void displayMessages.length;
 		void chat.state.sending;
 		void threadBottomSpacerHeightPx;
-		void liveTraceText;
+		void liveStatusHeadline;
+		void chat.state.streamingAnswerText;
 		void chat.state.tools.length;
 		void chat.state.runTraceExpanded;
 
@@ -122,9 +171,20 @@
 				return;
 			}
 			suppressScrollPinUpdate = true;
-			scrollThreadToBottom(threadEl, 'auto');
+			if (chat.state.sending && workingAnchorEl) {
+				scrollThreadToWorkingAnchor(threadEl, workingAnchorEl, 'auto');
+			} else {
+				scrollThreadToBottom(threadEl, 'auto');
+			}
 			suppressScrollPinUpdate = false;
 		});
+	});
+
+	$effect(() => {
+		const key = chat.state.sessionKey;
+		if (key && routeId && chat.state.artifacts.length === 0 && !chat.state.loading) {
+			void chat.loadArtifacts();
+		}
 	});
 
 	$effect(() => {
@@ -254,13 +314,14 @@
 				{/each}
 
 				{#if chat.state.sending}
-					<div class="penny-turn-focus-anchor w-full">
-						<ThinkingPanel
-							text={liveTraceText}
+					<div bind:this={workingAnchorEl} class="penny-turn-focus-anchor w-full">
+						<PennyActiveTurn
+							statusHeadline={liveStatusHeadline}
 							tools={chat.state.tools}
-							expanded={chat.state.runTraceExpanded}
-							streaming={true}
-							onToggle={() => {
+							researchTrace={liveResearchTrace}
+							traceExpanded={chat.state.runTraceExpanded}
+							streamingMessage={streamingAssistantMessage}
+							onToggleTrace={() => {
 								chat.state.runTraceExpanded = !chat.state.runTraceExpanded;
 							}}
 						/>
@@ -287,11 +348,23 @@
 			</div>
 		</div>
 
+		{#if showArtifactPanelChrome}
+			<div
+				role="separator"
+				aria-orientation="vertical"
+				aria-label="Resize funding plan panel"
+				tabindex="0"
+				class="artifact-panel-resizer hidden shrink-0 lg:block"
+				onpointerdown={startArtifactPanelResize}
+			></div>
+		{/if}
+
 		<ArtifactPanel
 			artifacts={chat.state.artifacts}
 			activeArtifactId={chat.state.activeArtifactId}
 			sessionKey={chat.state.sessionKey}
 			open={chat.state.artifactPanelOpen}
+			widthPx={artifactPanelWidthPx}
 			onClose={() => chat.closeArtifactPanel()}
 			onSelect={(artifactId) => chat.openArtifact(artifactId)}
 		/>

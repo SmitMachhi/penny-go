@@ -13,7 +13,7 @@ Use `create_funding_brief` to deliver a **funding-aligned operating plan** — o
 
 **Model:** Penny writes markdown → system generates PDF. No HTML templates, no `{{program:N}}` placeholders.
 
-**Panel:** Write so the artifact reads as a **memory/action list** — Context or Aspiration + Recommendation first, ranked programs with **Next step:**, then Strategy or Launch strategy checklists.
+**Memo layout:** Write a consultant-grade **funding memo** the owner will download as PDF. Lead with Recommendation + Context or Aspiration, ranked programs with **Verdict:** and **Next step:**, then Strategy or Launch strategy checklists. The web panel previews the **same PDF** they download.
 
 ## Consultation mode sections
 
@@ -48,11 +48,13 @@ Use `triggerReason: "user_requested"` when the user explicitly asked for an expo
 Write like a funding consultant who **just finished a call with this owner**:
 
 - **One document** — situation and recommendation early; programs and execution after.
+- **Cover facts on separate lines** — immediately under `# Title`, put each of **Business:**, **Stage:**, **Target:**, and **Strategy:** on its own line (blank line between). Never run all four in one paragraph; they will print as a single blob.
 - **Lead with what matters** from the conversation — urgency, blockers, who is executing, programs they asked about.
 - **Do not use a fixed template.** Skip sections that do not serve this user (but prefer the mode-specific section names when the mode is clear).
 - Include **printable checklists** (`- [ ]`) and/or **numbered steps** (`1.`) in `bodyMarkdown`.
 - Write program details **directly in markdown** (headings, tables, bullets) — do not use placeholders.
 - Verification appendix is added automatically at PDF time — do not paste raw URL walls in markdown.
+- **Do not** add `## What This Plan Does Not Include` (or similar scope/disclaimer sections) — the memo is the plan; boundaries belong in chat if the user asks.
 
 ## How to call the tool
 
@@ -61,7 +63,8 @@ Write like a funding consultant who **just finished a call with this owner**:
    - `bodyMarkdown` — full plan in markdown (GFM: headings, tables, task lists, links)
    - `verification.verifiedAt` (ISO timestamp), `verification.urlsChecked[]`
    - Optional `evidence.programs[]` (0–5) for audit metadata only — **not rendered into the PDF body**
-2. To update an existing artifact, pass the same `artifactId` from the prior tool result.
+2. To update an existing artifact, pass the same `artifactId` from the prior tool result (creates a new immutable version).
+3. On updates, include optional `changeSummary` — one sentence on what changed in this revision.
 
 The tool binds to the active Penny web chat session automatically — do not pass a session id.
 
@@ -86,9 +89,9 @@ Legacy `programs[]` at the top level is accepted as an alias for `evidence.progr
 
 After creating the artifact, keep chat short:
 
-> I've put your funding plan in the panel — scroll through or download the PDF.
+> I've updated your funding memo to **v{N}** — use **Funding plan** in the header or **View in panel** under this message (do not paste download links in chat).
 
-Do **not** repeat the full plan in chat when the artifact already contains it.
+Do **not** repeat the full plan in chat when the artifact already contains it. Do **not** link to `/api/artifacts/.../download` in chat — the panel preview is the same PDF as download. Do **not** emit `[embed ref=…]`, `MEDIA:…`, or filesystem paths — the web UI opens the memo in the artifact panel automatically.
 
 ## Confidence mapping
 

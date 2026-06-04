@@ -137,6 +137,9 @@ export class ChatClient {
 	async switchSession(sessionKey: string): Promise<void> {
 		if (this.state.sessionKey === sessionKey) {
 			this.ensureStreamConnected();
+			if (this.state.artifacts.length === 0) {
+				void this.loadArtifacts();
+			}
 			return;
 		}
 		if (this.state.sending) {
@@ -290,7 +293,24 @@ export class ChatClient {
 		});
 	}
 
+	private reconcileActiveRunId(payload: SsePayload): void {
+		if (payload.type === 'connected' || !('runId' in payload) || !payload.runId) {
+			return;
+		}
+		if (!this.state.sending) {
+			return;
+		}
+		if (this.activeRunId === null) {
+			this.activeRunId = payload.runId;
+			return;
+		}
+		if (this.activeRunId !== payload.runId) {
+			this.activeRunId = payload.runId;
+		}
+	}
+
 	private handleStreamEvent(payload: SsePayload): void {
+		this.reconcileActiveRunId(payload);
 		applyStreamEvent(payload, {
 			activeRunId: this.activeRunId,
 			finalizeAssistantMessage: (event) => this.finalizeAssistantMessage(event),

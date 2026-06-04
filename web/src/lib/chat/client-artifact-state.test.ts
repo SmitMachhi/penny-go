@@ -15,11 +15,12 @@ const SESSION_B = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 function artifact(artifactId: string, version: number): ArtifactSummary {
 	return {
 		artifactId,
-			programCount: 1,
-			pdfAvailable: true,
-			title: `Brief ${artifactId}`,
+		programCount: 1,
+		pdfAvailable: true,
+		title: `Brief ${artifactId}`,
 		updatedAt: '2026-05-29T00:00:00.000Z',
-		version
+		version,
+		latestVersion: version
 	};
 }
 

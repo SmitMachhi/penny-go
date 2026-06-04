@@ -1,3 +1,5 @@
+import { isHttpError } from '@sveltejs/kit';
+
 import { SessionKeyError } from '$lib/server/session-key.js';
 
 export class ValidationError extends Error {
@@ -8,6 +10,9 @@ export class ValidationError extends Error {
 }
 
 export function classifyApiErrorStatus(error: unknown): number {
+	if (isHttpError(error)) {
+		return error.status;
+	}
 	if (error instanceof SessionKeyError || error instanceof ValidationError) {
 		return error instanceof ValidationError ? 400 : 403;
 	}

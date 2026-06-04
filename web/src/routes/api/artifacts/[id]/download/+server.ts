@@ -26,13 +26,19 @@ export async function GET(event) {
 			throw error(404, 'artifact not found');
 		}
 
-		const pdfReady = await artifactPdfExists(sessionKey, artifactId);
+		const versionParam = event.url.searchParams.get('version');
+		const version = versionParam ? Number.parseInt(versionParam, 10) : meta.latestVersion;
+		if (!Number.isInteger(version) || version < 1 || version > meta.latestVersion) {
+			throw error(400, 'invalid artifact version');
+		}
+
+		const pdfReady = await artifactPdfExists(sessionKey, artifactId, version);
 		if (!pdfReady) {
 			throw error(404, 'pdf not available');
 		}
 
-		const pdfBytes = await readArtifactPdfBytes(sessionKey, artifactId);
-		const filename = `${sanitizeFilename(meta.title)}.pdf`;
+		const pdfBytes = await readArtifactPdfBytes(sessionKey, artifactId, version);
+		const filename = `${sanitizeFilename(meta.title)}-v${version}.pdf`;
 
 		return new Response(new Uint8Array(pdfBytes), {
 			headers: {
@@ -46,5 +52,5 @@ export async function GET(event) {
 
 function sanitizeFilename(title: string): string {
 	const cleaned = title.replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-').toLowerCase();
-	return cleaned.length > 0 ? cleaned : 'penny-funding-brief';
+	return cleaned.length > 0 ? cleaned : 'penny-funding-memo';
 }

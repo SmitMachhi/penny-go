@@ -4,11 +4,11 @@ export const CHAT_NEAR_BOTTOM_THRESHOLD_PX = 80;
 /** Bottom padding when the agent is idle (keeps last message off the composer). */
 export const CHAT_THREAD_IDLE_BOTTOM_PADDING_PX = 48;
 
-/** Fraction of the thread viewport reserved as empty space below the active turn while sending. */
-export const CHAT_TURN_FOCUS_SPACER_RATIO = 0.45;
+/** Padding below the active turn while sending (keeps card off the composer without hiding it). */
+export const CHAT_THREAD_SENDING_BOTTOM_PADDING_PX = 80;
 
-const CHAT_TURN_FOCUS_SPACER_MIN_PX = 120;
-const CHAT_TURN_FOCUS_SPACER_MAX_PX = 480;
+/** Offset from the top of the thread when scrolling the working card into view. */
+export const CHAT_WORKING_ANCHOR_SCROLL_OFFSET_PX = 16;
 
 /** Used when the thread viewport has not been measured yet (e.g. first send). */
 export const CHAT_THREAD_FALLBACK_CLIENT_HEIGHT_PX = 640;
@@ -24,23 +24,29 @@ export function isThreadNearBottom(
 	return distanceFromThreadBottom(element) <= thresholdPx;
 }
 
-/** Spacer height so "Thinking…" and the streaming reply sit above empty space, not the composer lip. */
-export function computeTurnFocusSpacerHeightPx(threadClientHeightPx: number): number {
-	const raw = Math.round(threadClientHeightPx * CHAT_TURN_FOCUS_SPACER_RATIO);
-	return Math.min(
-		CHAT_TURN_FOCUS_SPACER_MAX_PX,
-		Math.max(CHAT_TURN_FOCUS_SPACER_MIN_PX, raw)
-	);
-}
-
 export function resolveThreadBottomSpacerHeightPx(input: {
 	sending: boolean;
-	threadClientHeightPx: number;
 }): number {
 	if (!input.sending) {
 		return CHAT_THREAD_IDLE_BOTTOM_PADDING_PX;
 	}
-	return computeTurnFocusSpacerHeightPx(input.threadClientHeightPx);
+	return CHAT_THREAD_SENDING_BOTTOM_PADDING_PX;
+}
+
+/** Scroll so the in-flight working card stays in view (not past empty spacer). */
+export function scrollThreadToWorkingAnchor(
+	thread: HTMLElement,
+	anchor: HTMLElement,
+	behavior: ScrollBehavior = 'smooth'
+): void {
+	const anchorTop =
+		anchor.getBoundingClientRect().top -
+		thread.getBoundingClientRect().top +
+		thread.scrollTop;
+	thread.scrollTo({
+		top: Math.max(0, anchorTop - CHAT_WORKING_ANCHOR_SCROLL_OFFSET_PX),
+		behavior
+	});
 }
 
 export function scrollThreadToBottom(

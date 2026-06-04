@@ -3,8 +3,13 @@ import { randomUUID } from 'node:crypto';
 import lockfile from 'proper-lockfile';
 
 import { composePdfMarkdown } from '@penny/shared/artifact-markdown';
+import {
+	buildArtifactMetaRecord,
+	buildArtifactVersionSnapshot,
+	ensureArtifactFormatV5,
+	normalizeArtifactMetaRecord
+} from '@penny/shared/artifact-validation';
 import { renderMarkdownToPrintHtml } from '@penny/shared/artifact-print-html';
-import { ARTIFACT_FORMAT_VERSION } from '@penny/shared/artifact-validation';
 import type { ArtifactMetaRecord, CreateFundingArtifactParams } from '@penny/shared/artifact-types';
 import {
 	DOCUMENT_MD_FILENAME,
@@ -14,8 +19,11 @@ import {
 	PDF_FILENAME,
 	resolveArtifactDir,
 	resolveArtifactFilePath,
+	resolveArtifactVersionDir,
+	resolveArtifactVersionFilePath,
 	resolveSessionArtifactIndexPath,
-	resolveSessionArtifactsDir
+	resolveSessionArtifactsDir,
+	VERSION_META_FILENAME
 } from '@penny/shared/penny-paths';
 
 import { renderArtifactPdfFromHtml } from './artifact-pdf.js';
@@ -27,7 +35,7 @@ export type ArtifactIndexEntry = Pick<
 	| 'sessionUuid'
 	| 'title'
 	| 'programCount'
-	| 'version'
+	| 'latestVersion'
 	| 'triggerReason'
 	| 'createdAt'
 	| 'updatedAt'
@@ -39,6 +47,7 @@ export type PersistArtifactResult = {
 	documentPath: string;
 	pdfPath: string;
 	metaPath: string;
+	version: number;
 };
 
 type PersistArtifactInput = {
@@ -67,45 +76,30 @@ export function createArtifactId(): string {
 	return randomUUID();
 }
 
-export function buildArtifactMetaRecord(
-	params: CreateFundingArtifactParams,
-	artifactId: string,
-	version: number,
-	timestamps: { createdAt: string; updatedAt: string },
-	pdfAvailable = true
-): ArtifactMetaRecord {
-	const programCount = params.evidence?.programs?.length ?? 0;
-	return {
-		artifactId,
-		sessionUuid: params.sessionUuid,
-		title: params.title,
-		version,
-		formatVersion: ARTIFACT_FORMAT_VERSION,
-		triggerReason: params.triggerReason,
-		createdAt: timestamps.createdAt,
-		updatedAt: timestamps.updatedAt,
-		programCount,
-		pdfAvailable,
-		verification: params.verification,
-		evidence: params.evidence
-	};
-}
+export { buildArtifactMetaRecord } from '@penny/shared/artifact-validation';
 
 export async function loadArtifactMetaRecord(
 	repoRoot: string,
 	sessionUuid: string,
 	artifactId: string
 ): Promise<ArtifactMetaRecord | null> {
+	await ensureArtifactFormatV5({ repoRoot, sessionUuid, artifactId });
 	const metaPath = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, META_FILENAME);
 	try {
 		const raw = await readFile(metaPath, 'utf8');
-		return JSON.parse(raw) as ArtifactMetaRecord;
+		return normalizeArtifactMetaRecord(JSON.parse(raw) as unknown);
 	} catch {
 		return null;
 	}
 }
 
 export async function persistArtifactFiles(input: PersistArtifactInput): Promise<PersistArtifactResult> {
+	const snapshot = buildArtifactVersionSnapshot(
+		input.params,
+		input.version,
+		input.updatedAt,
+		true
+	);
 	const meta = buildArtifactMetaRecord(input.params, input.artifactId, input.version, {
 		createdAt: input.createdAt,
 		updatedAt: input.updatedAt
@@ -113,11 +107,19 @@ export async function persistArtifactFiles(input: PersistArtifactInput): Promise
 
 	const artifactDir = resolveArtifactDir(input.repoRoot, input.params.sessionUuid, input.artifactId);
 	await mkdir(artifactDir, { recursive: true });
-
-	const documentPath = resolveArtifactFilePath(
+	const versionDir = resolveArtifactVersionDir(
 		input.repoRoot,
 		input.params.sessionUuid,
 		input.artifactId,
+		input.version
+	);
+	await mkdir(versionDir, { recursive: true });
+
+	const documentPath = resolveArtifactVersionFilePath(
+		input.repoRoot,
+		input.params.sessionUuid,
+		input.artifactId,
+		input.version,
 		DOCUMENT_MD_FILENAME
 	);
 	const metaPath = resolveArtifactFilePath(
@@ -126,32 +128,48 @@ export async function persistArtifactFiles(input: PersistArtifactInput): Promise
 		input.artifactId,
 		META_FILENAME
 	);
-	const pdfPath = resolveArtifactFilePath(
+	const snapshotPath = resolveArtifactVersionFilePath(
 		input.repoRoot,
 		input.params.sessionUuid,
 		input.artifactId,
+		input.version,
+		VERSION_META_FILENAME
+	);
+	const pdfPath = resolveArtifactVersionFilePath(
+		input.repoRoot,
+		input.params.sessionUuid,
+		input.artifactId,
+		input.version,
 		PDF_FILENAME
 	);
-	const renderHtmlPath = resolveArtifactFilePath(
+	const renderHtmlPath = resolveArtifactVersionFilePath(
 		input.repoRoot,
 		input.params.sessionUuid,
 		input.artifactId,
+		input.version,
 		'.render.html'
 	);
 
 	await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
-	await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
+	await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
 
 	const pdfMarkdown = composePdfMarkdown(input.params.bodyMarkdown, meta);
-	const printHtml = renderMarkdownToPrintHtml(pdfMarkdown, meta.title);
+	const printHtml = renderMarkdownToPrintHtml(pdfMarkdown, {
+		title: input.params.title,
+		version: input.version,
+		preparedAt: input.updatedAt,
+		changeSummary: input.params.changeSummary
+	});
 	await writeFile(renderHtmlPath, printHtml, 'utf8');
 
 	await renderPdfOrThrow(input, renderHtmlPath, pdfPath);
 
+	await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
 	await removeLegacyArtifactFiles(input.repoRoot, input.params.sessionUuid, input.artifactId);
+	await removeRootArtifactDeliverables(input.repoRoot, input.params.sessionUuid, input.artifactId);
 	await upsertSessionArtifactIndex(input.repoRoot, meta);
 
-	return { meta, documentPath, pdfPath, metaPath };
+	return { meta, documentPath, pdfPath, metaPath, version: input.version };
 }
 
 async function renderPdfOrThrow(
@@ -185,6 +203,12 @@ export async function persistArtifactFilesAllowPdfFailure(
 			throw error;
 		}
 		const message = error instanceof Error ? error.message : 'pdf_render_failed';
+		const snapshot = buildArtifactVersionSnapshot(
+			input.params,
+			input.version,
+			input.updatedAt,
+			false
+		);
 		const meta = buildArtifactMetaRecord(
 			input.params,
 			input.artifactId,
@@ -192,12 +216,22 @@ export async function persistArtifactFilesAllowPdfFailure(
 			{ createdAt: input.createdAt, updatedAt: input.updatedAt },
 			false
 		);
+
 		const artifactDir = resolveArtifactDir(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await mkdir(artifactDir, { recursive: true });
-		const documentPath = resolveArtifactFilePath(
+		const versionDir = resolveArtifactVersionDir(
 			input.repoRoot,
 			input.params.sessionUuid,
 			input.artifactId,
+			input.version
+		);
+		await mkdir(versionDir, { recursive: true });
+
+		const documentPath = resolveArtifactVersionFilePath(
+			input.repoRoot,
+			input.params.sessionUuid,
+			input.artifactId,
+			input.version,
 			DOCUMENT_MD_FILENAME
 		);
 		const metaPath = resolveArtifactFilePath(
@@ -206,26 +240,49 @@ export async function persistArtifactFilesAllowPdfFailure(
 			input.artifactId,
 			META_FILENAME
 		);
-		const pdfPath = resolveArtifactFilePath(
+		const snapshotPath = resolveArtifactVersionFilePath(
 			input.repoRoot,
 			input.params.sessionUuid,
 			input.artifactId,
+			input.version,
+			VERSION_META_FILENAME
+		);
+		const pdfPath = resolveArtifactVersionFilePath(
+			input.repoRoot,
+			input.params.sessionUuid,
+			input.artifactId,
+			input.version,
 			PDF_FILENAME
 		);
-		await rm(pdfPath, { force: true });
+
 		await writeFile(documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
+		await writeFile(snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+		await rm(pdfPath, { force: true });
 		await writeFile(metaPath, `${JSON.stringify(meta, null, 2)}\n`, 'utf8');
 		await removeLegacyArtifactFiles(input.repoRoot, input.params.sessionUuid, input.artifactId);
+		await removeRootArtifactDeliverables(input.repoRoot, input.params.sessionUuid, input.artifactId);
 		await upsertSessionArtifactIndex(input.repoRoot, meta);
 		return {
 			meta,
 			documentPath,
 			pdfPath,
 			metaPath,
+			version: input.version,
 			pdfOk: false,
 			pdfError: message
 		};
 	}
+}
+
+async function removeRootArtifactDeliverables(
+	repoRoot: string,
+	sessionUuid: string,
+	artifactId: string
+): Promise<void> {
+	const legacyDocument = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, DOCUMENT_MD_FILENAME);
+	const legacyPdf = resolveArtifactFilePath(repoRoot, sessionUuid, artifactId, PDF_FILENAME);
+	await rm(legacyDocument, { force: true });
+	await rm(legacyPdf, { force: true });
 }
 
 async function removeLegacyArtifactFiles(
@@ -273,7 +330,7 @@ async function upsertSessionArtifactIndex(repoRoot: string, meta: ArtifactMetaRe
 		sessionUuid: meta.sessionUuid,
 		title: meta.title,
 		programCount: meta.programCount,
-		version: meta.version,
+		latestVersion: meta.latestVersion,
 		triggerReason: meta.triggerReason,
 		createdAt: meta.createdAt,
 		updatedAt: meta.updatedAt,

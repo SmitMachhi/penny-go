@@ -38,7 +38,6 @@
 		"isomorphic-dompurify": "^3.14.0",
 		"marked": "^18.0.4",
 		"mode-watcher": "^1.1.0",
-		"pdfjs-dist": "^5.7.284",
 		"tailwind-merge": "^3.6.0",
 		"tailwind-variants": "^3.2.2",
 		"ws": "^8.21.0"

@@ -7,7 +7,7 @@ export type FundingBenefitScope = {
 };
 
 const LOAN_LIKE_PATTERN =
-	/\b(?:loan|loan[- ]guarantee|loan[- ]insurance|low[- ]cost financing|low interest|repayable contribution|repayable royalty|repayable financing|forgivable loan|loan interest)\b/i;
+	/\b(?:loan|loan[- ]guarantee|loan[- ]insurance|unsecured financing|low[- ]cost financing|low[- ]cost startup loan|low interest|repayable contribution|repayable contributions|repayable royalty|repayable financing|forgivable loan|loan interest)\b/i;
 const REPAYABLE_LIKE_PATTERN =
 	/\b(?:repayable contribution|repayable contributions|repayable royalty|repayable financing|forgivable loan)\b/i;
 const NON_LOAN_PATTERN =
@@ -19,6 +19,8 @@ const REJECTED_LOAN_CONTEXT_PATTERN =
 const MARKDOWN_HEADING_PATTERN = /^\s*(#{1,6})\s+(.+?)\s*$/;
 const RULED_OUT_HEADING_PATTERN =
 	/\b(?:ruled out|not a fit|outside scope|what to skip|closed or out|programs ruled out|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
+const NON_LOAN_SCOPE_PATTERN = /\bnon[- ]loan\b/gi;
+const NON_REPAYABLE_SCOPE_PATTERN = /\bnon[- ]repayable\b/gi;
 
 export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 	const normalized = text.trim();
@@ -72,21 +74,28 @@ export function stripRuledOutMarkdownSections(markdown: string): string {
 }
 
 function actionableLoanLikeMatch(text: string): RegExpExecArray | null {
-	const loanLike = LOAN_LIKE_PATTERN.exec(text);
+	const normalized = normalizeLoanScopeText(text);
+	const loanLike = LOAN_LIKE_PATTERN.exec(normalized);
 	if (!loanLike) {
 		return null;
 	}
-	if (REJECTED_LOAN_CONTEXT_PATTERN.test(text)) {
+	if (REJECTED_LOAN_CONTEXT_PATTERN.test(normalized)) {
 		return null;
 	}
 
-	const negatedLoan = NEGATED_LOAN_PATTERN.exec(text);
+	const negatedLoan = NEGATED_LOAN_PATTERN.exec(normalized);
 	if (negatedLoan && negatedLoan.index <= loanLike.index) {
 		return null;
 	}
-	if (negatedLoan && !REPAYABLE_LIKE_PATTERN.test(text)) {
+	if (negatedLoan && !REPAYABLE_LIKE_PATTERN.test(normalized)) {
 		return null;
 	}
 
 	return loanLike;
+}
+
+function normalizeLoanScopeText(text: string): string {
+	return text
+		.replace(NON_LOAN_SCOPE_PATTERN, 'nonloan')
+		.replace(NON_REPAYABLE_SCOPE_PATTERN, 'nonrepayable');
 }

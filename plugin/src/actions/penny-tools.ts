@@ -1,5 +1,6 @@
 import { READ_OFFICIAL_SOURCE_TIMEOUT_MS } from '../constants.js';
 import { filterAndRankPrograms, type SearchCorpusParams } from '../domain/corpus-search.js';
+import { appendOfficialBenefitScope } from '../domain/official-benefit-scope.js';
 import {
 	type PennyToolsConfigShape,
 	readerScriptPath,
@@ -48,5 +49,5 @@ export async function readOfficialSourceAction(
 		};
 	}
 
-	return outcome.parsed;
+	return appendOfficialBenefitScope(outcome.parsed);
 }

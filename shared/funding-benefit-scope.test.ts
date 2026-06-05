@@ -12,6 +12,10 @@ test('classifies explicit grants and rebates as allowed', () => {
 		allowed: true,
 		reason: 'non_loan'
 	});
+	assert.deepEqual(classifyFundingBenefitScope('non-repayable contribution'), {
+		allowed: true,
+		reason: 'non_loan'
+	});
 	assert.deepEqual(classifyFundingBenefitScope('refundable tax credit and wage subsidy'), {
 		allowed: true,
 		reason: 'non_loan'
@@ -27,6 +31,7 @@ test('classifies loan-like benefits as ruled out', () => {
 
 test('does not treat negative wording as a loan recommendation', () => {
 	assert.equal(containsActionableLoanLikeLanguage('This is not a loan.'), false);
+	assert.equal(containsActionableLoanLikeLanguage('This is a non-repayable contribution.'), false);
 	assert.equal(containsActionableLoanLikeLanguage('No loans or repayable contributions in the mix.'), false);
 	assert.equal(
 		containsActionableLoanLikeLanguage('CMHC Rental Construction Financing is a loan, not a grant. You said no loans.'),

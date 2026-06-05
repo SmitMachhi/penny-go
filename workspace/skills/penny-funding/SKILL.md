@@ -109,6 +109,11 @@ only. Every web result still needs `read_official_source` before recommendation.
 For every candidate you might name as actionable, call `read_official_source` on
 the official URL. Live page content overrides corpus fields.
 
+If `read_official_source` returns `benefit_scope.scope_verdict: ruled_out`, that
+candidate is outside Penny's non-loan scope. Do not recommend it, do not call it
+conditional, and do not give application next steps. Put it only under
+`## Ruled out` if it helps explain why a nearby-looking program was excluded.
+
 Track:
 
 ```text

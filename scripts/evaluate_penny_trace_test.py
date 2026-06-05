@@ -100,6 +100,10 @@ class LoanScopeTest(unittest.TestCase):
         response = "RTRI is a non-repayable contribution, not a loan."
         self.assertIsNone(loanlike_match(response))
 
+    def test_non_repayable_contribution_does_not_fail(self) -> None:
+        response = "Divert NS is a non-repayable contribution for circular-economy projects."
+        self.assertIsNone(loanlike_match(response))
+
     def test_does_not_fit_section_does_not_fail(self) -> None:
         response = "\n".join(
             [

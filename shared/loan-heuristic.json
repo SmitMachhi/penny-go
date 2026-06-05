@@ -1,5 +1,5 @@
 {
-  "regex": "\\bloan\\b|loan[- ]guarantee|low[- ]cost financing|low interest rate|(?<!non-)repayable contribution|(?<!non-)repayable royalty|(?<!non-)repayable tax deferral",
+  "regex": "\\bloan\\b|loan[- ]guarantee|loan[- ]insurance|unsecured financing|low[- ]cost financing|low[- ]cost startup loan|low interest rate|loan interest|(?<!non[- ])\\brepayable contributions?|(?<!non[- ])\\brepayable royalty|(?<!non[- ])\\brepayable tax deferral",
   "auditFields": [
     "program_name",
     "provider",

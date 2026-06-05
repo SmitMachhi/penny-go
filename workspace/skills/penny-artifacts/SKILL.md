@@ -91,6 +91,10 @@ Use this mapping:
 Do not include `could_not_verify` as an actionable program. A `could_not_verify`
 program must use `skip`.
 
+Loan-like or repayable products must also use `skip` and appear only under
+`## Ruled out` in `bodyMarkdown`. The artifact tool rejects loan-like wording in
+actionable program sections.
+
 Legacy `programs[]` at the top level is accepted as an alias for `evidence.programs`.
 
 ## Actionability requirement

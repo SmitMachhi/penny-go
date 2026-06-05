@@ -129,6 +129,9 @@ Rules:
 - Do not invent amounts, deadlines, percentages, or stacking math.
 - Loans, loan guarantees, low-cost financing, and repayable contributions appear
   only in rejected or ruled-out notes.
+- Never use Strong, Conditional, Stretch, Explore, or next-step language for a
+  repayable product, even if the page is relevant to the business. Put it under
+  `## Ruled out` and explain the non-loan scope.
 
 ## 5. Fit adjudication
 
@@ -213,13 +216,13 @@ Long answer or artifact sections:
 ## Next steps
 ```
 
-For `create_funding_brief`, include `evidence.programs[]` for every actionable
-program:
+For `create_funding_brief`, include `evidence.programs[]` for every named
+program in the memo audit trail:
 
 - `name`
 - `officialUrl`
-- `confidence`: `verified_live` or `newly_discovered`
+- `confidence`: `verified_live`, `newly_discovered`, or `could_not_verify`
 - `verdict`: `pursue_now`, `explore`, `defer`, or `skip`
 
-Do not include `could_not_verify` as an actionable program. Use `skip` only for
-ruled-out audit notes if needed.
+Do not include `could_not_verify`, loan-like, or repayable products as
+actionable programs. Use `skip` only for ruled-out audit notes if needed.

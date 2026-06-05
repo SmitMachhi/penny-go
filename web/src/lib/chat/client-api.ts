@@ -1,4 +1,4 @@
-import type { ArtifactsResponse } from '$lib/chat/artifacts.js';
+import type { ArtifactSummary, ArtifactsResponse } from '$lib/chat/artifacts.js';
 import type { ChatMessage } from '$lib/chat/messages.js';
 import { apiJson } from '$lib/chat/api-client.js';
 
@@ -6,6 +6,7 @@ export type HistoryResponse = {
 	sessionKey: string;
 	sessionId?: string;
 	messages: ChatMessage[];
+	artifacts?: ArtifactSummary[];
 };
 
 export type SendResponse = {

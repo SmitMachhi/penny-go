@@ -169,6 +169,7 @@ export class ChatClient {
 			if (localUserCount <= remoteUserCount) {
 				this.state.messages = payload.messages;
 			}
+			applyLoadedArtifacts(this.state, payload.artifacts ?? []);
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
 			this.reconcileThreadAfterHistory(payload.messages, sessionKey);

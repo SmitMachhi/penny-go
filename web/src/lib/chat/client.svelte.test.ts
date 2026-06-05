@@ -235,11 +235,16 @@ describe('ChatClient', () => {
 		expect(client.state.sessionKey).toBe(SESSION_KEY);
 	});
 
-	it('loads history without listing artifacts when switching sessions', async () => {
+	it('loads history and artifact summaries when switching sessions', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			const path = requestPath(input);
 			if (path.startsWith('/api/sessions')) {
-				return jsonResponse({ sessionKey: SESSION_KEY, sessionId: SESSION_ID, messages: [] });
+				return jsonResponse({
+					sessionKey: SESSION_KEY,
+					sessionId: SESSION_ID,
+					messages: [],
+					artifacts: [artifact(UPDATED_ARTIFACT_VERSION)]
+				});
 			}
 			if (path.startsWith('/api/artifacts')) {
 				throw new Error('artifacts should not load on session switch');
@@ -260,6 +265,9 @@ describe('ChatClient', () => {
 		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).not.toContain(
 			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
 		);
+		await vi.waitFor(() => expect(client.state.activeArtifactId).toBe(ARTIFACT_ID));
+		expect(client.state.artifacts).toEqual([artifact(UPDATED_ARTIFACT_VERSION)]);
+		expect(client.state.artifactPanelOpen).toBe(false);
 	});
 
 	it('does not reload unchanged artifacts after a final reply', async () => {

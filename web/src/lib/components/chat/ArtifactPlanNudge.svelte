@@ -3,20 +3,18 @@
 
 	import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 	import { artifactChipLabel } from '$lib/chat/artifacts.js';
-	import { getPennyContext } from '$lib/chat/penny-context.js';
 
 	type Props = {
 		artifact: ArtifactSummary;
+		onOpenArtifact?: (artifactId: string) => void;
 	};
 
-	let { artifact }: Props = $props();
-
-	const { chat } = getPennyContext();
+	let { artifact, onOpenArtifact }: Props = $props();
 
 	function handleOpen(event: MouseEvent): void {
 		event.preventDefault();
 		event.stopPropagation();
-		chat.openArtifact(artifact.artifactId);
+		onOpenArtifact?.(artifact.artifactId);
 	}
 </script>
 

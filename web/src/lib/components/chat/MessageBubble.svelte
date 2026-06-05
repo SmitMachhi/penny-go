@@ -126,7 +126,7 @@
 				</div>
 			{/if}
 			{#if planNudgeArtifact}
-				<ArtifactPlanNudge artifact={planNudgeArtifact} />
+				<ArtifactPlanNudge artifact={planNudgeArtifact} {onOpenArtifact} />
 			{/if}
 		{#if !streaming}
 			<div class="mt-2 flex items-center">

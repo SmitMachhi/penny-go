@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { onMount, tick } from 'svelte';
+	import { fade } from 'svelte/transition';
 
 	import {
 		clampArtifactPanelWidth,
@@ -52,6 +53,7 @@
 	const threadScrollScheduler = createThreadScrollScheduler();
 
 	const ARTIFACT_PANEL_KEYBOARD_RESIZE_STEP_PX = 24;
+	const ACTIVE_TURN_TRANSITION_MS = 180;
 
 	const showArtifactPanelChrome = $derived(
 		chat.state.artifactPanelOpen &&
@@ -313,7 +315,11 @@
 				{/each}
 
 				{#if chat.state.sending}
-					<div bind:this={workingAnchorEl} class="penny-turn-focus-anchor w-full">
+					<div
+						bind:this={workingAnchorEl}
+						class="penny-turn-focus-anchor w-full"
+						transition:fade={{ duration: ACTIVE_TURN_TRANSITION_MS }}
+					>
 						<PennyActiveTurn
 							tools={chat.state.tools}
 							streamingMessage={streamingAssistantMessage}

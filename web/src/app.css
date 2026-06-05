@@ -177,16 +177,6 @@
 	}
 }
 
-@keyframes penny-activity-tool-pulse {
-	0%,
-	100% {
-		opacity: 0.65;
-	}
-	50% {
-		opacity: 1;
-	}
-}
-
 @keyframes penny-answer-enter {
 	from {
 		opacity: 0;
@@ -285,23 +275,6 @@
 		animation: penny-tool-icon-spin 2.4s linear infinite;
 	}
 
-	.penny-activity-wrap {
-		overflow: hidden;
-		max-height: 2.75rem;
-		opacity: 1;
-		transition:
-			opacity 0.32s ease-out,
-			max-height 0.32s ease-out,
-			margin 0.32s ease-out;
-	}
-
-	.penny-activity-wrap--exit {
-		max-height: 0;
-		opacity: 0;
-		margin-bottom: 0;
-		pointer-events: none;
-	}
-
 	.penny-activity-avatar {
 		animation: penny-activity-breathe 2.4s ease-in-out infinite;
 	}
@@ -311,72 +284,14 @@
 		animation: penny-activity-enter 0.32s ease-out;
 	}
 
-	.penny-activity-tool--live {
-		animation: penny-activity-tool-pulse 1.4s ease-in-out infinite;
-	}
-
 	.penny-answer-enter {
 		animation: penny-answer-enter 0.36s ease-out;
 	}
 
-	.penny-work-steps {
-		@apply space-y-1.5;
-	}
-
-	.penny-work-step {
-		@apply flex items-center gap-2 text-xs leading-snug transition-colors duration-300;
-	}
-
-	.penny-work-step__marker {
-		@apply inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border/80;
-	}
-
-	.penny-work-step--running .penny-work-step__marker {
-		@apply border-primary text-primary;
-	}
-
-	.penny-work-step--running .penny-work-step__label {
-		@apply font-medium text-foreground;
-	}
-
-	.penny-work-step--done .penny-work-step__marker {
-		@apply border-emerald-200/80 bg-emerald-50 text-emerald-600 dark:border-emerald-800/70 dark:bg-emerald-950/40 dark:text-emerald-400;
-	}
-
-	.penny-work-step--done .penny-work-step__label {
-		@apply text-muted-foreground;
-	}
-
-	.penny-work-step--pending .penny-work-step__label {
-		@apply text-muted-foreground/55;
-	}
-
-	.penny-work-step--running {
-		animation: penny-work-step-enter 0.28s ease-out;
-	}
-
-	@keyframes penny-work-step-enter {
-		from {
-			opacity: 0;
-			transform: translate3d(0, 3px, 0);
-		}
-		to {
-			opacity: 1;
-			transform: translate3d(0, 0, 0);
-		}
-	}
-
 	@media (prefers-reduced-motion: reduce) {
-		.penny-activity-wrap,
-		.penny-activity-wrap--exit {
-			transition: none;
-		}
-
 		.penny-activity-avatar,
 		.penny-activity-status,
-		.penny-activity-tool--live,
-		.penny-answer-enter,
-		.penny-work-step--running {
+		.penny-answer-enter {
 			animation: none;
 		}
 	}

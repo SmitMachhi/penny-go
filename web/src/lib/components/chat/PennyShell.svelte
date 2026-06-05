@@ -133,7 +133,7 @@
 						size="icon"
 						class="h-8 w-8 shrink-0 sm:h-9 sm:w-9"
 						aria-expanded={chat.state.artifactPanelOpen}
-						aria-label="Toggle funding plan panel"
+						aria-label="Toggle plan panel"
 						onclick={() => chat.toggleArtifactPanel()}
 					>
 						<FileText class="h-4 w-4" />

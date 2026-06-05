@@ -20,11 +20,11 @@
 
 <button
 	type="button"
-	class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-primary/25 bg-background px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:border-primary hover:text-primary"
+	class="mt-2 inline-flex max-w-full items-center gap-1.5 rounded-lg border border-primary bg-primary px-2.5 py-1.5 text-xs font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90"
 	title={artifactChipLabel(artifact)}
 	onclick={handleOpen}
 >
-	<FileText class="h-3.5 w-3.5 shrink-0 text-primary" aria-hidden="true" />
-	<span>Funding plan ready</span>
-	<span class="font-medium text-foreground">· View in panel</span>
+	<FileText class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+	<span>Plan ready</span>
+	<span class="font-medium text-primary-foreground/85">· View in panel</span>
 </button>

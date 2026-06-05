@@ -173,13 +173,13 @@
 		{:else}
 			<div class="flex items-start justify-between gap-2 border-b border-border px-4 py-3">
 				<div>
-					<p class="text-sm font-semibold">Funding plan</p>
+					<p class="text-sm font-semibold">Plan</p>
 					<p class="text-xs text-muted-foreground">Loading memo…</p>
 				</div>
 				<button
 					type="button"
 					class="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border text-muted-foreground transition-colors hover:border-primary hover:text-foreground"
-					aria-label="Close funding plan panel"
+					aria-label="Close plan panel"
 					onclick={onClose}
 				>
 					×

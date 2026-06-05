@@ -364,7 +364,7 @@
 	{#if showArtifactPanelChrome}
 		<button
 			type="button"
-			aria-label="Resize funding plan panel"
+			aria-label="Resize plan panel"
 			class="artifact-panel-resizer hidden shrink-0 lg:block"
 			onpointerdown={startArtifactPanelResize}
 			onkeydown={handleArtifactPanelResizeKeydown}

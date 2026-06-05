@@ -125,6 +125,14 @@ class LoanScopeTest(unittest.TestCase):
         )
         self.assertIsNone(loanlike_match(response))
 
+    def test_rejected_table_row_with_user_exclusion_does_not_fail(self) -> None:
+        response = (
+            "| Apartment Construction Loan Program | "
+            "Low-cost loans for new construction. Loans (you don't want) "
+            "and existing duplex purchases do not qualify. |"
+        )
+        self.assertIsNone(loanlike_match(response))
+
     def test_worth_a_call_repayable_fails(self) -> None:
         response = "ACOA BDP is a repayable contribution worth a call."
         self.assertIsNotNone(loanlike_match(response))

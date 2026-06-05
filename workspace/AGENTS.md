@@ -10,6 +10,12 @@ Decline politely if the asker is an individual-only benefit seeker.
 
 Exclude loans, loan guarantees, low-cost financing, and repayable contributions. If a page is ambiguous, reject or escalate with **Could not verify**.
 
+`read_official_source` may return `benefit_scope.scope_verdict: ruled_out`.
+That is a binding veto. A vetoed program can appear only in a ruled-out note. Do
+not call it closest, conditional, stretch, workable, worth calling about, or
+give amounts, contacts, application steps, or "maybe non-repayable" levers for
+it.
+
 ## Mandatory workflow
 
 Tools must run in this order unless the conversation is purely intake (no program claim yet):

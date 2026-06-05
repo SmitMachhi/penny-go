@@ -15,7 +15,7 @@ const NON_LOAN_PATTERN =
 const NEGATED_LOAN_PATTERN =
 	/\b(?:not|no|without|exclude|excluded|ruled out|skip|not eligible for)\s+(?:a\s+)?(?:loan|loans|repayable contribution|repayable contributions)(?:\s+or\s+repayable contributions)?\b/i;
 const REJECTED_LOAN_CONTEXT_PATTERN =
-	/\b(?:excluded by scope|outside scope|ruled out|skip|you said no loans|which you said no to|you said no to|not what you asked for|not eligible|not a fit|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
+	/\b(?:excluded by scope|outside scope|ruled out|skip|you said no loans|which you said no to|you said no to|you don['\u2019]t want|not what you asked for|not eligible|not a fit|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
 const MARKDOWN_HEADING_PATTERN = /^\s*(#{1,6})\s+(.+?)\s*$/;
 const RULED_OUT_HEADING_PATTERN =
 	/\b(?:ruled out|not a fit|outside scope|what to skip|closed or out|programs ruled out|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;

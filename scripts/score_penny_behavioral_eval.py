@@ -173,7 +173,8 @@ def repeated_programs(run_dir: Path) -> list[tuple[str, int]]:
     counts: Counter[str] = Counter()
     for case_dir in sorted((run_dir / "cases").glob("penny-eval-*")):
         counts.update(extract_program_names(final_text(case_dir)))
-    return [(name, count) for name, count in counts.most_common(15) if count > 1]
+    repeated = [(name, count) for name, count in counts.items() if count > 1]
+    return sorted(repeated, key=lambda item: (-item[1], item[0]))[:15]
 
 
 def write_scoreboard(path: Path, rows: list[dict[str, str]]) -> None:

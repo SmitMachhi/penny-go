@@ -119,20 +119,20 @@
 | Program-ish heading | Cases |
 | --- | --- |
 | NRC IRAP | 9 |
-| Regional Tariff Response Initiative (RTRI) | 4 |
 | CanExport SMEs | 4 |
+| Regional Tariff Response Initiative (RTRI) | 4 |
 | SR&ED Investment Tax Credit | 3 |
-| Ontario Innovation Tax Credit | 2 |
-| SR&ED Investment Tax Credit (Federal) | 2 |
-| Manitoba Manufacturing Investment Tax Credit | 2 |
-| Clean Technology Investment Tax Credit (CRA) | 2 |
-| B.C. Employer Training Grant | 2 |
-| Apprenticeship Job Creation Tax Credit | 2 |
-| Alberta Innovation Employment Grant | 2 |
-| Federal Apprenticeship Job Creation Tax Credit | 2 |
 | Agricultural Clean Technology Program | 2 |
+| Alberta Innovation Employment Grant | 2 |
+| Apprenticeship Job Creation Tax Credit | 2 |
 | Atlantic Region Qualified Property Investment Tax Credit | 2 |
+| B.C. Employer Training Grant | 2 |
+| Clean Technology Investment Tax Credit (CRA) | 2 |
+| Federal Apprenticeship Job Creation Tax Credit | 2 |
+| Manitoba Manufacturing Investment Tax Credit | 2 |
+| Ontario Innovation Tax Credit | 2 |
 | Regional Tariff Response Initiative | 2 |
+| SR&ED Investment Tax Credit (Federal) | 2 |
 
 ## Notes
 

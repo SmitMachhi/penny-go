@@ -271,6 +271,11 @@ Regression ladder (offline + optional live agent runs):
 ./scripts/verify_penny_artifacts.sh
 ```
 
+## Behavioral baseline eval
+
+The 50-case consultant-quality baseline lives in `evals/penny-behavioral-baseline/`.
+Use it when measuring whether Penny gives specific, verified, fit-banded Canadian business funding advice instead of generic program lists.
+
 ## What we deliberately skip here
 
 Fly deployments, corpus refresh cron jobs, and auxiliary fetch/browser/exec tools—all deferred to later phases.

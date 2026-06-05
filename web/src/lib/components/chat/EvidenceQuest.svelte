@@ -1,19 +1,29 @@
 <script lang="ts">
 	import { buildEvidenceQuestState } from '$lib/chat/evidence-quest.js';
 	import type { ToolActivity } from '$lib/chat/messages.js';
+	import ToolStrip from '$lib/components/chat/ToolStrip.svelte';
 	import { cn } from '$lib/utils.js';
 
 	type Props = {
 		tools: ToolActivity[];
 		answerStarted?: boolean;
+		thinkingText?: string;
+		statusHeadline?: string;
 	};
 
 	const FINAL_STAGE_OFFSET = 1;
 
-	let { tools, answerStarted = false }: Props = $props();
+	let {
+		tools,
+		answerStarted = false,
+		thinkingText = '',
+		statusHeadline = ''
+	}: Props = $props();
 
 	const quest = $derived(buildEvidenceQuestState({ tools, answerStarted }));
 	const stageCount = $derived(quest.stages.length);
+	const visibleThinking = $derived(thinkingText.trim() || statusHeadline.trim());
+	const showTools = $derived(tools.length > 0);
 </script>
 
 <div
@@ -63,6 +73,19 @@
 				{/each}
 			</div>
 		{/if}
+
+		{#if visibleThinking}
+			<p class="penny-evidence-quest__thinking">
+				<span class="penny-evidence-quest__thinking-label">thinking</span>
+				<span class="penny-evidence-quest__thinking-text">{visibleThinking}</span>
+			</p>
+		{/if}
+
+		{#if showTools}
+			<div class="penny-evidence-quest__tools">
+				<ToolStrip {tools} />
+			</div>
+		{/if}
 	</div>
 </div>
 
@@ -110,6 +133,7 @@
 	}
 
 	.penny-evidence-quest__route {
+		position: relative;
 		display: flex;
 		min-width: 7.375rem;
 		align-items: center;
@@ -119,6 +143,24 @@
 		transition:
 			opacity 220ms cubic-bezier(0.16, 1, 0.3, 1),
 			transform 220ms cubic-bezier(0.16, 1, 0.3, 1);
+	}
+
+	.penny-evidence-quest__route::after {
+		position: absolute;
+		inset: -5px -3px;
+		content: '';
+		background: linear-gradient(
+			90deg,
+			transparent,
+			color-mix(in oklch, var(--primary) 22%, transparent),
+			transparent
+		);
+		opacity: 0;
+		transform: translate3d(-34%, 0, 0) scaleX(0.22);
+		transform-origin: left center;
+		pointer-events: none;
+		animation: penny-evidence-quest-route-scan 2100ms cubic-bezier(0.16, 1, 0.3, 1)
+			infinite;
 	}
 
 	.penny-evidence-quest--answering .penny-evidence-quest__route {
@@ -190,6 +232,38 @@
 		color: var(--primary);
 	}
 
+	.penny-evidence-quest__thinking {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr);
+		gap: 0.4375rem;
+		margin: 0;
+		max-width: min(100%, 42rem);
+		color: var(--muted-foreground);
+		font-size: 0.75rem;
+		line-height: 1.45;
+		animation: penny-evidence-quest-thinking-slide 420ms cubic-bezier(0.16, 1, 0.3, 1)
+			both;
+	}
+
+	.penny-evidence-quest__thinking-label {
+		color: color-mix(in oklch, var(--primary) 82%, var(--foreground));
+		font-weight: 700;
+	}
+
+	.penny-evidence-quest__thinking-text {
+		min-width: 0;
+		display: -webkit-box;
+		overflow: hidden;
+		-webkit-box-orient: vertical;
+		-webkit-line-clamp: 2;
+		line-clamp: 2;
+	}
+
+	.penny-evidence-quest__tools {
+		margin-left: -0.25rem;
+		animation: penny-evidence-quest-tools-rise 360ms cubic-bezier(0.16, 1, 0.3, 1) both;
+	}
+
 	@keyframes penny-evidence-quest-enter {
 		from {
 			opacity: 0;
@@ -247,6 +321,46 @@
 		}
 	}
 
+	@keyframes penny-evidence-quest-route-scan {
+		0% {
+			opacity: 0;
+			transform: translate3d(-34%, 0, 0) scaleX(0.18);
+		}
+		26% {
+			opacity: 1;
+		}
+		58% {
+			opacity: 0;
+			transform: translate3d(42%, 0, 0) scaleX(0.72);
+		}
+		100% {
+			opacity: 0;
+			transform: translate3d(42%, 0, 0) scaleX(0.72);
+		}
+	}
+
+	@keyframes penny-evidence-quest-thinking-slide {
+		from {
+			opacity: 0;
+			transform: translate3d(0, 4px, 0);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0);
+		}
+	}
+
+	@keyframes penny-evidence-quest-tools-rise {
+		from {
+			opacity: 0;
+			transform: translate3d(0, 5px, 0);
+		}
+		to {
+			opacity: 1;
+			transform: translate3d(0, 0, 0);
+		}
+	}
+
 	@media (max-width: 640px) {
 		.penny-evidence-quest__top {
 			align-items: flex-start;
@@ -272,8 +386,15 @@
 		.penny-evidence-quest__icon,
 		.penny-evidence-quest__dot--active,
 		.penny-evidence-quest__rail,
-		.penny-evidence-quest__token {
+		.penny-evidence-quest__token,
+		.penny-evidence-quest__thinking,
+		.penny-evidence-quest__tools {
 			animation: none;
+		}
+
+		.penny-evidence-quest__route::after {
+			animation: none;
+			opacity: 0;
 		}
 
 		.penny-evidence-quest__route {

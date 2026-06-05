@@ -72,6 +72,21 @@ describe('buildEvidenceQuestState', () => {
 		]);
 	});
 
+	it('uses active tool status while search tools run', () => {
+		expect(
+			buildEvidenceQuestState({
+				answerStarted: false,
+				tools: [tool('search_corpus', 'running')]
+			}).status
+		).toBe('searching corpus');
+		expect(
+			buildEvidenceQuestState({
+				answerStarted: false,
+				tools: [tool('web_search', 'running')]
+			}).status
+		).toBe('searching web');
+	});
+
 	it('uses an answering status once response text starts streaming', () => {
 		const state = buildEvidenceQuestState({
 			answerStarted: true,

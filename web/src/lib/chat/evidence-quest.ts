@@ -145,6 +145,12 @@ function resolveStatus(input: EvidenceQuestInput): string {
 	if (hasToolPhase(input.tools, TOOL_NAMES.readOfficialSource, 'running')) {
 		return 'checking source';
 	}
+	if (hasToolPhase(input.tools, TOOL_NAMES.webSearch, 'running')) {
+		return 'searching web';
+	}
+	if (hasToolPhase(input.tools, TOOL_NAMES.searchCorpus, 'running')) {
+		return 'searching corpus';
+	}
 	if (isFindDone(input.tools) || isCheckDone(input.tools)) {
 		return 'building evidence';
 	}

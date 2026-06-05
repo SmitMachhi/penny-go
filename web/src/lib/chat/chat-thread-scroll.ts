@@ -33,7 +33,12 @@ function defaultAnimationFrameScheduler(): AnimationFrameScheduler {
 			cancelAnimationFrame: () => {}
 		};
 	}
-	return { requestAnimationFrame, cancelAnimationFrame };
+	return {
+		requestAnimationFrame: (callback) =>
+			globalThis.requestAnimationFrame.call(globalThis, callback),
+		cancelAnimationFrame: (handle) =>
+			globalThis.cancelAnimationFrame.call(globalThis, handle)
+	};
 }
 
 export function createThreadScrollScheduler(

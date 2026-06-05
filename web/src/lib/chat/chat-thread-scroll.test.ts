@@ -134,4 +134,43 @@ describe('createThreadScrollScheduler', () => {
 
 		expect(calls).toBe(1);
 	});
+
+	it('calls browser animation frame methods with the global receiver', () => {
+		const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+		const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+		let requestWasBound = false;
+		let cancelWasBound = false;
+		Object.defineProperty(globalThis, 'requestAnimationFrame', {
+			configurable: true,
+			value(this: typeof globalThis, callback: FrameRequestCallback) {
+				void callback;
+				requestWasBound = this === globalThis;
+				return 1;
+			}
+		});
+		Object.defineProperty(globalThis, 'cancelAnimationFrame', {
+			configurable: true,
+			value(this: typeof globalThis) {
+				cancelWasBound = this === globalThis;
+			}
+		});
+
+		try {
+			const scheduler = createThreadScrollScheduler();
+			scheduler.schedule(() => {});
+			scheduler.cancel();
+		} finally {
+			Object.defineProperty(globalThis, 'requestAnimationFrame', {
+				configurable: true,
+				value: originalRequestAnimationFrame
+			});
+			Object.defineProperty(globalThis, 'cancelAnimationFrame', {
+				configurable: true,
+				value: originalCancelAnimationFrame
+			});
+		}
+
+		expect(requestWasBound).toBe(true);
+		expect(cancelWasBound).toBe(true);
+	});
 });

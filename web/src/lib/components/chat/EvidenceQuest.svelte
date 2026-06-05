@@ -22,7 +22,9 @@
 
 	const quest = $derived(buildEvidenceQuestState({ tools, answerStarted }));
 	const stageCount = $derived(quest.stages.length);
-	const visibleThinking = $derived(thinkingText.trim() || statusHeadline.trim());
+	const visibleThinking = $derived(
+		answerStarted ? thinkingText.trim() : thinkingText.trim() || statusHeadline.trim()
+	);
 	const showTools = $derived(tools.length > 0);
 </script>
 

@@ -48,4 +48,14 @@ describe('researchTraceText', () => {
 
 		expect(researchTraceText(trace, answer)).toBe('Short status.');
 	});
+
+	it('drops stored commentary segments that repeat the streaming answer', () => {
+		const trace = createEmptyRunTrace();
+		const answer = 'Let me grab the right workflow for this. Searching wider now.';
+		applyCommentaryDelta(trace, 'Let me grab the right workflow for this.');
+		applyCommentaryDelta(trace, answer, { replace: true });
+		applyCommentaryDelta(trace, answer);
+
+		expect(researchTraceText(trace, answer)).toBe('');
+	});
 });

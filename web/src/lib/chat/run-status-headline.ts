@@ -32,6 +32,16 @@ function isCommentarySizedSegment(text: string): boolean {
 	return text.trim().length > 0 && text.trim().length <= RUN_STATUS_COMMENTARY_SEGMENT_MAX_LEN;
 }
 
+function isDistinctFromAnswer(text: string, answer: string): boolean {
+	const normalized = text.trim();
+	const normalizedAnswer = answer.trim();
+	return (
+		normalized.length > 0 &&
+		(!normalizedAnswer ||
+			(!normalizedAnswer.includes(normalized) && !normalized.includes(normalizedAnswer)))
+	);
+}
+
 function commentaryCandidates(trace: RunTraceState): string[] {
 	const candidates: string[] = [];
 	for (const segment of trace.segments) {
@@ -85,14 +95,14 @@ export function extractRunStatusHeadline(
 /** Trace body for “How Penny researched this” — omits answer-sized live stream. */
 export function researchTraceText(trace: RunTraceState, streamingAnswer: string): string {
 	const parts: string[] = [];
+	const answer = streamingAnswer.trim();
 	if (trace.thinkingText.trim()) {
 		parts.push(trace.thinkingText.trim());
 	}
 	if (trace.segments.length > 0) {
-		parts.push(trace.segments.join('\n\n'));
+		parts.push(...trace.segments.filter((segment) => isDistinctFromAnswer(segment, answer)));
 	}
 	const live = trace.liveSegment.trim();
-	const answer = streamingAnswer.trim();
 	if (!live) {
 		return parts.join('\n\n');
 	}

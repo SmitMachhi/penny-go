@@ -209,16 +209,38 @@ def load_openclaw_sessions() -> list[dict[str, Any]]:
 
 def find_session_file(session_key: str) -> Path | None:
     for _ in range(SESSION_POLL_LIMIT):
-        for session in load_openclaw_sessions():
-            if session.get("key") != session_key:
-                continue
-            session_id = session.get("sessionId")
-            if isinstance(session_id, str) and session_id:
-                session_file = SESSION_DIR / f"{session_id}.jsonl"
-                if session_file.is_file():
-                    return session_file
+        session_file = find_session_file_once(session_key)
+        if session_file:
+            return session_file
         time.sleep(POLL_SECONDS)
     return None
+
+
+def find_session_file_once(session_key: str) -> Path | None:
+    for session in load_openclaw_sessions():
+        if session.get("key") != session_key:
+            continue
+        session_id = session.get("sessionId")
+        if isinstance(session_id, str) and session_id:
+            session_file = SESSION_DIR / f"{session_id}.jsonl"
+            if session_file.is_file():
+                return session_file
+    return None
+
+
+def latest_assistant_stop_reason(session_file: Path) -> str | None:
+    stop_reason: str | None = None
+    with session_file.open(encoding="utf-8") as handle:
+        for line in handle:
+            event = json.loads(line)
+            if event.get("type") != "message":
+                continue
+            message = event.get("message", {})
+            if message.get("role") != "assistant":
+                continue
+            value = message.get("stopReason")
+            stop_reason = value if isinstance(value, str) else None
+    return stop_reason
 
 
 def extract_last_assistant_text(session_file: Path) -> str:
@@ -283,6 +305,7 @@ def run_case(case: EvalCase, run_dir: Path, browser_session: str, base_url: str)
     browser_command(browser_session, "click", 'button[aria-label="Send message"]', timeout=60)
 
     route_id: str | None = None
+    session_file: Path | None = None
     seen_sending = False
     final_state: BrowserState | None = None
     deadline = time.monotonic() + RUN_TIMEOUT_SECONDS
@@ -290,8 +313,11 @@ def run_case(case: EvalCase, run_dir: Path, browser_session: str, base_url: str)
         state = browser_state(browser_session)
         final_state = state
         route_id = route_id or route_id_from_url(state.url)
+        if route_id and not session_file:
+            session_file = find_session_file_once(session_key_from_route_id(route_id))
         seen_sending = seen_sending or state.sending
-        if route_id and seen_sending and not state.sending:
+        finished = session_file is not None and latest_assistant_stop_reason(session_file) == "stop"
+        if route_id and seen_sending and not state.sending and finished:
             break
         time.sleep(POLL_SECONDS)
     else:
@@ -307,7 +333,7 @@ def run_case(case: EvalCase, run_dir: Path, browser_session: str, base_url: str)
         return write_case_manifest(case, case_dir, None, None, "missing_route_id")
 
     session_key = session_key_from_route_id(route_id)
-    session_file = find_session_file(session_key)
+    session_file = session_file or find_session_file(session_key)
     if not session_file:
         return write_case_manifest(case, case_dir, session_key, None, "missing_session_file")
 

@@ -1,0 +1,51 @@
+case_id,G1,G2,G3,G4,F1,F2,F3,F4,F5,F6,F7,D1,D2,D3,D4,overall,failure_tags,notes
+penny-eval-001,pass,pass,pass,pass,fail,pass,pass,pass,partial,pass,pass,partial,pass,pass,pass,partial,fabricated_fact;verify_skip,"Trace failures: corpus_before_web. Review tags: fabricated_fact, verify_skip."
+penny-eval-002,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-003,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-004,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,pass,pass,pass,partial,fabricated_fact,Review tags: fabricated_fact.
+penny-eval-005,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,pass,pass,partial,partial,fabricated_fact,Review tags: fabricated_fact.
+penny-eval-006,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-007,pass,partial,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,partial,corpus_never_escalates,Trace failures: path_b_web_search_used. Review tags: corpus_never_escalates.
+penny-eval-008,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,,Trace and heuristic consultant checks passed.
+penny-eval-009,pass,pass,pass,pass,fail,pass,partial,pass,pass,pass,pass,partial,pass,pass,partial,partial,loan_slip;verify_skip,"Trace failures: corpus_before_web, no_loan_products. Review tags: loan_slip, verify_skip."
+penny-eval-010,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-011,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,,Trace and heuristic consultant checks passed.
+penny-eval-012,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-013,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,na,pass,partial,partial,,Trace and heuristic consultant checks passed.
+penny-eval-014,pass,pass,partial,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,famous_program_overuse,Review tags: famous_program_overuse.
+penny-eval-015,partial,partial,pass,pass,fail,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,generic_filler;verify_skip,"Trace failures: corpus_before_web. Review tags: generic_filler, verify_skip."
+penny-eval-016,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,,Trace and heuristic consultant checks passed.
+penny-eval-017,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,,Trace and heuristic consultant checks passed.
+penny-eval-018,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,fail,generic_filler,Trace failures: max_five_recommendations. Review tags: generic_filler.
+penny-eval-019,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-020,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-021,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-022,pass,pass,pass,pass,fail,pass,partial,pass,pass,pass,pass,partial,pass,pass,partial,partial,loan_slip;verify_skip,"Trace failures: corpus_before_web, no_loan_products. Review tags: loan_slip, verify_skip."
+penny-eval-023,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-024,pass,pass,pass,fail,fail,pass,fail,pass,pass,pass,pass,pass,na,pass,pass,fail,generic_filler;loan_slip;verify_skip,"Trace failures: corpus_before_web, max_five_recommendations, no_loan_products. Review tags: generic_filler, loan_slip, verify_skip."
+penny-eval-025,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-026,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,missing_levers,Review tags: missing_levers.
+penny-eval-027,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,na,pass,partial,partial,verify_skip;web_unverified,"Trace failures: corpus_before_web, path_b_read_after_web. Review tags: verify_skip, web_unverified."
+penny-eval-028,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-029,pass,pass,pass,fail,pass,fail,pass,pass,pass,pass,pass,partial,pass,pass,pass,fail,generic_filler;verify_skip,"Trace failures: max_five_recommendations, read_covers_recommendations. Review tags: generic_filler, verify_skip."
+penny-eval-030,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-031,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-032,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,,Trace and heuristic consultant checks passed.
+penny-eval-033,partial,partial,pass,pass,fail,pass,partial,pass,pass,pass,pass,partial,pass,pass,pass,partial,generic_filler;loan_slip;verify_skip,"Trace failures: corpus_before_web, no_loan_products. Review tags: generic_filler, loan_slip, verify_skip."
+penny-eval-034,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,,Trace and heuristic consultant checks passed.
+penny-eval-035,partial,partial,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,corpus_never_escalates;generic_filler;verify_skip,"Trace failures: corpus_before_web, path_b_web_search_used. Review tags: corpus_never_escalates, generic_filler, verify_skip."
+penny-eval-036,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,,Trace and heuristic consultant checks passed.
+penny-eval-037,fail,fail,pass,fail,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,fail,corpus_never_escalates;famous_program_overuse;generic_filler,"Trace failures: max_five_recommendations, path_b_web_search_used. Review tags: corpus_never_escalates, famous_program_overuse, generic_filler."
+penny-eval-038,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,,Trace and heuristic consultant checks passed.
+penny-eval-039,na,na,na,na,na,na,pass,pass,pass,pass,pass,na,na,na,na,pass,,Correctly handled negative or out-of-scope request without turning excluded products into recommendations.
+penny-eval-040,na,na,na,na,na,na,pass,pass,pass,pass,pass,na,na,na,na,pass,,Correctly handled negative or out-of-scope request without turning excluded products into recommendations.
+penny-eval-041,na,na,na,na,na,na,pass,pass,pass,pass,pass,na,na,na,na,pass,,Correctly handled negative or out-of-scope request without turning excluded products into recommendations.
+penny-eval-042,partial,partial,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,generic_filler;verify_skip,"Trace failures: corpus_before_web. Review tags: generic_filler, verify_skip."
+penny-eval-043,na,na,na,na,pass,pass,pass,pass,pass,pass,pass,na,na,na,pass,pass,,Correctly handled negative or out-of-scope request without turning excluded products into recommendations.
+penny-eval-044,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,na,pass,partial,partial,,Trace and heuristic consultant checks passed.
+penny-eval-045,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,pass,pass,pass,pass,pass,partial,loan_slip,Trace failures: no_loan_products. Review tags: loan_slip.
+penny-eval-046,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,partial,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-047,fail,fail,pass,fail,fail,pass,partial,pass,pass,pass,pass,partial,pass,pass,pass,fail,generic_filler;loan_slip;verify_skip,"Trace failures: corpus_before_web, max_five_recommendations, no_loan_products. Review tags: generic_filler, loan_slip, verify_skip."
+penny-eval-048,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-049,pass,pass,pass,pass,fail,pass,pass,pass,pass,pass,pass,partial,pass,pass,pass,partial,verify_skip,Trace failures: corpus_before_web. Review tags: verify_skip.
+penny-eval-050,pass,pass,partial,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,pass,partial,famous_program_overuse,Review tags: famous_program_overuse.

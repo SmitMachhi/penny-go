@@ -12,6 +12,7 @@ const RUN_ID = 'run-1';
 const MESSAGE = 'hello penny';
 const FIRST_ABORT_REQUEST = 1;
 const ARTIFACT_ID = '00000000-0000-4000-8000-000000000001';
+const UPDATED_ARTIFACT_VERSION = 3;
 
 type ChatClientInternals = {
 	finalizeAssistantMessage(payload: Extract<SsePayload, { type: 'chat.final' }>): Promise<void>;
@@ -293,6 +294,85 @@ describe('ChatClient', () => {
 		);
 		expect(client.state.artifacts[0]?.title).toBe('Loaded brief');
 		expect(client.state.artifactPanelOpen).toBe(false);
+	});
+
+	it('loads and opens a funding brief when the artifact stream event was missed', async () => {
+		const loadedArtifact = artifact(UPDATED_ARTIFACT_VERSION);
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			if (path.startsWith('/api/artifacts')) {
+				return jsonResponse({ artifacts: [loadedArtifact] });
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+		(client as unknown as ChatClientInternals).handleStreamEvent({
+			type: 'tool.done',
+			runId: RUN_ID,
+			name: 'create_funding_brief'
+		});
+
+		await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
+			type: 'chat.final',
+			runId: RUN_ID,
+			text: 'Done. The artifact panel has the full plan.'
+		});
+
+		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
+			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+		);
+		expect(client.state.activeArtifactId).toBe(ARTIFACT_ID);
+		expect(client.state.artifactPanelOpen).toBe(true);
+		expect(client.state.messages.at(-1)?.artifactIds).toEqual([ARTIFACT_ID]);
+	});
+
+	it('does not append a final brief reply after the active session changes', async () => {
+		let resolveArtifactLoad: (response: Response) => void = () => {};
+		const artifactLoad = new Promise<Response>((resolve) => {
+			resolveArtifactLoad = resolve;
+		});
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			if (path.startsWith('/api/artifacts')) {
+				return artifactLoad;
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+		client.state.tools = [{ id: 'tool-1', name: 'create_funding_brief', phase: 'done' }];
+
+		const finalPromise = (client as unknown as ChatClientInternals).finalizeAssistantMessage({
+			type: 'chat.final',
+			runId: RUN_ID,
+			text: 'Done. The artifact panel has the full plan.'
+		});
+		await vi.waitFor(() =>
+			expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
+				`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+			)
+		);
+		client.state.sessionKey = OTHER_SESSION_KEY;
+		resolveArtifactLoad(jsonResponse({ artifacts: [artifact(UPDATED_ARTIFACT_VERSION)] }));
+		await finalPromise;
+
+		expect(client.state.messages.map((message) => message.text)).toEqual([MESSAGE]);
+		expect(client.state.activeArtifactId).toBeNull();
 	});
 
 	it('does not recover a pre-response stream event from stale history', async () => {

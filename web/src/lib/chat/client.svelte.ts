@@ -18,6 +18,7 @@ import { readSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 const HEALTH_POLL_MS = 30_000;
+const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
 
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
@@ -338,11 +339,17 @@ export class ChatClient {
 		const artifactVersionSnapshot = this.artifactVersionSnapshot;
 		const pendingRunArtifactIds = [...this.pendingRunArtifactIds];
 		const thinkingTrace = finalizeRunTrace(this.state.runTrace, payload.text);
+		if (this.hasFundingBriefToolActivity()) {
+			await this.loadArtifacts();
+			if (this.state.sessionKey !== sessionKey || this.activeRunId !== runId) {
+				return;
+			}
+		}
+		syncChangedLatestArtifact(this.state, pendingRunArtifactIds, artifactVersionSnapshot);
 		this.state.messages = stripTrailingAssistantMessages(this.state.messages);
 		appendAssistantMessage(this.state, payload.text, pendingRunArtifactIds, { thinkingTrace });
 		this.state.operationError = null;
 		this.resetRun();
-		syncChangedLatestArtifact(this.state, pendingRunArtifactIds, artifactVersionSnapshot);
 		persistSessionThreadCache(this.state);
 	}
 
@@ -353,6 +360,12 @@ export class ChatClient {
 			syncLatestArtifact: () =>
 				syncChangedLatestArtifact(this.state, this.pendingRunArtifactIds, this.artifactVersionSnapshot)
 		});
+	}
+
+	private hasFundingBriefToolActivity(): boolean {
+		return this.state.tools.some(
+			(tool) => tool.name === CREATE_FUNDING_BRIEF_TOOL && tool.phase !== 'error'
+		);
 	}
 
 	private resetRun(): void {

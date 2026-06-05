@@ -26,6 +26,9 @@ CASE_DIR_NAME = "cases"
 EXIT_OK = 0
 EXIT_RUN_FAILURE = 1
 EXIT_USAGE = 2
+REQUIRED_PENNY_SKILLS = frozenset(
+    ["penny-consultation-modes", "penny-funding", "penny-artifacts", "stop-slop"]
+)
 
 
 @dataclass(frozen=True)
@@ -107,12 +110,39 @@ def build_run_manifest(run_id: str, matrix_path: Path) -> dict[str, Any]:
         "corpus_sha256": sha256_file(DEFAULT_CORPUS),
         "openclaw_config_path": repo_relative(DEFAULT_OPENCLAW_CONFIG),
         "surface": "openclaw agent --local",
+        "active_skills": load_active_skills(),
     }
 
 
 def write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def parse_active_skills_config(raw: str) -> list[str]:
+    parsed = json.loads(raw)
+    if not isinstance(parsed, list):
+        raise ValueError("agents.defaults.skills must be a JSON array")
+    skills = []
+    for index, value in enumerate(parsed):
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"agents.defaults.skills[{index}] must be a non-empty string")
+        skills.append(value.strip())
+    return skills
+
+
+def load_active_skills() -> list[str]:
+    return parse_active_skills_config(
+        run_text(["openclaw", "config", "get", "agents.defaults.skills", "--json"])
+    )
+
+
+def validate_required_skills(active_skills: list[str]) -> None:
+    missing = sorted(REQUIRED_PENNY_SKILLS.difference(active_skills))
+    if missing:
+        raise ValueError(
+            "active OpenClaw config is missing required Penny skills: " + ", ".join(missing)
+        )
 
 
 def run_openclaw_case(case: EvalCase, case_dir: Path) -> tuple[int, Path]:
@@ -259,6 +289,11 @@ def main() -> int:
     if args.dry_run:
         print_dry_run(args.run_id, selected)
         return EXIT_OK
+    try:
+        validate_required_skills(load_active_skills())
+    except (subprocess.CalledProcessError, json.JSONDecodeError, ValueError) as error:
+        print(f"invalid OpenClaw skills config: {error}", file=sys.stderr)
+        return EXIT_USAGE
 
     run_dir = output_root / args.run_id
     write_json(run_dir / "run-manifest.json", build_run_manifest(args.run_id, matrix_path))

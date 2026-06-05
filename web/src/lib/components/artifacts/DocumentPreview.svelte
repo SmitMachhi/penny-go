@@ -87,24 +87,14 @@
 		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
 			Loading memo…
 		</div>
-		{:else if previewObjectUrl}
-			<div class="flex shrink-0 items-center justify-end gap-2 border-b border-border/60 px-3 py-1.5">
-				<button
-					type="button"
-				class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-				onclick={openInNewTab}
-			>
-				<ExternalLink class="h-3 w-3" />
-				Open in new tab
-			</button>
-		</div>
+	{:else if previewObjectUrl}
 		<div class="min-h-0 flex-1 overflow-hidden bg-white">
-				<embed
-					title="Funding memo preview"
-					src="{previewObjectUrl}#view=FitH"
-					type="application/pdf"
-					class="block h-full w-full"
-				/>
+			<embed
+				title="Funding memo preview"
+				src="{previewObjectUrl}#view=FitH"
+				type="application/pdf"
+				class="block h-full w-full"
+			/>
 		</div>
 	{/if}
 </div>

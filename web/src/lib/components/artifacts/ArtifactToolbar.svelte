@@ -68,7 +68,7 @@
 				<button
 					type="button"
 					class={cn(
-						'inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium transition-colors hover:border-primary hover:text-primary disabled:opacity-60'
+						'inline-flex h-9 items-center gap-2 rounded-lg border border-primary bg-primary px-3 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:opacity-60'
 					)}
 					disabled={downloading}
 					onclick={() => void handleDownload()}

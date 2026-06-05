@@ -25,14 +25,14 @@ describe('artifact panel markup', () => {
 		expect(source).not.toContain('flex shrink-0 items-center justify-end gap-2');
 	});
 
-	it('hides the native PDF toolbar and renders compact preview controls', async () => {
+	it('uses the native PDF viewer without duplicate custom preview controls', async () => {
 		const source = await readComponentSource('DocumentPreview.svelte');
 
-		expect(source).toContain('buildPdfPreviewSource');
-		expect(source).toContain('aria-label="Zoom out"');
-		expect(source).toContain('aria-label="Zoom in"');
-		expect(source).toContain('aria-label="PDF page number"');
-		expect(source).not.toContain('src="{previewObjectUrl}#view=FitH"');
+		expect(source).toContain('<embed');
+		expect(source).toContain('src="{previewObjectUrl}#view=FitH"');
+		expect(source).not.toContain('aria-label="Zoom out"');
+		expect(source).not.toContain('aria-label="Zoom in"');
+		expect(source).not.toContain('aria-label="PDF page number"');
 	});
 
 	it('uses the primary accent for the available download action', async () => {

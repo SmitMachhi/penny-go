@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { tick } from 'svelte';
-	import { ArrowUp, Square } from '@lucide/svelte';
+	import { ArrowUp, LoaderCircle } from '@lucide/svelte';
 
 	import { syncTextareaHeight } from '$lib/components/chat/auto-resize-textarea.js';
 	import { CHAT_DISCLAIMER, CHAT_PLACEHOLDER } from '$lib/chat/starter-prompts.js';
@@ -13,7 +13,6 @@
 		sending?: boolean;
 		showDisclaimer?: boolean;
 		onSubmit: () => void;
-		onStop?: () => void;
 		onKeydown?: (event: KeyboardEvent) => void;
 	};
 
@@ -24,11 +23,11 @@
 		sending = false,
 		showDisclaimer = false,
 		onSubmit,
-		onStop,
 		onKeydown
 	}: Props = $props();
 
 	const canSend = $derived(!sendDisabled && draft.trim().length > 0);
+	const inputLocked = $derived(disabled || sending);
 
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
@@ -56,31 +55,33 @@
 		class={cn(
 			'penny-composer-shell flex items-end gap-2 rounded-[1.75rem] border border-border bg-background px-3 py-2',
 			'transition-[border-color,box-shadow,transform] focus-within:border-primary/45 focus-within:ring-2 focus-within:ring-primary/15',
-			sending && 'penny-composer-shell--sending'
+			sending && 'penny-composer-shell--sending',
+			inputLocked && 'penny-composer-shell--locked'
 		)}
 	>
 		<textarea
 			bind:this={textareaEl}
 			bind:value={draft}
 			placeholder={CHAT_PLACEHOLDER}
-			{disabled}
+			disabled={inputLocked}
 			rows={1}
 			oninput={() => void refreshTextareaHeight()}
 			onkeydown={onKeydown}
 			class={cn(
 				'penny-overlay-scroll max-h-52 min-h-[2.75rem] flex-1 resize-none border-0 bg-transparent py-2.5',
-				'text-base leading-relaxed outline-none placeholder:text-muted-foreground/80'
+				'text-base leading-relaxed outline-none placeholder:text-muted-foreground/80',
+				inputLocked && 'cursor-not-allowed text-muted-foreground/70'
 			)}
 		></textarea>
 		<div class="flex shrink-0 items-center pb-0.5">
 			{#if sending}
 				<button
 					type="button"
-					class="penny-composer-action penny-composer-action--stop flex h-9 w-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-opacity hover:opacity-90 disabled:opacity-40"
-					aria-label="Stop response"
-					onclick={() => onStop?.()}
+					class="penny-composer-action penny-composer-action--loading flex h-9 w-9 items-center justify-center rounded-full bg-primary/85 text-primary-foreground"
+					aria-label="Penny is working"
+					disabled={true}
 				>
-					<Square class="h-4 w-4 fill-current" />
+					<LoaderCircle class="h-4 w-4 animate-spin" strokeWidth={2.25} />
 				</button>
 			{:else}
 				<button
@@ -126,6 +127,11 @@
 		transform: translate3d(0, 1px, 0) scale(0.998);
 	}
 
+	.penny-composer-shell--locked {
+		border-color: color-mix(in oklch, var(--border) 74%, var(--muted-foreground));
+		background: color-mix(in oklch, var(--muted) 42%, var(--background));
+	}
+
 	.penny-composer-shell--sending::after {
 		animation: penny-composer-sweep 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
@@ -140,7 +146,7 @@
 		transform: translate3d(0, 1px, 0) scale(0.96);
 	}
 
-	.penny-composer-action--stop {
+	.penny-composer-action--loading {
 		animation: penny-composer-stop-enter 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
 	}
 
@@ -181,7 +187,7 @@
 		}
 
 		.penny-composer-shell--sending::after,
-		.penny-composer-action--stop {
+		.penny-composer-action--loading {
 			animation: none;
 		}
 	}

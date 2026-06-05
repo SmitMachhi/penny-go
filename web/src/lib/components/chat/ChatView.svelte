@@ -356,7 +356,6 @@
 					sendDisabled={sendDisabled}
 					sending={chat.state.sending}
 					onSubmit={() => void handleSend()}
-					onStop={() => void chat.abortActiveRun()}
 					onKeydown={handleKeydown}
 				/>
 			</div>

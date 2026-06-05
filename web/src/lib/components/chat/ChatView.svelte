@@ -17,10 +17,6 @@
 	} from '$lib/chat/chat-thread-scroll.js';
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import {
-		extractRunStatusHeadline,
-		researchTraceText
-	} from '$lib/chat/run-status-headline.js';
-	import {
 		CHAT_AWAITING_REPLY_HEADLINE,
 		CHAT_AWAITING_REPLY_SUBHEAD,
 		CHAT_EMPTY_THREAD_SUBHEAD
@@ -127,12 +123,6 @@
 	const showEmptyThread = $derived(
 		chat.state.messages.length === 0 && !chat.state.sending && !chat.state.loading
 	);
-	const liveStatusHeadline = $derived(
-		extractRunStatusHeadline(chat.state.runTrace, chat.state.tools)
-	);
-	const liveResearchTrace = $derived(
-		researchTraceText(chat.state.runTrace, chat.state.streamingAnswerText)
-	);
 	const streamingAssistantMessage = $derived.by((): ChatMessage | null => {
 		const text = sanitizeAssistantDisplayText(chat.state.streamingAnswerText.trim());
 		if (!chat.state.sending || !text) {
@@ -194,10 +184,8 @@
 		void displayMessages.length;
 		void chat.state.sending;
 		void threadBottomSpacerHeightPx;
-		void liveStatusHeadline;
 		void chat.state.streamingAnswerText;
 		void chat.state.tools.length;
-		void chat.state.runTraceExpanded;
 
 			void tick().then(() => {
 				if (!followThread || !threadEl) {
@@ -327,15 +315,9 @@
 				{#if chat.state.sending}
 					<div bind:this={workingAnchorEl} class="penny-turn-focus-anchor w-full">
 						<PennyActiveTurn
-							statusHeadline={liveStatusHeadline}
 							tools={chat.state.tools}
-							researchTrace={liveResearchTrace}
-							traceExpanded={chat.state.runTraceExpanded}
 							streamingMessage={streamingAssistantMessage}
 							onOpenArtifact={(artifactId) => chat.openArtifact(artifactId)}
-							onToggleTrace={() => {
-								chat.state.runTraceExpanded = !chat.state.runTraceExpanded;
-							}}
 						/>
 					</div>
 				{/if}

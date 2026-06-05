@@ -1,41 +1,25 @@
 <script lang="ts">
 	import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
+	import EvidenceQuest from '$lib/components/chat/EvidenceQuest.svelte';
 	import MessageBubble from '$lib/components/chat/MessageBubble.svelte';
-	import ThinkingPanel from '$lib/components/chat/ThinkingPanel.svelte';
 
 	type Props = {
-		statusHeadline: string;
 		tools: ToolActivity[];
-		researchTrace: string;
-		traceExpanded: boolean;
 		streamingMessage: ChatMessage | null;
 		onOpenArtifact?: (artifactId: string) => void;
-		onToggleTrace: () => void;
 	};
 
 	let {
-		statusHeadline,
 		tools,
-		researchTrace,
-		traceExpanded,
 		streamingMessage,
-		onOpenArtifact,
-		onToggleTrace
+		onOpenArtifact
 	}: Props = $props();
 
 	const answerStarted = $derived(streamingMessage !== null);
 </script>
 
 <div class="penny-active-turn w-full space-y-2">
-	<ThinkingPanel
-		text={researchTrace}
-		{tools}
-		{statusHeadline}
-		expanded={traceExpanded}
-		streaming={true}
-		hideStatus={answerStarted}
-		onToggle={onToggleTrace}
-	/>
+	<EvidenceQuest {tools} {answerStarted} />
 
 	{#if streamingMessage}
 		<div class="penny-answer-enter">

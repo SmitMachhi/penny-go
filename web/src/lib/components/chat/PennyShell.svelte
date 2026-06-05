@@ -95,7 +95,7 @@
 	<title>{browserTitle}</title>
 </svelte:head>
 
-<div class="flex h-screen overflow-hidden">
+<div class="flex h-[100dvh] min-h-[100dvh] overflow-hidden">
 	<SessionSidebar {activeRouteId} />
 
 	<div class="flex min-h-0 min-w-0 flex-1 flex-col">

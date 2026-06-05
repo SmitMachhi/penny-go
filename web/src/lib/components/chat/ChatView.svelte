@@ -42,6 +42,7 @@
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import ConversationSkeleton from '$lib/components/chat/ConversationSkeleton.svelte';
 	import MessageBubble from '$lib/components/chat/MessageBubble.svelte';
 	import PennyActiveTurn from '$lib/components/chat/PennyActiveTurn.svelte';
 	import ThinkingPanel from '$lib/components/chat/ThinkingPanel.svelte';
@@ -299,7 +300,7 @@
 				onscroll={handleThreadScroll}
 			>
 				{#if showThreadLoading}
-					<p class="text-[0.9375rem] text-muted-foreground">Loading conversation…</p>
+					<ConversationSkeleton />
 				{:else if showAwaitingReply}
 					<div class="space-y-2 py-8 text-center">
 						<h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
@@ -313,6 +314,13 @@
 					<p class="py-8 text-center text-[0.9375rem] text-muted-foreground">
 						{CHAT_EMPTY_THREAD_SUBHEAD}
 					</p>
+				{/if}
+
+				{#if chat.state.historyRefreshing && !showThreadLoading}
+					<div class="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+						<span class="h-1.5 w-1.5 rounded-full bg-primary/70"></span>
+						<span>Syncing latest context</span>
+					</div>
 				{/if}
 
 				{#each displayMessages as message (message.id)}

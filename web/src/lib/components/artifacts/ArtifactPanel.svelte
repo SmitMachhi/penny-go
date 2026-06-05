@@ -193,6 +193,7 @@
 				{sessionKey}
 				version={selectedVersion}
 				pdfAvailable={previewPdfAvailable}
+				title={activeArtifact?.title ?? null}
 			/>
 		</div>
 	</aside>

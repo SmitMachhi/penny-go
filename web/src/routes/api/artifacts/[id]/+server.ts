@@ -7,18 +7,8 @@ import {
 	getArtifactMeta,
 	readArtifactPdfBytes
 } from '$lib/server/artifact-storage.js';
+import { parseArtifactVersionParam } from '$lib/server/artifact-route.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
-
-function parseVersionParam(value: string | null, latestVersion: number): number {
-	if (!value) {
-		return latestVersion;
-	}
-	const parsed = Number.parseInt(value, 10);
-	if (!Number.isInteger(parsed) || parsed < 1 || parsed > latestVersion) {
-		throw error(400, 'invalid artifact version');
-	}
-	return parsed;
-}
 
 export async function GET(event) {
 	return withApiCatch(async () => {
@@ -33,7 +23,7 @@ export async function GET(event) {
 			throw error(404, 'artifact not found');
 		}
 
-		const version = parseVersionParam(
+		const version = parseArtifactVersionParam(
 			event.url.searchParams.get('version'),
 			meta.latestVersion
 		);

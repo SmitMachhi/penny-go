@@ -7,6 +7,7 @@ import {
 	getArtifactMeta,
 	readArtifactPdfBytes
 } from '$lib/server/artifact-storage.js';
+import { parseArtifactVersionParam } from '$lib/server/artifact-route.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
 export async function GET(event) {
@@ -27,11 +28,10 @@ export async function GET(event) {
 			throw error(404, 'artifact not found');
 		}
 
-		const versionParam = event.url.searchParams.get('version');
-		const version = versionParam ? Number.parseInt(versionParam, 10) : meta.latestVersion;
-		if (!Number.isInteger(version) || version < 1 || version > meta.latestVersion) {
-			throw error(400, 'invalid artifact version');
-		}
+		const version = parseArtifactVersionParam(
+			event.url.searchParams.get('version'),
+			meta.latestVersion
+		);
 
 		const pdfReady = await artifactPdfExists(sessionKey, artifactId, version);
 		if (!pdfReady) {

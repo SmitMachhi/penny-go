@@ -1,5 +1,5 @@
 import type { FundingBriefProgram } from './funding-brief-types.ts';
-import { CONFIDENCE_BADGE_STYLES, VERDICT_BADGE_STYLES } from './penny-brand.ts';
+import { CONFIDENCE_BADGE_STYLES, VERDICT_BADGE_STYLES } from '../penny-brand.ts';
 import { escapeHtml, formatSourceLinkLabel } from './funding-brief-html.ts';
 
 function renderBulletList(items: string[], className?: string): string {

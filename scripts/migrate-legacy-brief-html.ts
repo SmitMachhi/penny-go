@@ -1,10 +1,10 @@
 import { readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { isLegacySlideHtml } from '../shared/legacy/funding-brief-html.ts';
+import { renderFundingBriefDocumentHtml } from '../shared/legacy/funding-brief-document.ts';
+import type { FundingBriefRecord } from '../shared/legacy/funding-brief-types.ts';
 import { LEGACY_BRIEF_FILENAME, LEGACY_SLIDES_FILENAME } from '../shared/penny-paths.ts';
-import { isLegacySlideHtml } from '../shared/funding-brief-html.ts';
-import { renderFundingBriefDocumentHtml } from '../shared/funding-brief-document.ts';
-import type { FundingBriefRecord } from '../shared/funding-brief-types.ts';
 
 const REPO_ROOT = process.env.PENNY_REPO_ROOT?.trim() || process.cwd();
 const ARTIFACTS_ROOT = join(REPO_ROOT, 'workspace', 'artifacts');

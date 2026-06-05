@@ -13,7 +13,7 @@ import type {
 import {
 	classifyFundingBenefitScope,
 	containsActionableLoanLikeLanguage
-} from './funding-benefit-scope.ts';
+} from '../funding-benefit-scope.ts';
 
 export type {
 	FundingBriefBusiness,

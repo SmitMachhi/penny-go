@@ -25,6 +25,8 @@ RECOMMENDATION_HEADING_RE = re.compile(
 )
 VERIFIED_LABEL_RE = re.compile(r"\bVerified(?: live)?\b|\bNewly discovered\b", re.IGNORECASE)
 NON_LOAN_SCOPE_RE = re.compile(r"\bnon[- ]loan\b", re.IGNORECASE)
+MARKDOWN_HEADING_RE = re.compile(r"^\s*(#{1,6})\s+(.+?)\s*$")
+RULED_OUT_HEADING_RE = re.compile(r"\b(ruled out|not a fit|outside scope|what to skip)\b", re.IGNORECASE)
 MAX_RECOMMENDATIONS = 5
 HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
@@ -106,8 +108,26 @@ def first_index(tools: list[str], name: str) -> int | None:
 
 
 def loanlike_match(response: str) -> re.Match[str] | None:
-    scoped_response = NON_LOAN_SCOPE_RE.sub("nonloan", response)
+    scoped_response = NON_LOAN_SCOPE_RE.sub("nonloan", strip_ruled_out_sections(response))
     return LOANLIKE_RE.search(scoped_response)
+
+
+def strip_ruled_out_sections(response: str) -> str:
+    kept_lines: list[str] = []
+    ruled_out_level: int | None = None
+    for line in response.splitlines():
+        heading = MARKDOWN_HEADING_RE.match(line)
+        if heading:
+            level = len(heading.group(1))
+            is_ruled_out = RULED_OUT_HEADING_RE.search(heading.group(2)) is not None
+            if ruled_out_level is None and is_ruled_out:
+                ruled_out_level = level
+            elif ruled_out_level is not None and level <= ruled_out_level:
+                ruled_out_level = level if is_ruled_out else None
+
+        if ruled_out_level is None:
+            kept_lines.append(line)
+    return "\n".join(kept_lines)
 
 
 def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | None) -> list[CheckResult]:

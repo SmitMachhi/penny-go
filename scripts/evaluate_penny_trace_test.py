@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from evaluate_penny_trace import parse_tool_sequence
+from evaluate_penny_trace import loanlike_match, parse_tool_sequence, strip_ruled_out_sections
 
 
 def tool_message(*parts: dict[str, object]) -> str:
@@ -47,6 +47,49 @@ class ParseToolSequenceTest(unittest.TestCase):
                 parse_tool_sequence(session_path),
                 ["search_corpus", "read_official_source"],
             )
+
+
+class LoanScopeTest(unittest.TestCase):
+    def test_loan_language_is_allowed_inside_ruled_out_section(self) -> None:
+        response = "\n".join(
+            [
+                "## What's Ruled Out",
+                "",
+                "- Futurpreneur is a loan, so skip it.",
+                "",
+                "## What's Open",
+                "",
+                "Vancouver Island North Tourism Events & Experiences Fund is conditional.",
+            ]
+        )
+
+        self.assertIsNone(loanlike_match(response))
+
+    def test_loan_language_still_fails_outside_ruled_out_section(self) -> None:
+        response = "\n".join(
+            [
+                "## What's Open",
+                "",
+                "Futurpreneur is a useful loan for this startup.",
+            ]
+        )
+
+        self.assertIsNotNone(loanlike_match(response))
+
+    def test_strip_ruled_out_sections_keeps_later_sections(self) -> None:
+        response = "\n".join(
+            [
+                "## What's Ruled Out",
+                "### Futurpreneur",
+                "Loan details.",
+                "## Next Steps",
+                "Register the business.",
+            ]
+        )
+
+        stripped = strip_ruled_out_sections(response)
+        self.assertNotIn("Loan details", stripped)
+        self.assertIn("Register the business", stripped)
 
 
 if __name__ == "__main__":

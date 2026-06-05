@@ -8,7 +8,12 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from evaluate_penny_trace import loanlike_match, parse_tool_sequence, strip_ruled_out_sections
+from evaluate_penny_trace import (
+    classify_response_outcome,
+    loanlike_match,
+    parse_tool_sequence,
+    strip_ruled_out_sections,
+)
 
 
 def tool_message(*parts: dict[str, object]) -> str:
@@ -90,6 +95,30 @@ class LoanScopeTest(unittest.TestCase):
         stripped = strip_ruled_out_sections(response)
         self.assertNotIn("Loan details", stripped)
         self.assertIn("Register the business", stripped)
+
+    def test_not_a_loan_does_not_fail(self) -> None:
+        response = "RTRI is a non-repayable contribution, not a loan."
+        self.assertIsNone(loanlike_match(response))
+
+    def test_worth_a_call_repayable_fails(self) -> None:
+        response = "ACOA BDP is a repayable contribution worth a call."
+        self.assertIsNotNone(loanlike_match(response))
+
+
+class ResponseOutcomeTest(unittest.TestCase):
+    def test_detects_scope_refusal(self) -> None:
+        response = (
+            "Penny only works with Canadian businesses. This is personal training, "
+            "so it is outside my scope."
+        )
+        self.assertEqual(classify_response_outcome(response), "scope_refusal")
+
+    def test_detects_gate_question(self) -> None:
+        response = (
+            "Do you have a registered business, or is this still a pre-revenue idea "
+            "without a legal entity?"
+        )
+        self.assertEqual(classify_response_outcome(response), "gate_question")
 
 
 if __name__ == "__main__":

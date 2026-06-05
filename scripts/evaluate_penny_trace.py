@@ -17,6 +17,7 @@ sys.path.insert(0, str(SHARED_DIR))
 from load_loan_heuristic import loanlike_pattern
 
 Scenario = Literal["path-a", "path-b"]
+OutcomeMode = Literal["normal", "gate_question", "scope_refusal"]
 
 LOANLIKE_RE = loanlike_pattern()
 RECOMMENDATION_HEADING_RE = re.compile(
@@ -27,7 +28,22 @@ VERIFIED_LABEL_RE = re.compile(r"\bVerified(?: live)?\b|\bNewly discovered\b", r
 NON_LOAN_SCOPE_RE = re.compile(r"\bnon[- ]loan\b", re.IGNORECASE)
 MARKDOWN_HEADING_RE = re.compile(r"^\s*(#{1,6})\s+(.+?)\s*$")
 RULED_OUT_HEADING_RE = re.compile(r"\b(ruled out|not a fit|outside scope|what to skip)\b", re.IGNORECASE)
+SCOPE_REFUSAL_RE = re.compile(
+    r"\b(outside my scope|outside scope|individual benefit seeker|personal training|not starting a business)\b",
+    re.IGNORECASE,
+)
+GATE_QUESTION_RE = re.compile(
+    r"\?\s*$|\b(do you have|what province|what territory|registered business|incorporat|timeline)\b",
+    re.IGNORECASE | re.MULTILINE,
+)
+NEGATED_LOAN_RE = re.compile(
+    r"\b(?:not|no|without|exclude|excluded|ruled out|skip|not eligible for)\s+"
+    r"(?:a\s+)?(?:loan|loans|repayable contribution|repayable contributions)"
+    r"(?:\s+or\s+repayable contributions)?\b",
+    re.IGNORECASE,
+)
 MAX_RECOMMENDATIONS = 5
+MAX_GATE_QUESTION_CHARS = 900
 HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 
@@ -109,6 +125,7 @@ def first_index(tools: list[str], name: str) -> int | None:
 
 def loanlike_match(response: str) -> re.Match[str] | None:
     scoped_response = NON_LOAN_SCOPE_RE.sub("nonloan", strip_ruled_out_sections(response))
+    scoped_response = NEGATED_LOAN_RE.sub("", scoped_response)
     return LOANLIKE_RE.search(scoped_response)
 
 
@@ -130,10 +147,61 @@ def strip_ruled_out_sections(response: str) -> str:
     return "\n".join(kept_lines)
 
 
-def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | None) -> list[CheckResult]:
+def classify_response_outcome(response: str) -> OutcomeMode:
+    if SCOPE_REFUSAL_RE.search(response):
+        return "scope_refusal"
+    is_short_question = len(response) <= MAX_GATE_QUESTION_CHARS and "?" in response
+    if is_short_question and GATE_QUESTION_RE.search(response):
+        return "gate_question"
+    return "normal"
+
+
+def outcome_checks(
+    outcome: OutcomeMode,
+    response: str,
+    summary: dict[str, object] | None,
+) -> list[CheckResult]:
+    loan_hit = loanlike_match(response)
+    checks = [
+        CheckResult(
+            outcome,
+            True,
+            "response refused out-of-scope request"
+            if outcome == "scope_refusal"
+            else "response asked an eligibility-changing question",
+        ),
+        CheckResult(
+            "no_loan_products",
+            loan_hit is None,
+            "no actionable loan product"
+            if loan_hit is None
+            else f"loan-like phrase matched: {loan_hit.group(0)!r}",
+        ),
+    ]
+    if summary is not None:
+        failures = summary.get("failures", 0)
+        checks.append(
+            CheckResult(
+                "no_tool_failures",
+                failures == 0,
+                f"tool failures reported: {failures}",
+            )
+        )
+    return checks
+
+
+def evaluate(
+    scenario: Scenario,
+    session_path: Path,
+    agent_json_path: Path | None,
+    outcome_mode: OutcomeMode | None = None,
+) -> list[CheckResult]:
     tools = parse_tool_sequence(session_path)
     response = extract_response_text(agent_json_path, session_path)
     summary = extract_tool_summary(agent_json_path)
+    outcome = outcome_mode or classify_response_outcome(response)
+    if outcome != "normal":
+        return outcome_checks(outcome, response, summary)
 
     corpus_idx = first_index(tools, "search_corpus")
     web_idx = first_index(tools, "web_search")
@@ -246,13 +314,18 @@ def main() -> int:
     parser.add_argument("--scenario", choices=("path-a", "path-b"), required=True)
     parser.add_argument("--session-file", type=Path, required=True)
     parser.add_argument("--agent-json", type=Path, default=None)
+    parser.add_argument(
+        "--outcome-mode",
+        choices=("normal", "gate_question", "scope_refusal"),
+        default=None,
+    )
     args = parser.parse_args()
 
     if not args.session_file.is_file():
         print(f"session file not found: {args.session_file}", file=sys.stderr)
         return 2
 
-    checks = evaluate(args.scenario, args.session_file, args.agent_json)
+    checks = evaluate(args.scenario, args.session_file, args.agent_json, args.outcome_mode)
     passed = sum(1 for check in checks if check.passed)
     total = len(checks)
 

@@ -24,4 +24,37 @@ describe('sanitizeAssistantDisplayText', () => {
 		expect(output).not.toMatch(/\/api\/artifacts\//);
 		expect(output).toContain('Open memo');
 	});
+
+	it('replaces actionable loan-like funding recommendations with a scope correction', () => {
+		const output = sanitizeAssistantDisplayText(
+			[
+				'### CanNor — REGI & IDEANorth',
+				'',
+				'- Fit: Strong.',
+				'- Important note: for-profit entities may receive repayable contributions.',
+				'- Next step: Contact the regional office.'
+			].join('\n')
+		);
+
+		expect(output).toContain('scope issue');
+		expect(output).not.toContain('CanNor');
+		expect(output).not.toContain('repayable');
+	});
+
+	it('allows loan-like language inside ruled-out sections', () => {
+		const output = sanitizeAssistantDisplayText(
+			[
+				'## Strong fits',
+				'',
+				'SEED Strategic Investments is worth pursuing.',
+				'',
+				'## Ruled out',
+				'',
+				'- IDEANorth is repayable for for-profits.'
+			].join('\n')
+		);
+
+		expect(output).toContain('SEED Strategic Investments');
+		expect(output).toContain('IDEANorth');
+	});
 });

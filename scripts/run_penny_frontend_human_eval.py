@@ -32,6 +32,14 @@ HTTP_TIMEOUT_SECONDS = 5
 EXIT_OK = 0
 EXIT_RUN_FAILURE = 1
 EXIT_USAGE = 2
+VISIBLE_ASSISTANT_TEXT_EXPRESSION = """
+JSON.stringify(
+  Array.from(document.querySelectorAll('section .penny-markdown'))
+    .map((element) => element.innerText.trim())
+    .filter(Boolean)
+    .at(-1) ?? ''
+)
+""".strip()
 REQUIRED_PENNY_SKILLS = frozenset(
     ["penny-consultation-modes", "penny-funding", "penny-artifacts", "stop-slop"]
 )
@@ -273,6 +281,15 @@ def extract_last_assistant_text(session_file: Path) -> str:
     return last_assistant
 
 
+def extract_visible_assistant_text(session_name: str) -> str:
+    visible_text = browser_eval(session_name, VISIBLE_ASSISTANT_TEXT_EXPRESSION)
+    return visible_text.strip() if isinstance(visible_text, str) else ""
+
+
+def choose_agent_response_text(visible_text: str, session_text: str) -> str:
+    return visible_text.strip() or session_text
+
+
 def write_agent_json(agent_json: Path, final_text: str) -> None:
     write_json(agent_json, {"payloads": [{"text": final_text}], "meta": {"toolSummary": {"failures": 0}}})
 
@@ -350,7 +367,9 @@ def run_case(case: EvalCase, run_dir: Path, browser_session: str, base_url: str)
 
     copied_session = case_dir / "session.jsonl"
     shutil.copy2(session_file, copied_session)
-    final_text = extract_last_assistant_text(copied_session)
+    session_text = extract_last_assistant_text(copied_session)
+    visible_text = extract_visible_assistant_text(browser_session)
+    final_text = choose_agent_response_text(visible_text, session_text)
     agent_json = case_dir / "agent.json"
     write_agent_json(agent_json, final_text)
     trace_status = score_case(case, case_dir, copied_session, agent_json)

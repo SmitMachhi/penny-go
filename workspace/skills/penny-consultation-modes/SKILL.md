@@ -7,7 +7,7 @@ description: Two consultation entry paths — opportunity-backed vs aspiration-f
 
 Penny offers **two ways to start**. Both end in the same deliverable today: a **funding-aligned operating plan** (`create_funding_brief` → panel + PDF). This is not a full MBA business plan — it is what to do, which verified programs to pursue, and how to shape the business narrative to qualify.
 
-**Do not confuse** these modes with **corpus hit** vs **corpus miss** (see `penny-funding` skill) — those are internal search fallbacks only.
+**Do not confuse** these modes with **strong corpus pool** vs **weak corpus pool** (see `penny-funding`) — those are internal search judgments only.
 
 ## Mode detection
 
@@ -49,10 +49,11 @@ Ask only what changes eligibility or `search_corpus` keywords:
 
 ### Workflow
 
+Follow the `penny-funding` consultant loop:
+
 ```text
-Intake → search_corpus → read_official_source per candidate
-      → [corpus miss → web_search (official domains) → read_official_source]
-      → rank ≤5 programs → create_funding_brief (section pattern below)
+snapshot -> search_corpus -> weak-pool test -> optional web_search
+         -> read_official_source -> fit bands -> levers -> delivery
 ```
 
 ### Artifact `bodyMarkdown` pattern
@@ -63,8 +64,11 @@ Use this section order when it serves the user:
 2. `## Recommendation`
 3. `## Context` — current business snapshot
 4. `## Plan alignment` — what to emphasize or change to qualify (activities, capex, hiring, geography, timing). Label as direction, not legal or tax advice.
-5. `## Programs to pursue` — `### 1.` … with **Verdict:** and **Next step:**
-6. `## Strategy` — `- [ ]` checklists and `1.` numbered steps
+5. `## Strong fits`
+6. `## Conditional fits` when needed
+7. `## Qualification levers` when a fit can improve
+8. `## Ruled out` when it builds trust
+9. `## Strategy` — `- [ ]` checklists and `1.` numbered steps
 
 **Chat:** short summary + pointer to the funding plan in the panel.
 
@@ -83,9 +87,15 @@ Use this section order when it serves the user:
 
 ### Workflow
 
-Same tools as opportunity-backed. After verification, give a short opportunity landscape in chat, then `create_funding_brief`.
+Same consultant loop as opportunity-backed. The difference is synthesis:
 
-If corpus is thin: say so, use corpus-miss flow (`web_search` on official domains only), do not invent programs.
+```text
+snapshot -> search_corpus -> weak-pool test -> optional web_search
+         -> read_official_source -> fundable business shape -> fit bands -> levers
+```
+
+If corpus is thin, say so, use weak-pool escalation in `penny-funding`, and do
+not invent programs.
 
 ### Artifact `bodyMarkdown` pattern
 
@@ -93,8 +103,11 @@ If corpus is thin: say so, use corpus-miss flow (`web_search` on official domain
 2. `## Recommendation` — honest if few verified programs
 3. `## Aspiration` — industry, location, constraints
 4. `## Recommended business shape` — hypothesis: structure, activities, geography, project types that unlock top programs. Validate with advisors.
-5. `## Programs to pursue` — same program block rules as `penny-artifacts`
-6. `## Launch strategy` — registration, first revenue, hire, capex — ordered by verified intake/deadlines where known
+5. `## Strong paths`
+6. `## Conditional paths`
+7. `## Qualification levers`
+8. `## Ruled out` when useful
+9. `## Launch strategy` — registration, first revenue, hire, capex — ordered by verified intake/deadlines where known
 
 **Chat:** short landscape + pointer to panel.
 
@@ -103,9 +116,9 @@ If corpus is thin: say so, use corpus-miss flow (`web_search` on official domain
 ## Shared rules
 
 - Follow `workspace/AGENTS.md` tool order and evidence gate.
-- Follow `penny-funding` for corpus hit/miss.
+- Follow `penny-funding` for the case-file loop, weak-pool escalation, and fit bands.
 - Follow `penny-artifacts` for when to call `create_funding_brief` and actionability (`- [ ]` or `1.`).
-- Write for the **memory/action list** panel: recommendation and context before ranked programs with **Next step:**.
+- Write for the **memory/action list** panel: recommendation and context before fit bands with **Next step:**.
 
 ## Later (out of scope)
 

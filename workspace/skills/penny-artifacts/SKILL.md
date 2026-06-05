@@ -13,7 +13,7 @@ Use `create_funding_brief` to deliver a **funding-aligned operating plan** — o
 
 **Model:** Penny writes markdown → system generates PDF. No HTML templates, no `{{program:N}}` placeholders.
 
-**Memo layout:** Write a consultant-grade **funding memo** the owner will download as PDF. Lead with Recommendation + Context or Aspiration, ranked programs with **Verdict:** and **Next step:**, then Strategy or Launch strategy checklists. The web panel previews the **same PDF** they download.
+**Memo layout:** Write a consultant-grade **funding memo** the owner will download as PDF. Lead with Recommendation + Context or Aspiration, fit bands with **Fit:**, **Verdict:**, and **Next step:**, then Strategy or Launch strategy checklists. The web panel previews the **same PDF** they download.
 
 ## Consultation mode sections
 
@@ -24,14 +24,14 @@ Follow `penny-consultation-modes` for intake. Use the matching `bodyMarkdown` se
 | **Opportunity-backed** | `## Context`, `## Plan alignment` | `## Strategy` |
 | **Aspiration-first** | `## Aspiration`, `## Recommended business shape` | `## Launch strategy` |
 
-Both modes still need `## Recommendation` and `## Programs to pursue` with `### N.` blocks, **Verdict:**, and **Next step:** per program.
+Both modes still need `## Recommendation`, fit-band sections, **Verdict:**, and **Next step:** per actionable program.
 
 ## When to create
 
 Call `create_funding_brief` when **any** of these apply:
 
 - The user asks for a strategy, plan, brief, PDF, export, artifact, playbook, or action plan.
-- You are delivering **two or more** verified program recommendations with execution detail.
+- You are delivering a substantial fit assessment or **two or more** verified program recommendations with execution detail.
 - The answer would need a comparison, checklist, or more than ~15 lines of structured program data.
 - The user says "show me everything" or "what should I do next."
 
@@ -50,7 +50,7 @@ Write like a funding consultant who **just finished a call with this owner**:
 - **One document** — situation and recommendation early; programs and execution after.
 - **Cover facts on separate lines** — immediately under `# Title`, put each of **Business:**, **Stage:**, **Target:**, and **Strategy:** on its own line (blank line between). Never run all four in one paragraph; they will print as a single blob.
 - **Lead with what matters** from the conversation — urgency, blockers, who is executing, programs they asked about.
-- **Do not use a fixed template.** Skip sections that do not serve this user (but prefer the mode-specific section names when the mode is clear).
+- **Do not use a fixed template.** Skip sections that do not serve this user, but use fit-band sections whenever naming programs.
 - Include **printable checklists** (`- [ ]`) and/or **numbered steps** (`1.`) in `bodyMarkdown`.
 - Write program details **directly in markdown** (headings, tables, bullets) — do not use placeholders.
 - Verification appendix is added automatically at PDF time — do not paste raw URL walls in markdown.
@@ -62,7 +62,7 @@ Write like a funding consultant who **just finished a call with this owner**:
    - `title`, `triggerReason`
    - `bodyMarkdown` — full plan in markdown (GFM: headings, tables, task lists, links)
    - `verification.verifiedAt` (ISO timestamp), `verification.urlsChecked[]`
-   - Optional `evidence.programs[]` (0–5) for audit metadata only — **not rendered into the PDF body**
+   - `evidence.programs[]` (0–5) for actionable programs — audit metadata only, **not rendered into the PDF body**
 2. To update an existing artifact, pass the same `artifactId` from the prior tool result (creates a new immutable version).
 3. On updates, include optional `changeSummary` — one sentence on what changed in this revision.
 
@@ -72,9 +72,24 @@ The tool binds to the active Penny web chat session automatically — do not pas
 
 If you include `evidence.programs`, each entry needs:
 
-- `name`, `officialUrl`, `confidence` (`verified_live`, `newly_discovered`, `could_not_verify`)
+- `name`
+- `officialUrl`
+- `confidence` (`verified_live`, `newly_discovered`, `could_not_verify`)
+- `verdict` (`pursue_now`, `explore`, `defer`, `skip`)
 
 These support verification and panel metadata. **Put the user-facing program narrative in `bodyMarkdown`.**
+
+Use this mapping:
+
+| Fit band | `verdict` |
+|----------|-----------|
+| Strong fit | `pursue_now` |
+| Conditional fit | `explore` |
+| Stretch | `defer` |
+| Ruled out | `skip` |
+
+Do not include `could_not_verify` as an actionable program. A `could_not_verify`
+program must use `skip`.
 
 Legacy `programs[]` at the top level is accepted as an alias for `evidence.programs`.
 

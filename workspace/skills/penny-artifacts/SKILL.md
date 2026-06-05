@@ -97,6 +97,18 @@ actionable program sections.
 
 Legacy `programs[]` at the top level is accepted as an alias for `evidence.programs`.
 
+Before calling `create_funding_brief`, audit the body:
+
+- Any loan, repayable contribution, loan guarantee, loan insurance, loan-interest
+  subsidy, or unclear repayment product must be under `## Ruled out`.
+- Do not write "worth a call", "best bet", "strong", "conditional", or "next
+  step" for repayable programs.
+- `evidence.programs[]` may include loan-like products only with
+  `verdict: "skip"`.
+- If the artifact tool rejects the brief for loan-like wording, revise the memo
+  by moving the program to `## Ruled out`; do not retry the same actionable
+  recommendation.
+
 ## Actionability requirement
 
 `bodyMarkdown` must include at least one of:

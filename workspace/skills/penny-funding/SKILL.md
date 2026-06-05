@@ -121,6 +121,29 @@ amount: stated value | unknown
 deadline_or_intake: stated value | unknown
 ```
 
+Before assigning any fit band, classify the candidate:
+
+```text
+candidate:
+official_url:
+benefit_type:
+repayment_status: non_repayable | repayable | loan | loan_guarantee | loan_insurance | unknown
+scope_verdict: actionable | ruled_out
+scope_reason:
+```
+
+Hard rule:
+
+- `repayment_status` of `repayable`, `loan`, `loan_guarantee`, or
+  `loan_insurance` means `scope_verdict: ruled_out`.
+- `repayment_status: unknown` means `scope_verdict: ruled_out` unless the
+  official page clearly describes a grant, rebate, wage subsidy, voucher, or
+  tax credit elsewhere on the same page.
+- Ruled-out candidates cannot use Strong, Conditional, Stretch, Explore, "worth
+  a call", "best bet", or next-step application language.
+- If a repayable or loan-like program is strategically nearby, mention it only
+  under `## Ruled out` with the reason: "outside your non-loan scope."
+
 Rules:
 
 - If `non_loan_verified` is no, rule it out.

@@ -142,6 +142,34 @@ test('validateCreateFundingArtifactInput rejects actionable loan-like program se
 	}
 });
 
+test('validateCreateFundingArtifactInput rejects numbered h2 loan-like program sections', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Northern manufacturing funding',
+		'',
+		'## 1. CanNor IDEANorth — Best overall fit (repayable contribution)',
+		'',
+		'**Fit:** Strong',
+		'',
+		'**Type:** Repayable contribution for for-profit companies',
+		'',
+		'1. Contact the program officer.'
+	].join('\n');
+	input.evidence.programs[0] = {
+		name: 'CanNor IDEANorth',
+		officialUrl: 'https://example.ca/cannor',
+		confidence: 'verified_live',
+		verdict: 'pursue_now'
+	};
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
+	}
+});
+
 test('validateCreateFundingArtifactInput allows loan-like language when ruled out', () => {
 	const input = buildValidInput();
 	input.bodyMarkdown = [
@@ -160,6 +188,39 @@ test('validateCreateFundingArtifactInput allows loan-like language when ruled ou
 		officialUrl: 'https://example.ca/picturenl-loan',
 		confidence: 'verified_live',
 		verdict: 'skip'
+	};
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, true);
+});
+
+test('validateCreateFundingArtifactInput allows loan-like language in does-not-fit section', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Nova Scotia circular economy funding',
+		'',
+		'## Programs & Incentives',
+		'',
+		'### 1. Divert NS Value-Added Manufacturing',
+		'',
+		'**Verdict:** Explore',
+		'',
+		'It is a grant, not a loan.',
+		'',
+		'## What doesn\'t fit at this stage',
+		'',
+		'### ACOA Business Development Program',
+		'',
+		'**Why not:** Repayable contributions are excluded by scope.',
+		'',
+		'1. Contact Divert NS first.'
+	].join('\n');
+	input.evidence.programs[0] = {
+		name: 'Divert NS Value-Added Manufacturing',
+		officialUrl: 'https://example.ca/divert',
+		confidence: 'verified_live',
+		verdict: 'explore'
 	};
 
 	const result = validateCreateFundingArtifactInput(input);

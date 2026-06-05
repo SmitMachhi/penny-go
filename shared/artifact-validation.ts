@@ -1,7 +1,6 @@
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
-import loanHeuristic from '@penny/shared/loan-heuristic.json' with { type: 'json' };
 import type {
 	ArtifactEvidence,
 	ArtifactEvidenceProgram,
@@ -17,6 +16,7 @@ import type {
 	FundingConfidence
 } from '@penny/shared/artifact-types';
 import { repairVersionPdfFromLegacy, resolveArtifactPdfPaths } from '@penny/shared/artifact-pdf-locations';
+import { classifyFundingBenefitScope } from '@penny/shared/funding-benefit-scope';
 import {
 	DOCUMENT_MD_FILENAME,
 	formatArtifactVersionSegment,
@@ -58,14 +58,13 @@ const MARKDOWN_NUMBERED_STEP_PATTERN = /^\s*\d+\.\s+/m;
 const PROGRAM_MEMO_SECTION_PATTERN =
 	/^##\s+(Strong fits|Conditional fits|Stretch|Programs to pursue|Ruled out)\b/im;
 const NUMBERED_PROGRAM_HEADING_PATTERN = /^#{3,4}\s+\d+[.)]?\s+/m;
-const LOANLIKE_PATTERN = new RegExp(loanHeuristic.regex, 'iu');
 const H2_HEADING_PATTERN = /^##\s+(.+)$/;
 const PROGRAM_HEADING_PATTERN = /^#{3,4}\s+(.+)$/;
-const NON_LOAN_SCOPE_PATTERN = /\bnon[- ]loan\b/giu;
-const NON_REPAYABLE_PATTERN = /\bnon[- ]repayable\b/giu;
-const RULED_OUT_SECTION_PATTERN = /\b(ruled out|not a fit|excluded|outside scope)\b/i;
+const NUMBERED_HEADING_PATTERN = /^\s*\d+[.)]?\s+/;
+const RULED_OUT_SECTION_PATTERN =
+	/\b(ruled out|not a fit|excluded|outside scope|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
 const ACTIONABLE_SECTION_PATTERN =
-	/\b(strong fits|conditional fits|stretch|programs to pursue|recommendations?|recommended|conditional|explore|pursue now)\b/i;
+	/\b(strong fits|conditional fits|stretch|programs to pursue|programs & incentives|recommendations?|recommended|conditional|explore|pursue now)\b/i;
 
 type MemoSection = 'neutral' | 'actionable' | 'ruled_out';
 
@@ -242,12 +241,6 @@ function hasProgramMemoMarkdown(bodyMarkdown: string): boolean {
 	);
 }
 
-function normalizeLoanText(line: string): string {
-	return line
-		.replace(NON_LOAN_SCOPE_PATTERN, 'nonloan')
-		.replace(NON_REPAYABLE_PATTERN, 'nonrepayable');
-}
-
 function classifyMemoSection(headingText: string): MemoSection {
 	if (RULED_OUT_SECTION_PATTERN.test(headingText)) {
 		return 'ruled_out';
@@ -256,7 +249,7 @@ function classifyMemoSection(headingText: string): MemoSection {
 }
 
 function lineLooksLoanLike(line: string): boolean {
-	return LOANLIKE_PATTERN.test(normalizeLoanText(line));
+	return classifyFundingBenefitScope(line).reason === 'loan_like';
 }
 
 function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
@@ -266,8 +259,12 @@ function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
 	for (const line of bodyMarkdown.split('\n')) {
 		const h2Match = H2_HEADING_PATTERN.exec(line);
 		if (h2Match) {
-			section = classifyMemoSection(h2Match[1]);
-			insideProgramBlock = false;
+			const headingText = h2Match[1];
+			section = classifyMemoSection(headingText);
+			insideProgramBlock = NUMBERED_HEADING_PATTERN.test(headingText);
+			if (section !== 'ruled_out' && lineLooksLoanLike(headingText)) {
+				return true;
+			}
 			continue;
 		}
 

@@ -8,13 +8,17 @@ export type FundingBenefitScope = {
 
 const LOAN_LIKE_PATTERN =
 	/\b(?:loan|loan[- ]guarantee|loan[- ]insurance|low[- ]cost financing|low interest|repayable contribution|repayable royalty|repayable financing|forgivable loan|loan interest)\b/i;
+const REPAYABLE_LIKE_PATTERN =
+	/\b(?:repayable contribution|repayable contributions|repayable royalty|repayable financing|forgivable loan)\b/i;
 const NON_LOAN_PATTERN =
 	/\b(?:non[- ]repayable|grant|rebate|tax credit|wage subsidy|subsidy|voucher|contribution funding|cost[- ]share)\b/i;
 const NEGATED_LOAN_PATTERN =
-	/\b(?:not|no|without|exclude|excluded|ruled out|skip|not eligible for)\s+(?:a\s+)?(?:loan|loans|repayable contribution|repayable contributions)\b/i;
+	/\b(?:not|no|without|exclude|excluded|ruled out|skip|not eligible for)\s+(?:a\s+)?(?:loan|loans|repayable contribution|repayable contributions)(?:\s+or\s+repayable contributions)?\b/i;
+const REJECTED_LOAN_CONTEXT_PATTERN =
+	/\b(?:excluded by scope|outside scope|ruled out|skip|you said no loans|not eligible|not a fit|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
 const MARKDOWN_HEADING_PATTERN = /^\s*(#{1,6})\s+(.+?)\s*$/;
 const RULED_OUT_HEADING_PATTERN =
-	/\b(?:ruled out|not a fit|outside scope|what to skip|closed or out|programs ruled out)\b/i;
+	/\b(?:ruled out|not a fit|outside scope|what to skip|closed or out|programs ruled out|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
 
 export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 	const normalized = text.trim();
@@ -22,12 +26,16 @@ export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 		return { allowed: false, reason: 'unknown' };
 	}
 
-	const loanLike = LOAN_LIKE_PATTERN.exec(normalized);
-	if (loanLike && !NEGATED_LOAN_PATTERN.test(normalized)) {
+	const loanLike = actionableLoanLikeMatch(normalized);
+	if (loanLike) {
 		return { allowed: false, reason: 'loan_like', match: loanLike[0] };
 	}
 
-	if (NON_LOAN_PATTERN.test(normalized) || NEGATED_LOAN_PATTERN.test(normalized)) {
+	if (
+		NON_LOAN_PATTERN.test(normalized) ||
+		NEGATED_LOAN_PATTERN.test(normalized) ||
+		REJECTED_LOAN_CONTEXT_PATTERN.test(normalized)
+	) {
 		return { allowed: true, reason: 'non_loan' };
 	}
 
@@ -36,11 +44,7 @@ export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 
 export function containsActionableLoanLikeLanguage(markdown: string): boolean {
 	const actionableMarkdown = stripRuledOutMarkdownSections(markdown);
-	const loanLike = LOAN_LIKE_PATTERN.exec(actionableMarkdown);
-	if (!loanLike) {
-		return false;
-	}
-	return !NEGATED_LOAN_PATTERN.test(actionableMarkdown);
+	return actionableMarkdown.split('\n').some((line) => actionableLoanLikeMatch(line) !== null);
 }
 
 export function stripRuledOutMarkdownSections(markdown: string): string {
@@ -65,4 +69,24 @@ export function stripRuledOutMarkdownSections(markdown: string): string {
 	}
 
 	return keptLines.join('\n');
+}
+
+function actionableLoanLikeMatch(text: string): RegExpExecArray | null {
+	const loanLike = LOAN_LIKE_PATTERN.exec(text);
+	if (!loanLike) {
+		return null;
+	}
+	if (REJECTED_LOAN_CONTEXT_PATTERN.test(text)) {
+		return null;
+	}
+
+	const negatedLoan = NEGATED_LOAN_PATTERN.exec(text);
+	if (negatedLoan && negatedLoan.index <= loanLike.index) {
+		return null;
+	}
+	if (negatedLoan && !REPAYABLE_LIKE_PATTERN.test(text)) {
+		return null;
+	}
+
+	return loanLike;
 }

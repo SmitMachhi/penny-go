@@ -100,8 +100,29 @@ class LoanScopeTest(unittest.TestCase):
         response = "RTRI is a non-repayable contribution, not a loan."
         self.assertIsNone(loanlike_match(response))
 
+    def test_does_not_fit_section_does_not_fail(self) -> None:
+        response = "\n".join(
+            [
+                "**What doesn't fit at this stage:**",
+                "- ACOA Business Development Program (repayable contributions — excluded by scope)",
+            ]
+        )
+
+        self.assertIsNone(loanlike_match(response))
+
+    def test_scope_rejection_line_does_not_fail(self) -> None:
+        response = "CMHC Rental Construction Financing — a loan, not a grant. You said no loans."
+        self.assertIsNone(loanlike_match(response))
+
     def test_worth_a_call_repayable_fails(self) -> None:
         response = "ACOA BDP is a repayable contribution worth a call."
+        self.assertIsNotNone(loanlike_match(response))
+
+    def test_repayable_but_not_bank_loan_still_fails(self) -> None:
+        response = (
+            "IDEANorth is a repayable contribution for for-profits, "
+            "but interest-free, not a bank loan."
+        )
         self.assertIsNotNone(loanlike_match(response))
 
 

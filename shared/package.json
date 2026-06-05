@@ -23,6 +23,7 @@
     "./artifact-download-filename": "./artifact-download-filename.ts",
     "./artifact-pdf-locations": "./artifact-pdf-locations.ts",
     "./artifact-print-html": "./artifact-print-html.ts",
+    "./funding-benefit-scope": "./funding-benefit-scope.ts",
     "./penny-brand": "./penny-brand.ts",
     "./loan-heuristic.json": "./loan-heuristic.json"
   }

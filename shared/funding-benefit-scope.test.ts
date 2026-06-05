@@ -28,6 +28,20 @@ test('classifies loan-like benefits as ruled out', () => {
 test('does not treat negative wording as a loan recommendation', () => {
 	assert.equal(containsActionableLoanLikeLanguage('This is not a loan.'), false);
 	assert.equal(containsActionableLoanLikeLanguage('No loans or repayable contributions in the mix.'), false);
+	assert.equal(
+		containsActionableLoanLikeLanguage('CMHC Rental Construction Financing is a loan, not a grant. You said no loans.'),
+		false
+	);
+	assert.equal(
+		containsActionableLoanLikeLanguage('ACOA BDP is a repayable contribution worth a call.'),
+		true
+	);
+	assert.equal(
+		containsActionableLoanLikeLanguage(
+			'IDEANorth is a repayable contribution for for-profits, but interest-free, not a bank loan.'
+		),
+		true
+	);
 });
 
 test('strips ruled-out markdown before actionable loan scan', () => {
@@ -43,5 +57,20 @@ test('strips ruled-out markdown before actionable loan scan', () => {
 	const stripped = stripRuledOutMarkdownSections(markdown);
 	assert.match(stripped, /Strong fits/);
 	assert.doesNotMatch(stripped, /Development Loan/);
+	assert.equal(containsActionableLoanLikeLanguage(markdown), false);
+});
+
+test('strips does-not-fit markdown before actionable loan scan', () => {
+	const markdown = [
+		'## Strong fits',
+		'Divert NS is a grant, not a loan.',
+		'## What doesn\'t fit at this stage',
+		'ACOA Business Development Program is a repayable contribution excluded by scope.',
+		'## Next steps',
+		'Call Divert NS.'
+	].join('\n');
+
+	const stripped = stripRuledOutMarkdownSections(markdown);
+	assert.doesNotMatch(stripped, /ACOA Business Development/);
 	assert.equal(containsActionableLoanLikeLanguage(markdown), false);
 });

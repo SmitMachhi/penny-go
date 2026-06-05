@@ -27,7 +27,17 @@ RECOMMENDATION_HEADING_RE = re.compile(
 VERIFIED_LABEL_RE = re.compile(r"\bVerified(?: live)?\b|\bNewly discovered\b", re.IGNORECASE)
 NON_LOAN_SCOPE_RE = re.compile(r"\bnon[- ]loan\b", re.IGNORECASE)
 MARKDOWN_HEADING_RE = re.compile(r"^\s*(#{1,6})\s+(.+?)\s*$")
-RULED_OUT_HEADING_RE = re.compile(r"\b(ruled out|not a fit|outside scope|what to skip)\b", re.IGNORECASE)
+RULED_OUT_HEADING_RE = re.compile(
+    r"\b(ruled out|not a fit|outside scope|what to skip|what about loans|"
+    r"doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b",
+    re.IGNORECASE,
+)
+REJECTED_LOAN_CONTEXT_RE = re.compile(
+    r"\b(excluded by scope|outside scope|ruled out|skip|you said no loans|not eligible|"
+    r"not a fit|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|"
+    r"what does not fit)\b",
+    re.IGNORECASE,
+)
 SCOPE_REFUSAL_RE = re.compile(
     r"\b(outside my scope|outside scope|individual benefit seeker|personal training|not starting a business)\b",
     re.IGNORECASE,
@@ -125,8 +135,21 @@ def first_index(tools: list[str], name: str) -> int | None:
 
 def loanlike_match(response: str) -> re.Match[str] | None:
     scoped_response = NON_LOAN_SCOPE_RE.sub("nonloan", strip_ruled_out_sections(response))
+    scoped_response = strip_rejected_loan_lines(scoped_response)
     scoped_response = NEGATED_LOAN_RE.sub("", scoped_response)
     return LOANLIKE_RE.search(scoped_response)
+
+
+def strip_rejected_loan_lines(response: str) -> str:
+    kept_lines: list[str] = []
+    previous_lines: list[str] = []
+    for line in response.splitlines():
+        context = "\n".join([*previous_lines[-2:], line])
+        is_rejected_loan_line = LOANLIKE_RE.search(line) and REJECTED_LOAN_CONTEXT_RE.search(context)
+        if not is_rejected_loan_line:
+            kept_lines.append(line)
+        previous_lines.append(line)
+    return "\n".join(kept_lines)
 
 
 def strip_ruled_out_sections(response: str) -> str:

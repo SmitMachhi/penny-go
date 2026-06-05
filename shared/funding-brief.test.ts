@@ -14,6 +14,7 @@ function buildProgram(index: number) {
 		intakeStatus: 'Open',
 		officialUrl: `https://example.ca/program-${index}`,
 		confidence: 'verified_live',
+		verdict: 'pursue_now',
 		nextStep: 'Apply through the portal.'
 	};
 }
@@ -117,5 +118,61 @@ test('validateFundingBriefInput rejects invalid session UUID', () => {
 	assert.equal(result.ok, false);
 	if (!result.ok) {
 		assert.ok(result.errors.some((error) => error.field === 'sessionUuid'));
+	}
+});
+
+test('validateFundingBriefInput rejects actionable loan-like programs', () => {
+	const input = buildValidBrief(1);
+	input.programs[0] = {
+		...input.programs[0],
+		name: 'PictureNL Development Loan',
+		benefitType: 'loan',
+		verdict: 'explore',
+		nextStep: 'Apply before the production deadline.'
+	};
+	const result = validateFundingBriefInput(input);
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'programs[0].benefitType'));
+	}
+});
+
+test('validateFundingBriefInput allows loan-like programs only when skipped', () => {
+	const input = buildValidBrief(1);
+	input.bodyMarkdown = [
+		'# Ontario SaaS funding brief',
+		'',
+		'## Ruled out',
+		'PictureNL Development Loan is a loan, so skip it.',
+		'',
+		'## Next steps',
+		'1. Keep only non-repayable programs in the plan.'
+	].join('\n');
+	input.programs[0] = {
+		...input.programs[0],
+		name: 'PictureNL Development Loan',
+		benefitType: 'loan',
+		verdict: 'skip',
+		nextStep: 'Skip this program because it is a loan.'
+	};
+	const result = validateFundingBriefInput(input);
+	assert.equal(result.ok, true);
+});
+
+test('validateFundingBriefInput rejects actionable bodyMarkdown loan language', () => {
+	const input = buildValidBrief(1);
+	input.bodyMarkdown = [
+		'# Ontario SaaS funding brief',
+		'',
+		'## Strong fits',
+		'ACOA BDP is a repayable contribution worth a call.',
+		'',
+		'## Next steps',
+		'1. Call ACOA.'
+	].join('\n');
+	const result = validateFundingBriefInput(input);
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
 	}
 });

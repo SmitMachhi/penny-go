@@ -10,6 +10,10 @@ import type {
 	FundingConfidence,
 	ProgramVerdict
 } from './funding-brief-types.js';
+import {
+	classifyFundingBenefitScope,
+	containsActionableLoanLikeLanguage
+} from './funding-benefit-scope.ts';
 
 export type {
 	FundingBriefBusiness,
@@ -136,6 +140,37 @@ function programHasActionPath(program: FundingBriefProgram): boolean {
 	return Boolean(program.nextStep?.trim() || (program.steps && program.steps.length > 0));
 }
 
+function programScopeText(program: FundingBriefProgram): string {
+	return [
+		program.name,
+		program.benefitType,
+		program.plainTerms,
+		program.whyFit,
+		program.nextStep,
+		...(program.steps ?? [])
+	]
+		.filter((value): value is string => typeof value === 'string')
+		.join('\n');
+}
+
+function validateProgramBenefitScope(
+	program: FundingBriefProgram,
+	fieldPrefix: string,
+	errors: FundingBriefValidationError[]
+): void {
+	const scope = classifyFundingBenefitScope(programScopeText(program));
+	if (scope.allowed || program.verdict === 'skip') {
+		return;
+	}
+	errors.push({
+		field: `${fieldPrefix}.benefitType`,
+		message:
+			scope.reason === 'loan_like'
+				? `loan-like benefits must use verdict skip and appear only under ruled out (${scope.match})`
+				: 'benefit type must clearly be non-loan for actionable programs'
+	});
+}
+
 function parseProgram(value: unknown, index: number, errors: FundingBriefValidationError[]): FundingBriefProgram | null {
 	const fieldPrefix = `programs[${index}]`;
 	if (!isRecord(value)) {
@@ -182,6 +217,7 @@ function parseProgram(value: unknown, index: number, errors: FundingBriefValidat
 		});
 		return null;
 	}
+	validateProgramBenefitScope(program, fieldPrefix, errors);
 	return program;
 }
 
@@ -270,6 +306,13 @@ function parseFundingBriefContent(
 		return null;
 	}
 	const content = { title, bodyMarkdown, triggerReason, business, programs, verification };
+	if (containsActionableLoanLikeLanguage(content.bodyMarkdown)) {
+		errors.push({
+			field: 'bodyMarkdown',
+			message: 'loan-like benefits must appear only in ruled-out sections'
+		});
+		return null;
+	}
 	if (!hasActionableDocumentContent(content)) {
 		errors.push({
 			field: 'bodyMarkdown',

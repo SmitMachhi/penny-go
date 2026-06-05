@@ -37,6 +37,7 @@ REQUIRED_PENNY_SKILLS = frozenset(
 )
 
 Scenario = Literal["path-a", "path-b"]
+OutcomeMode = Literal["normal", "gate_question", "scope_refusal"]
 
 
 @dataclass(frozen=True)
@@ -102,6 +103,14 @@ def select_cases(cases: list[EvalCase], case_id: str | None, limit: int | None) 
 
 def scenario_for(case: EvalCase) -> Scenario:
     return "path-b" if case.expects_weak_pool else "path-a"
+
+
+def outcome_mode_for(case: EvalCase) -> OutcomeMode:
+    ask_type = case.row.get("ask_type", "")
+    mode = case.row.get("mode", "")
+    if mode == "negative_edge" and ask_type in {"individual_request", "wrong_scope"}:
+        return "scope_refusal"
+    return "normal"
 
 
 def parse_active_skills_config(raw: str) -> list[str]:
@@ -279,6 +288,8 @@ def score_case(case: EvalCase, case_dir: Path, session_file: Path, agent_json: P
             str(session_file),
             "--agent-json",
             str(agent_json),
+            "--outcome-mode",
+            outcome_mode_for(case),
         ],
         cwd=REPO_ROOT,
         stdout=subprocess.PIPE,
@@ -364,6 +375,7 @@ def write_case_manifest(
         {
             "case_id": case.case_id,
             "scenario": scenario_for(case),
+            "outcome_mode": outcome_mode_for(case),
             "status": status,
             "session_key": session_key,
             "trace_status": trace_status,

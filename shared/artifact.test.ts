@@ -112,6 +112,61 @@ test('validateCreateFundingArtifactInput rejects unverified actionable program',
 	}
 });
 
+test('validateCreateFundingArtifactInput rejects actionable loan-like program sections', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Newfoundland film funding',
+		'',
+		'## Conditional fits',
+		'',
+		'### 1. PictureNL Development Loan Program',
+		'',
+		'**Verdict:** Explore',
+		'',
+		'This is a repayable advance for production work.',
+		'',
+		'1. Contact the program officer.'
+	].join('\n');
+	input.evidence.programs[0] = {
+		name: 'PictureNL Development Loan Program',
+		officialUrl: 'https://example.ca/picturenl-loan',
+		confidence: 'verified_live',
+		verdict: 'explore'
+	};
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
+	}
+});
+
+test('validateCreateFundingArtifactInput allows loan-like language when ruled out', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Newfoundland film funding',
+		'',
+		'## Ruled out',
+		'',
+		'### PictureNL Development Loan Program',
+		'',
+		'**Why not:** The page describes a loan and repayable advance, so it is outside scope.',
+		'',
+		'1. Use non-repayable tax-credit and grant paths instead.'
+	].join('\n');
+	input.evidence.programs[0] = {
+		name: 'PictureNL Development Loan Program',
+		officialUrl: 'https://example.ca/picturenl-loan',
+		confidence: 'verified_live',
+		verdict: 'skip'
+	};
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, true);
+});
+
 test('validateCreateFundingArtifactInput accepts legacy programs alias', () => {
 	const input = buildValidInput();
 	const { evidence: _evidence, ...rest } = input;

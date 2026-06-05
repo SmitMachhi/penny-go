@@ -1,6 +1,7 @@
 import { copyFile, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 
+import loanHeuristic from '@penny/shared/loan-heuristic.json' with { type: 'json' };
 import type {
 	ArtifactEvidence,
 	ArtifactEvidenceProgram,
@@ -57,6 +58,16 @@ const MARKDOWN_NUMBERED_STEP_PATTERN = /^\s*\d+\.\s+/m;
 const PROGRAM_MEMO_SECTION_PATTERN =
 	/^##\s+(Strong fits|Conditional fits|Stretch|Programs to pursue|Ruled out)\b/im;
 const NUMBERED_PROGRAM_HEADING_PATTERN = /^#{3,4}\s+\d+[.)]?\s+/m;
+const LOANLIKE_PATTERN = new RegExp(loanHeuristic.regex, 'iu');
+const H2_HEADING_PATTERN = /^##\s+(.+)$/;
+const PROGRAM_HEADING_PATTERN = /^#{3,4}\s+(.+)$/;
+const NON_LOAN_SCOPE_PATTERN = /\bnon[- ]loan\b/giu;
+const NON_REPAYABLE_PATTERN = /\bnon[- ]repayable\b/giu;
+const RULED_OUT_SECTION_PATTERN = /\b(ruled out|not a fit|excluded|outside scope)\b/i;
+const ACTIONABLE_SECTION_PATTERN =
+	/\b(strong fits|conditional fits|stretch|programs to pursue|recommendations?|recommended|conditional|explore|pursue now)\b/i;
+
+type MemoSection = 'neutral' | 'actionable' | 'ruled_out';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -231,6 +242,55 @@ function hasProgramMemoMarkdown(bodyMarkdown: string): boolean {
 	);
 }
 
+function normalizeLoanText(line: string): string {
+	return line
+		.replace(NON_LOAN_SCOPE_PATTERN, 'nonloan')
+		.replace(NON_REPAYABLE_PATTERN, 'nonrepayable');
+}
+
+function classifyMemoSection(headingText: string): MemoSection {
+	if (RULED_OUT_SECTION_PATTERN.test(headingText)) {
+		return 'ruled_out';
+	}
+	return ACTIONABLE_SECTION_PATTERN.test(headingText) ? 'actionable' : 'neutral';
+}
+
+function lineLooksLoanLike(line: string): boolean {
+	return LOANLIKE_PATTERN.test(normalizeLoanText(line));
+}
+
+function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
+	let section: MemoSection = 'neutral';
+	let insideProgramBlock = false;
+
+	for (const line of bodyMarkdown.split('\n')) {
+		const h2Match = H2_HEADING_PATTERN.exec(line);
+		if (h2Match) {
+			section = classifyMemoSection(h2Match[1]);
+			insideProgramBlock = false;
+			continue;
+		}
+
+		const programHeadingMatch = PROGRAM_HEADING_PATTERN.exec(line);
+		if (programHeadingMatch) {
+			insideProgramBlock = true;
+			if (section !== 'ruled_out' && lineLooksLoanLike(programHeadingMatch[1])) {
+				return true;
+			}
+			continue;
+		}
+
+		if (section === 'ruled_out') {
+			continue;
+		}
+		if ((section === 'actionable' || insideProgramBlock) && lineLooksLoanLike(line)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 function parseCreateInput(
 	input: Record<string, unknown>,
 	errors: ArtifactValidationError[]
@@ -247,6 +307,13 @@ function parseCreateInput(
 		errors.push({
 			field: 'bodyMarkdown',
 			message: 'include at least one checklist (- [ ]) or numbered step (1. )'
+		});
+		return null;
+	}
+	if (hasActionableLoanLikeProgram(bodyMarkdown)) {
+		errors.push({
+			field: 'bodyMarkdown',
+			message: 'loan-like products must be ruled out, not listed as actionable programs'
 		});
 		return null;
 	}

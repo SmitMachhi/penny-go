@@ -15,6 +15,13 @@ const confidenceSchema = Type.Union([
   Type.Literal("could_not_verify"),
 ]);
 
+const verdictSchema = Type.Union([
+  Type.Literal("pursue_now"),
+  Type.Literal("explore"),
+  Type.Literal("defer"),
+  Type.Literal("skip"),
+]);
+
 const LOCAL_PENNY_SESSION_PREFIX = "penny-";
 const AGENT_SCOPED_SESSION_HEAD = "agent";
 const SESSION_KEY_SEPARATOR = ":";
@@ -39,6 +46,7 @@ const evidenceProgramSchema = Type.Object({
   name: Type.String(),
   officialUrl: Type.String(),
   confidence: confidenceSchema,
+  verdict: verdictSchema,
 });
 
 export const createFundingBriefParameters = Type.Object({

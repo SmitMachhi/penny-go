@@ -5,6 +5,7 @@ import type {
 	ArtifactEvidence,
 	ArtifactEvidenceProgram,
 	ArtifactMetaRecord,
+	ArtifactProgramVerdict,
 	ArtifactTriggerReason,
 	ArtifactValidationError,
 	ArtifactValidationResult,
@@ -43,9 +44,19 @@ export const CONFIDENCE_LABELS = [
 
 export const TRIGGER_REASONS = ['auto', 'user_requested'] as const satisfies readonly ArtifactTriggerReason[];
 
+export const PROGRAM_VERDICTS = [
+	'pursue_now',
+	'explore',
+	'defer',
+	'skip'
+] as const satisfies readonly ArtifactProgramVerdict[];
+
 const HTTP_URL_PATTERN = /^https?:\/\/.+/i;
 const MARKDOWN_TASK_ITEM_PATTERN = /^\s*-\s+\[[ xX]\]\s+/m;
 const MARKDOWN_NUMBERED_STEP_PATTERN = /^\s*\d+\.\s+/m;
+const PROGRAM_MEMO_SECTION_PATTERN =
+	/^##\s+(Strong fits|Conditional fits|Stretch|Programs to pursue|Ruled out)\b/im;
+const NUMBERED_PROGRAM_HEADING_PATTERN = /^#{3,4}\s+\d+[.)]?\s+/m;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -83,6 +94,22 @@ function parseConfidence(value: unknown, field: string, errors: ArtifactValidati
 	return null;
 }
 
+function parseProgramVerdict(
+	value: unknown,
+	field: string,
+	errors: ArtifactValidationError[]
+): ArtifactProgramVerdict | null {
+	const verdict = readString(value, field, errors);
+	if (!verdict) {
+		return null;
+	}
+	if (isOneOf(PROGRAM_VERDICTS, verdict)) {
+		return verdict;
+	}
+	errors.push({ field, message: 'invalid program verdict' });
+	return null;
+}
+
 function parseEvidenceProgram(
 	value: unknown,
 	index: number,
@@ -96,13 +123,20 @@ function parseEvidenceProgram(
 	const name = readString(value.name, `${fieldPrefix}.name`, errors);
 	const officialUrl = readString(value.officialUrl, `${fieldPrefix}.officialUrl`, errors);
 	const confidence = parseConfidence(value.confidence, `${fieldPrefix}.confidence`, errors);
+	const verdict = parseProgramVerdict(value.verdict, `${fieldPrefix}.verdict`, errors);
 	if (officialUrl && !HTTP_URL_PATTERN.test(officialUrl)) {
 		errors.push({ field: `${fieldPrefix}.officialUrl`, message: 'must be http or https URL' });
 	}
-	if (!name || !officialUrl || !confidence) {
+	if (confidence === 'could_not_verify' && verdict !== 'skip') {
+		errors.push({
+			field: `${fieldPrefix}.confidence`,
+			message: 'could_not_verify programs must use skip verdict'
+		});
+	}
+	if (!name || !officialUrl || !confidence || !verdict) {
 		return null;
 	}
-	return { name, officialUrl, confidence };
+	return { name, officialUrl, confidence, verdict };
 }
 
 function parseEvidencePrograms(value: unknown, errors: ArtifactValidationError[]): ArtifactEvidenceProgram[] {
@@ -190,6 +224,13 @@ function hasActionableMarkdown(bodyMarkdown: string): boolean {
 	);
 }
 
+function hasProgramMemoMarkdown(bodyMarkdown: string): boolean {
+	return (
+		PROGRAM_MEMO_SECTION_PATTERN.test(bodyMarkdown) ||
+		NUMBERED_PROGRAM_HEADING_PATTERN.test(bodyMarkdown)
+	);
+}
+
 function parseCreateInput(
 	input: Record<string, unknown>,
 	errors: ArtifactValidationError[]
@@ -214,6 +255,13 @@ function parseCreateInput(
 		errors.push({
 			field: 'changeSummary',
 			message: `at most ${MAX_CHANGE_SUMMARY_LENGTH} characters`
+		});
+		return null;
+	}
+	if (hasProgramMemoMarkdown(bodyMarkdown) && (evidence?.programs?.length ?? 0) === 0) {
+		errors.push({
+			field: 'evidence.programs',
+			message: 'program recommendations require evidence.programs with verified official URLs and verdicts'
 		});
 		return null;
 	}

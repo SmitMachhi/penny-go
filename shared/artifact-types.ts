@@ -2,10 +2,13 @@ export type FundingConfidence = 'verified_live' | 'newly_discovered' | 'could_no
 
 export type ArtifactTriggerReason = 'auto' | 'user_requested';
 
+export type ArtifactProgramVerdict = 'pursue_now' | 'explore' | 'defer' | 'skip';
+
 export type ArtifactEvidenceProgram = {
 	name: string;
 	officialUrl: string;
 	confidence: FundingConfidence;
+	verdict: ArtifactProgramVerdict;
 };
 
 export type ArtifactVerification = {

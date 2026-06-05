@@ -19,7 +19,8 @@ const sampleParams = {
 		{
 			name: 'IRAP',
 			officialUrl: 'https://nrc.canada.ca/en/support-technology-innovation',
-			confidence: 'verified_live' as const
+			confidence: 'verified_live' as const,
+			verdict: 'pursue_now' as const
 		}
 	],
 	verification: {

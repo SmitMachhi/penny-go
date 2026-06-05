@@ -32,7 +32,8 @@ const SAMPLE_META: ArtifactMetaRecord = {
 			{
 				name: 'IRAP',
 				officialUrl: 'https://example.ca/program',
-				confidence: 'verified_live'
+				confidence: 'verified_live',
+				verdict: 'pursue_now'
 			}
 		]
 	}
@@ -52,7 +53,8 @@ function buildValidInput() {
 				{
 					name: 'IRAP',
 					officialUrl: 'https://example.ca/program',
-					confidence: 'verified_live' as const
+					confidence: 'verified_live' as const,
+					verdict: 'pursue_now' as const
 				}
 			]
 		}
@@ -62,6 +64,52 @@ function buildValidInput() {
 test('validateCreateFundingArtifactInput accepts markdown with checklist', () => {
 	const result = validateCreateFundingArtifactInput(buildValidInput());
 	assert.equal(result.ok, true);
+});
+
+test('validateCreateFundingArtifactInput rejects program memo without evidence programs', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Ontario SaaS funding',
+		'',
+		'## Strong fits',
+		'',
+		'### 1. IRAP',
+		'',
+		'**Fit:** Strong',
+		'',
+		'1. Call an ITA this week.'
+	].join('\n');
+	input.evidence.programs = [];
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'evidence.programs'));
+	}
+});
+
+test('validateCreateFundingArtifactInput rejects actionable program without verdict', () => {
+	const input = buildValidInput();
+	const [program] = input.evidence.programs;
+	delete (program as Partial<typeof program>).verdict;
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'evidence.programs[0].verdict'));
+	}
+});
+
+test('validateCreateFundingArtifactInput rejects unverified actionable program', () => {
+	const input = buildValidInput();
+	input.evidence.programs[0].confidence = 'could_not_verify';
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'evidence.programs[0].confidence'));
+	}
 });
 
 test('validateCreateFundingArtifactInput accepts legacy programs alias', () => {

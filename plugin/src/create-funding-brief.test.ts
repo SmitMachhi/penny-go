@@ -43,7 +43,8 @@ Acme SaaS is an Ontario software company exploring non-dilutive support for prod
 				{
 					name: 'IRAP',
 					officialUrl: 'https://nrc.canada.ca/en/support-technology-innovation',
-					confidence: 'verified_live' as const
+					confidence: 'verified_live' as const,
+					verdict: 'pursue_now' as const
 				}
 			]
 		},

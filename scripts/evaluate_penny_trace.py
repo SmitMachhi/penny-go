@@ -26,6 +26,7 @@ RECOMMENDATION_HEADING_RE = re.compile(
 VERIFIED_LABEL_RE = re.compile(r"\bVerified(?: live)?\b|\bNewly discovered\b", re.IGNORECASE)
 NON_LOAN_SCOPE_RE = re.compile(r"\bnon[- ]loan\b", re.IGNORECASE)
 MAX_RECOMMENDATIONS = 5
+HTTP_URL_RE = re.compile(r"^https?://", re.IGNORECASE)
 
 
 @dataclass(frozen=True)
@@ -33,6 +34,16 @@ class CheckResult:
     name: str
     passed: bool
     detail: str
+
+
+def should_count_tool_call(name: str, part: dict[str, object]) -> bool:
+    if name != "read_official_source":
+        return True
+    arguments = part.get("arguments")
+    if not isinstance(arguments, dict):
+        return False
+    url = arguments.get("url")
+    return isinstance(url, str) and HTTP_URL_RE.match(url.strip()) is not None
 
 
 def parse_tool_sequence(session_path: Path) -> list[str]:
@@ -47,7 +58,7 @@ def parse_tool_sequence(session_path: Path) -> list[str]:
                 part_type = part.get("type")
                 if part_type in {"toolCall", "tool_use"}:
                     name = part.get("name")
-                    if isinstance(name, str):
+                    if isinstance(name, str) and should_count_tool_call(name, part):
                         tools.append(name)
     return tools
 

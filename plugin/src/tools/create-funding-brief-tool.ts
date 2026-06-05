@@ -24,9 +24,11 @@ const verdictSchema = Type.Union([
 
 const LOCAL_PENNY_SESSION_PREFIX = "penny-";
 const AGENT_SCOPED_SESSION_HEAD = "agent";
+const EXPLICIT_SESSION_SEGMENT = "explicit";
 const SESSION_KEY_SEPARATOR = ":";
 const AGENT_SESSION_KEY_MIN_PARTS = 3;
 const AGENT_SESSION_REST_START_INDEX = 2;
+const EXPLICIT_SESSION_REST_START_INDEX = 1;
 const HASH_ALGORITHM = "sha256";
 const HASH_ENCODING = "hex";
 const HEX_RADIX = 16;
@@ -130,9 +132,19 @@ function localSessionCandidate(sessionKey: string): string {
     parts.length >= AGENT_SESSION_KEY_MIN_PARTS &&
     parts[0]?.toLowerCase() === AGENT_SCOPED_SESSION_HEAD
   ) {
-    return parts.slice(AGENT_SESSION_REST_START_INDEX).join(SESSION_KEY_SEPARATOR);
+    return normalizeExplicitSessionCandidate(
+      parts.slice(AGENT_SESSION_REST_START_INDEX).join(SESSION_KEY_SEPARATOR),
+    );
   }
-  return trimmed;
+  return normalizeExplicitSessionCandidate(trimmed);
+}
+
+function normalizeExplicitSessionCandidate(candidate: string): string {
+  const parts = candidate.split(SESSION_KEY_SEPARATOR);
+  if (parts[0]?.toLowerCase() !== EXPLICIT_SESSION_SEGMENT) {
+    return candidate;
+  }
+  return parts.slice(EXPLICIT_SESSION_REST_START_INDEX).join(SESSION_KEY_SEPARATOR);
 }
 
 function resolveArtifactSessionUuid(sessionKey: string | undefined): string | null {

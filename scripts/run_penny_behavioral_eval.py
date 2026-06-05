@@ -7,6 +7,7 @@ import argparse
 import csv
 import hashlib
 import json
+import shutil
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -139,6 +140,15 @@ def run_openclaw_case(case: EvalCase, case_dir: Path) -> tuple[int, Path]:
     return result.returncode, agent_json
 
 
+def reset_session(case: EvalCase, case_dir: Path) -> Path:
+    session_file = SESSION_DIR / f"{case.case_id}.jsonl"
+    if session_file.is_file():
+        case_dir.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(session_file, case_dir / "previous-session.jsonl")
+        session_file.unlink()
+    return session_file
+
+
 def score_trace(case: EvalCase, case_dir: Path, session_file: Path, agent_json: Path) -> int:
     trace_score = case_dir / "trace-score.txt"
     command = [
@@ -203,8 +213,8 @@ def case_manifest(
 def run_case(case: EvalCase, run_dir: Path) -> bool:
     case_dir = run_dir / CASE_DIR_NAME / case.case_id
     case_dir.mkdir(parents=True, exist_ok=True)
+    session_file = reset_session(case, case_dir)
     agent_status, agent_json = run_openclaw_case(case, case_dir)
-    session_file = SESSION_DIR / f"{case.case_id}.jsonl"
     trace_status: int | None = None
     if agent_status == EXIT_OK and session_file.is_file():
         trace_status = score_trace(case, case_dir, session_file, agent_json)

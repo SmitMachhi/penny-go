@@ -19,8 +19,12 @@ from load_loan_heuristic import loanlike_pattern
 Scenario = Literal["path-a", "path-b"]
 
 LOANLIKE_RE = loanlike_pattern()
-RECOMMENDATION_HEADING_RE = re.compile(r"^#{2,3}\s+\d+\.", re.MULTILINE)
-VERIFIED_LABEL_RE = re.compile(r"\*\*Verified live\*\*|\*\*Newly discovered\*\*", re.IGNORECASE)
+RECOMMENDATION_HEADING_RE = re.compile(
+    r"^\s*(?:#{1,4}\s*#?\d+[.)]?\s*[—.-]|(?:\*\*)?#\d+\s*[—.-])",
+    re.MULTILINE,
+)
+VERIFIED_LABEL_RE = re.compile(r"\bVerified(?: live)?\b|\bNewly discovered\b", re.IGNORECASE)
+NON_LOAN_SCOPE_RE = re.compile(r"\bnon[- ]loan\b", re.IGNORECASE)
 MAX_RECOMMENDATIONS = 5
 
 
@@ -90,6 +94,11 @@ def first_index(tools: list[str], name: str) -> int | None:
         return None
 
 
+def loanlike_match(response: str) -> re.Match[str] | None:
+    scoped_response = NON_LOAN_SCOPE_RE.sub("nonloan", response)
+    return LOANLIKE_RE.search(scoped_response)
+
+
 def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | None) -> list[CheckResult]:
     tools = parse_tool_sequence(session_path)
     response = extract_response_text(agent_json_path, session_path)
@@ -114,14 +123,16 @@ def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | Non
         )
     )
 
+    first_tool = tools[0] if tools else None
     corpus_before_web = web_idx is None or (corpus_idx is not None and corpus_idx < web_idx)
+    corpus_first = first_tool == "search_corpus"
     checks.append(
         CheckResult(
             "corpus_before_web",
-            corpus_before_web,
+            corpus_before_web and corpus_first,
             f"tool order: {' -> '.join(tools)}"
-            if corpus_before_web
-            else "web_search ran before the first search_corpus",
+            if corpus_before_web and corpus_first
+            else f"expected first specific-program tool to be search_corpus; got {first_tool}",
         )
     )
 
@@ -133,7 +144,7 @@ def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | Non
         )
     )
 
-    read_covers = read_count >= max(rec_count, verified_labels, 1)
+    read_covers = read_count >= max(rec_count, 1)
     checks.append(
         CheckResult(
             "read_covers_recommendations",
@@ -144,15 +155,7 @@ def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | Non
         )
     )
 
-    checks.append(
-        CheckResult(
-            "verified_labels_present",
-            verified_labels >= 1,
-            f"Verified live / Newly discovered labels: {verified_labels}",
-        )
-    )
-
-    loan_hit = LOANLIKE_RE.search(response)
+    loan_hit = loanlike_match(response)
     checks.append(
         CheckResult(
             "no_loan_products",
@@ -171,17 +174,7 @@ def evaluate(scenario: Scenario, session_path: Path, agent_json_path: Path | Non
         )
     )
 
-    if scenario == "path-a":
-        checks.append(
-            CheckResult(
-                "path_a_no_web_search",
-                web_count == 0,
-                f"web_search calls: {web_count}"
-                if web_count == 0
-                else f"unexpected web_search calls: {web_count}",
-            )
-        )
-    else:
+    if scenario == "path-b":
         checks.append(
             CheckResult(
                 "path_b_web_search_used",

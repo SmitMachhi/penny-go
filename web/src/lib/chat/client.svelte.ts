@@ -1,8 +1,9 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
+import { closeArtifactPanel, openArtifactPanel, toggleArtifactPanel } from '$lib/chat/client-artifact-panel.js';
 import { abortChatRun, fetchArtifacts, sendChatMessage } from '$lib/chat/client-api.js';
 import { refreshGatewayHealth } from '$lib/chat/client-health.js';
-import { markArtifactPanelOpen, markFirstMessagePaint, markSendStart, markSessionSwitchStart, measureSendToFirstToken, measureSessionSwitch } from '$lib/chat/client-performance-flow.js';
+import { markFirstMessagePaint, markSendStart, markSessionSwitchStart, measureSendToFirstToken, measureSessionSwitch } from '$lib/chat/client-performance-flow.js';
 import { persistSessionThreadCache } from '$lib/chat/client-session-cache.js';
 import { countUserMessages, hasPendingReply } from '$lib/chat/client-thread-reconcile.js';
 import { fetchHistoryWithRetry } from '$lib/chat/history-fetch-retry.js';
@@ -79,31 +80,14 @@ export class ChatClient {
 		this.pendingRunArtifactIds = [];
 	}
 	openArtifact(artifactId: string): void {
-		markArtifactPanelOpen();
-		this.state.activeArtifactId = artifactId;
-		this.state.artifactPanelOpen = true;
-		this.state.artifactPanelDismissed = false;
-		if (this.state.sessionKey) {
-			void this.loadArtifacts();
-		}
-		persistSessionThreadCache(this.state);
+		openArtifactPanel(this.state, artifactId, () => void this.loadArtifacts());
 	}
 	closeArtifactPanel(): void {
-		this.state.artifactPanelOpen = false;
-		this.state.artifactPanelDismissed = true;
-		persistSessionThreadCache(this.state);
+		closeArtifactPanel(this.state);
 	}
 
 	toggleArtifactPanel(): void {
-		if (this.state.artifactPanelOpen) {
-			this.closeArtifactPanel();
-			return;
-		}
-
-		const artifactId = this.state.activeArtifactId ?? this.state.artifacts[0]?.artifactId;
-		if (artifactId) {
-			this.openArtifact(artifactId);
-		}
+		toggleArtifactPanel(this.state, () => void this.loadArtifacts());
 	}
 
 	async refreshHealth(): Promise<void> {

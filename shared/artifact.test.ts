@@ -170,6 +170,34 @@ test('validateCreateFundingArtifactInput rejects numbered h2 loan-like program s
 	}
 });
 
+test('validateCreateFundingArtifactInput rejects additional loan-interest support sections', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# NWT food manufacturing funding',
+		'',
+		'## Strong fits',
+		'',
+		'### 1. NWT SEED Strategic Investments',
+		'',
+		'**Verdict:** Pursue now',
+		'',
+		'This is a non-repayable grant for equipment.',
+		'',
+		'## Additional NWT Program Worth Knowing',
+		'',
+		'SEED Sector Support can add support to offset loan interest if you finance the rest.',
+		'',
+		'1. Call GNWT ITI to discuss Strategic Investments and Sector Support.'
+	].join('\n');
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
+	}
+});
+
 test('validateCreateFundingArtifactInput allows loan-like language when ruled out', () => {
 	const input = buildValidInput();
 	input.bodyMarkdown = [

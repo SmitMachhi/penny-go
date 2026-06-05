@@ -155,8 +155,9 @@ Rules:
 - If benefit type is ambiguous, use `unknown` or rule it out.
 - If a page does not state a fact, say `unknown`.
 - Do not invent amounts, deadlines, percentages, or stacking math.
-- Loans, loan guarantees, low-cost financing, and repayable contributions appear
-  only in rejected or ruled-out notes.
+- Loans, loan guarantees, low-cost financing, loan-interest offsets,
+  financing-dependent incentives, and repayable contributions appear only in
+  rejected or ruled-out notes.
 - Never use Strong, Conditional, Stretch, Explore, or next-step language for a
   repayable product, even if the page is relevant to the business. Put it under
   `## Ruled out` and explain the non-loan scope.

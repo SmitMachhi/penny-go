@@ -100,7 +100,8 @@ Legacy `programs[]` at the top level is accepted as an alias for `evidence.progr
 Before calling `create_funding_brief`, audit the body:
 
 - Any loan, repayable contribution, loan guarantee, loan insurance, loan-interest
-  subsidy, or unclear repayment product must be under `## Ruled out`.
+  subsidy, financing-dependent incentive, or unclear repayment product must be
+  under `## Ruled out`.
 - Do not write "worth a call", "best bet", "strong", "conditional", or "next
   step" for repayable programs.
 - `evidence.programs[]` may include loan-like products only with

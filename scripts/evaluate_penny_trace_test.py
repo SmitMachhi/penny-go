@@ -118,6 +118,13 @@ class LoanScopeTest(unittest.TestCase):
         response = "CMHC Rental Construction Financing — a loan, not a grant. You said no loans."
         self.assertIsNone(loanlike_match(response))
 
+    def test_scope_rejection_with_user_exclusion_does_not_fail(self) -> None:
+        response = (
+            "CMHC MLI Select can help with rental financing. "
+            "But it's a loan (mortgage insurance), which you said no to."
+        )
+        self.assertIsNone(loanlike_match(response))
+
     def test_worth_a_call_repayable_fails(self) -> None:
         response = "ACOA BDP is a repayable contribution worth a call."
         self.assertIsNotNone(loanlike_match(response))

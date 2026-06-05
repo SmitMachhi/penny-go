@@ -35,7 +35,8 @@ RULED_OUT_HEADING_RE = re.compile(
 )
 REJECTED_LOAN_CONTEXT_RE = re.compile(
     r"\b(excluded by scope|outside scope|ruled out|skip|you said no loans|not eligible|"
-    r"not a fit|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|"
+    r"which you said no to|you said no to|not what you asked for|not a fit|"
+    r"doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|"
     r"what does not fit)\b",
     re.IGNORECASE,
 )

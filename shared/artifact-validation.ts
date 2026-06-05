@@ -60,13 +60,9 @@ const PROGRAM_MEMO_SECTION_PATTERN =
 const NUMBERED_PROGRAM_HEADING_PATTERN = /^#{3,4}\s+\d+[.)]?\s+/m;
 const H2_HEADING_PATTERN = /^##\s+(.+)$/;
 const PROGRAM_HEADING_PATTERN = /^#{3,4}\s+(.+)$/;
-const NUMBERED_HEADING_PATTERN = /^\s*\d+[.)]?\s+/;
 const RULED_OUT_SECTION_PATTERN =
 	/\b(ruled out|not a fit|excluded|outside scope|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
-const ACTIONABLE_SECTION_PATTERN =
-	/\b(strong fits|conditional fits|stretch|programs to pursue|programs & incentives|recommendations?|recommended|conditional|explore|pursue now)\b/i;
-
-type MemoSection = 'neutral' | 'actionable' | 'ruled_out';
+type MemoSection = 'neutral' | 'ruled_out';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -245,7 +241,7 @@ function classifyMemoSection(headingText: string): MemoSection {
 	if (RULED_OUT_SECTION_PATTERN.test(headingText)) {
 		return 'ruled_out';
 	}
-	return ACTIONABLE_SECTION_PATTERN.test(headingText) ? 'actionable' : 'neutral';
+	return 'neutral';
 }
 
 function lineLooksLoanLike(line: string): boolean {
@@ -254,14 +250,12 @@ function lineLooksLoanLike(line: string): boolean {
 
 function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
 	let section: MemoSection = 'neutral';
-	let insideProgramBlock = false;
 
 	for (const line of bodyMarkdown.split('\n')) {
 		const h2Match = H2_HEADING_PATTERN.exec(line);
 		if (h2Match) {
 			const headingText = h2Match[1];
 			section = classifyMemoSection(headingText);
-			insideProgramBlock = NUMBERED_HEADING_PATTERN.test(headingText);
 			if (section !== 'ruled_out' && lineLooksLoanLike(headingText)) {
 				return true;
 			}
@@ -270,7 +264,6 @@ function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
 
 		const programHeadingMatch = PROGRAM_HEADING_PATTERN.exec(line);
 		if (programHeadingMatch) {
-			insideProgramBlock = true;
 			if (section !== 'ruled_out' && lineLooksLoanLike(programHeadingMatch[1])) {
 				return true;
 			}
@@ -280,7 +273,7 @@ function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
 		if (section === 'ruled_out') {
 			continue;
 		}
-		if ((section === 'actionable' || insideProgramBlock) && lineLooksLoanLike(line)) {
+		if (lineLooksLoanLike(line)) {
 			return true;
 		}
 	}

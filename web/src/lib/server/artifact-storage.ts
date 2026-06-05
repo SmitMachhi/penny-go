@@ -6,6 +6,11 @@ import {
 	resolveReadableArtifactPdfPath
 } from '@penny/shared/artifact-pdf-locations';
 import {
+	mergeArtifactIndexEntries,
+	normalizeArtifactIndexEntry,
+	type ArtifactIndexEntry
+} from '@penny/shared/artifact-index';
+import {
 	ensureArtifactFormatV5,
 	isValidArtifactVersion,
 	listArtifactVersionNumbers,
@@ -26,24 +31,12 @@ import type { ArtifactSummary, ArtifactVersionSummary } from '$lib/chat/artifact
 import { parsePennySessionUuid } from '$lib/server/session-key.js';
 import { resolvePennyRepoRootFromEnv } from '$lib/server/penny-config.js';
 
-export type ArtifactMeta = {
-	artifactId: string;
-	sessionUuid: string;
-	title: string;
-	programCount: number;
-	latestVersion: number;
-	triggerReason: 'auto' | 'user_requested';
-	createdAt: string;
-	updatedAt: string;
-	pdfAvailable?: boolean;
-};
+export type ArtifactMeta = ArtifactIndexEntry;
 
 export type ArtifactDetail = {
 	artifact: ArtifactSummary;
 	versions: ArtifactVersionSummary[];
 };
-
-type LegacyArtifactMeta = ArtifactMeta & { version?: number };
 
 export function toArtifactSummary(meta: ArtifactMeta, pdfAvailable: boolean): ArtifactSummary {
 	return {
@@ -75,29 +68,6 @@ function normalizeWebArtifactMeta(raw: unknown): ArtifactMeta | null {
 	};
 }
 
-function normalizeIndexEntry(raw: LegacyArtifactMeta): ArtifactMeta | null {
-	const latestVersion =
-		typeof raw.latestVersion === 'number'
-			? raw.latestVersion
-			: typeof raw.version === 'number'
-				? raw.version
-				: null;
-	if (!latestVersion) {
-		return null;
-	}
-	return {
-		artifactId: raw.artifactId,
-		sessionUuid: raw.sessionUuid,
-		title: raw.title,
-		programCount: raw.programCount,
-		latestVersion,
-		triggerReason: raw.triggerReason,
-		createdAt: raw.createdAt,
-		updatedAt: raw.updatedAt,
-		pdfAvailable: raw.pdfAvailable
-	};
-}
-
 export async function listSessionArtifacts(sessionKey: string): Promise<ArtifactMeta[]> {
 	const sessionUuid = parsePennySessionUuid(sessionKey);
 	if (!sessionUuid) {
@@ -109,16 +79,18 @@ export async function listSessionArtifacts(sessionKey: string): Promise<Artifact
 	let indexEntries: ArtifactMeta[] = [];
 	try {
 		const raw = await readFile(indexPath, 'utf8');
-		const parsed = JSON.parse(raw) as LegacyArtifactMeta[];
-		indexEntries = parsed.flatMap((entry) => {
-			const normalized = normalizeIndexEntry(entry);
-			return normalized ? [normalized] : [];
-		});
+		const parsed = JSON.parse(raw) as unknown;
+		if (Array.isArray(parsed)) {
+			indexEntries = parsed.flatMap((entry) => {
+				const normalized = normalizeArtifactIndexEntry(entry);
+				return normalized ? [normalized] : [];
+			});
+		}
 	} catch {
 		indexEntries = [];
 	}
 
-	return mergeArtifactMetas(indexEntries, await scanSessionArtifactMetas(sessionKey));
+	return mergeArtifactIndexEntries(indexEntries, await scanSessionArtifactMetas(sessionKey));
 }
 
 export async function listSessionArtifactSummaries(sessionKey: string): Promise<ArtifactSummary[]> {
@@ -358,15 +330,4 @@ async function scanSessionArtifactMetas(sessionKey: string): Promise<ArtifactMet
 		}
 	}
 	return metas;
-}
-
-function mergeArtifactMetas(indexEntries: ArtifactMeta[], diskEntries: ArtifactMeta[]): ArtifactMeta[] {
-	const byId = new Map<string, ArtifactMeta>();
-	for (const entry of diskEntries) {
-		byId.set(entry.artifactId, entry);
-	}
-	for (const entry of indexEntries) {
-		byId.set(entry.artifactId, entry);
-	}
-	return [...byId.values()].sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }

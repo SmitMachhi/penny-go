@@ -2,6 +2,7 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import lockfile from 'proper-lockfile';
 
+import { buildArtifactIndexEntry, type ArtifactIndexEntry } from '@penny/shared/artifact-index';
 import { composePdfMarkdown } from '@penny/shared/artifact-markdown';
 import {
 	buildArtifactMetaRecord,
@@ -28,19 +29,6 @@ import {
 
 import { renderArtifactPdfFromHtml } from './artifact-pdf.js';
 import type { PennyToolsConfigShape } from './penny-config.js';
-
-export type ArtifactIndexEntry = Pick<
-	ArtifactMetaRecord,
-	| 'artifactId'
-	| 'sessionUuid'
-	| 'title'
-	| 'programCount'
-	| 'latestVersion'
-	| 'triggerReason'
-	| 'createdAt'
-	| 'updatedAt'
-	| 'pdfAvailable'
->;
 
 export type PersistArtifactResult = {
 	meta: ArtifactMetaRecord;
@@ -325,17 +313,7 @@ async function upsertSessionArtifactIndex(repoRoot: string, meta: ArtifactMetaRe
 		await writeFile(indexPath, '[]\n', 'utf8');
 	}
 
-	const indexEntry: ArtifactIndexEntry = {
-		artifactId: meta.artifactId,
-		sessionUuid: meta.sessionUuid,
-		title: meta.title,
-		programCount: meta.programCount,
-		latestVersion: meta.latestVersion,
-		triggerReason: meta.triggerReason,
-		createdAt: meta.createdAt,
-		updatedAt: meta.updatedAt,
-		pdfAvailable: meta.pdfAvailable
-	};
+	const indexEntry = buildArtifactIndexEntry(meta);
 
 	await withSessionIndexLock(indexPath, async () => {
 		let entries: ArtifactIndexEntry[] = [];

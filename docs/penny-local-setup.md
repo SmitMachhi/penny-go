@@ -11,7 +11,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | Node.js | 22.x or newer (`node -v`) |
 | OpenClaw CLI | `npm install -g openclaw@latest` |
 | Python | 3.11+ for Crawl4AI |
-| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 DeepSeek) |
+| API keys | `OPENROUTER_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
 
 ## Repo layout involved
 
@@ -37,7 +37,7 @@ That creates `~/.openclaw/openclaw.json`.
 Use the repo root `.env.example` as a checklist. Minimum:
 
 ```
-DEEPSEEK_API_KEY=...
+OPENROUTER_API_KEY=...
 EXA_API_KEY=...
 
 PENNY_REPO_ROOT=/ABSOLUTE_PATH_TO/penny-go
@@ -108,6 +108,7 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
+- Use `agents.defaults.model.primary: "openrouter/google/gemini-3.1-flash-lite"` for the default OpenRouter setup
 
 Restart:
 
@@ -117,38 +118,33 @@ openclaw skills list
 openclaw plugins inspect penny-tools --runtime
 ```
 
-### DeepSeek API key (where it actually lives)
+### Model provider key (where it actually lives)
 
-OpenClaw’s DeepSeek integration uses the environment variable **`DEEPSEEK_API_KEY`** (documented in OpenClaw under the `deepseek` provider).
+Penny defaults to OpenRouter with **`openrouter/google/gemini-3.1-flash-lite`**. OpenClaw resolves OpenRouter auth from **`OPENROUTER_API_KEY`**.
 
 **Recommended (interactive):**
 
 ```bash
-openclaw onboard --auth-choice deepseek-api-key
+openclaw models auth login --provider openrouter
 ```
 
-That stores auth in your OpenClaw profile and sets `deepseek/deepseek-v4-flash` as a sensible default model.
+That stores OpenRouter auth in your OpenClaw profile.
 
 **Recommended (file the gateway can read):** add the same variable to **`~/.openclaw/.env`**:
 
 ```
-DEEPSEEK_API_KEY=sk-...
+OPENROUTER_API_KEY=sk-or-...
 ```
 
-If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `DEEPSEEK_API_KEY`, or the daemon will not see shell-only exports.
+If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `OPENROUTER_API_KEY`, or the daemon will not see shell-only exports.
 
-**Headless / CI-style one-liner:**
+Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `openrouter/google/gemini-3.1-flash-lite`. Then confirm the catalog:
 
 ```bash
-openclaw onboard --non-interactive \
-  --mode local \
-  --auth-choice deepseek-api-key \
-  --deepseek-api-key "$DEEPSEEK_API_KEY" \
-  --skip-health \
-  --accept-risk
+openclaw models list --provider openrouter
 ```
 
-Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` stays `deepseek/deepseek-v4-flash`. Then confirm the catalog:
+To switch back to DeepSeek later, set `agents.defaults.model.primary` to `deepseek/deepseek-v4-flash`, provide **`DEEPSEEK_API_KEY`**, restart the gateway, and confirm the catalog:
 
 ```bash
 openclaw models list --provider deepseek
@@ -237,7 +233,7 @@ Pass when:
 2. Artifact includes `## Recommended business shape` and `## Launch strategy` (or honest thin corpus note)
 3. Corpus miss escalates to `web_search` only when needed
 
-**Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working DeepSeek auth). The repo cannot complete them in CI without your secrets.
+**Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working model auth). The repo cannot complete them in CI without your secrets.
 
 Ensure `agents.defaults.skills` includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (see `config/openclaw.penny.example.json5`).
 

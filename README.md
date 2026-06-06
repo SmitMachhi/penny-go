@@ -64,7 +64,8 @@ duplicate_program_keys 0
 - npm
 - Python 3.11 or newer
 - OpenClaw CLI
-- DeepSeek API key for the agent model
+- OpenRouter API key for the agent model
+- DeepSeek API key only if you switch the model fallback back later
 - Exa API key for web search extension
 
 Install OpenClaw:
@@ -98,12 +99,17 @@ Configure secrets outside Git. Use `.env.example` and `web/.env.example` as chec
 Minimum OpenClaw environment:
 
 ```bash
-DEEPSEEK_API_KEY=<your-deepseek-key>
+OPENROUTER_API_KEY=<your-openrouter-key>
 EXA_API_KEY=<your-exa-key>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
 PENNY_CORPUS_PATH=/absolute/path/to/penny-go/database/data/funding/curated/verified-programs.jsonl
 PENNY_PYTHON=/absolute/path/to/penny-go/.venv/bin/python
 ```
+
+The default agent model in `config/openclaw.penny.example.json5` is
+`openrouter/google/gemini-3.1-flash-lite`. To switch back to DeepSeek later, set
+`agents.defaults.model.primary` to `deepseek/deepseek-v4-flash` and provide
+`DEEPSEEK_API_KEY` in the gateway environment.
 
 Minimum web environment:
 
@@ -182,7 +188,7 @@ fly secrets set \
   OPENCLAW_GATEWAY_URL=<wss-or-private-gateway-url> \
   OPENCLAW_GATEWAY_TOKEN=<gateway-token> \
   PENNY_REPO_ROOT=/app \
-  DEEPSEEK_API_KEY=<your-deepseek-key> \
+  OPENROUTER_API_KEY=<your-openrouter-key> \
   EXA_API_KEY=<your-exa-key>
 ```
 

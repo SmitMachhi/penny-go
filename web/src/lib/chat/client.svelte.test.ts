@@ -383,6 +383,34 @@ describe('ChatClient', () => {
 		expect(client.state.activeArtifactId).toBeNull();
 	});
 
+	it('keeps tool-use progress in the active turn instead of finalizing the reply', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			if (requestPath(input) === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+
+		(client as unknown as ChatClientInternals).handleStreamEvent({
+			type: 'chat.progress',
+			runId: RUN_ID,
+			text: 'I now have enough verified data. Let me create the plan.'
+		});
+
+		expect(client.state.sending).toBe(true);
+		expect(client.state.streamingAnswerText).toBe('');
+		expect(client.state.messages.map((message) => message.text)).toEqual([MESSAGE]);
+		expect(client.state.runTrace.liveSegment).toBe(
+			'I now have enough verified data. Let me create the plan.'
+		);
+	});
+
 	it('does not recover a pre-response stream event from stale history', async () => {
 		vi.useFakeTimers();
 		let resolveSend: (response: Response) => void = () => {};

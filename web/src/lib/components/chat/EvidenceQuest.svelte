@@ -79,7 +79,7 @@
 
 		{#if visibleThinking}
 			<p class="penny-evidence-quest__thinking">
-				<span class="penny-evidence-quest__thinking-label">thinking</span>
+				<span class="penny-evidence-quest__thinking-label">working</span>
 				<span class="penny-evidence-quest__thinking-text">{visibleThinking}</span>
 			</p>
 		{/if}

@@ -36,6 +36,13 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			});
 			handlers.state.runTrace = { ...handlers.state.runTrace };
 			break;
+		case 'chat.progress':
+			handlers.state.streamingAnswerText = '';
+			applyCommentaryDelta(handlers.state.runTrace, payload.text, {
+				replace: false
+			});
+			handlers.state.runTrace = { ...handlers.state.runTrace };
+			break;
 		case 'thinking.delta':
 			applyThinkingDelta(handlers.state.runTrace, payload.text);
 			handlers.state.runTrace = { ...handlers.state.runTrace };

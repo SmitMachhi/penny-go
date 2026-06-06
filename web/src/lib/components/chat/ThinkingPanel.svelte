@@ -45,7 +45,7 @@
 			!GENERIC_STATUS_LINES.has(status)
 	);
 
-	const label = 'Thinking';
+	const label = 'Evidence trace';
 
 	function handleToggle(): void {
 		if (onToggle) {

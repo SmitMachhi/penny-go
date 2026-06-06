@@ -44,4 +44,27 @@ describe('client-thread-reconcile', () => {
 
 		expect(hasPendingReply(messages)).toBe(true);
 	});
+
+	it('keeps a latest persisted tool-use assistant turn pending', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Build the PDF-ready plan' }] },
+			{
+				role: 'assistant',
+				stopReason: 'toolUse',
+				content: [
+					{
+						type: 'text',
+						text: 'Now I have a clear picture. Let me create the funding brief with my findings.'
+					},
+					{
+						type: 'toolCall',
+						toolCallId: 'call-create-brief',
+						toolName: 'create_funding_brief'
+					}
+				]
+			}
+		]);
+
+		expect(hasPendingReply(messages)).toBe(true);
+	});
 });

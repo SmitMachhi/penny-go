@@ -72,6 +72,33 @@ describe('normalizeHistoryMessages', () => {
 			phase: 'commentary'
 		});
 	});
+
+	it('treats persisted tool-use assistant text as commentary', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Create the funding brief' }] },
+			{
+				role: 'assistant',
+				stopReason: 'toolUse',
+				content: [
+					{
+						type: 'text',
+						text: 'Now I have a clear picture. Let me create the funding brief with my findings.'
+					},
+					{
+						type: 'toolCall',
+						toolCallId: 'call-create-brief',
+						toolName: 'create_funding_brief'
+					}
+				]
+			}
+		]);
+
+		expect(messages[1]).toMatchObject({
+			role: 'assistant',
+			text: 'Now I have a clear picture. Let me create the funding brief with my findings.',
+			phase: 'commentary'
+		});
+	});
 });
 
 describe('toolLabel', () => {

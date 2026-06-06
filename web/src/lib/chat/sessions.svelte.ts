@@ -78,7 +78,8 @@ export class SessionClient {
 		}
 		try {
 			const payload = await apiJson<SessionsResponse>(SESSION_INDEX_PATH);
-			this.state.sessions = mergeSessionListFromServer(payload.sessions ?? [], priorSessions);
+			const recents = (payload.sessions ?? []).filter((session) => !session.isLegacy);
+			this.state.sessions = mergeSessionListFromServer(recents, priorSessions);
 			this.state.error = null;
 		} catch (error) {
 			this.state.error = formatClientError(error, 'failed to load sessions');

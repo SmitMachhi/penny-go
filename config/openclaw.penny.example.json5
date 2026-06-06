@@ -18,6 +18,15 @@
       }
     }
   },
+  "models": {
+    "providers": {
+      "openrouter": {
+        // Forwarded to OpenRouter request payloads; Gemini 3.1 Flash Lite supports
+        // minimal, low, medium, and high thinking levels.
+        "params": { "reasoning": { "effort": "high" } }
+      }
+    }
+  },
   "tools": {
     "allow": ["search_corpus", "read_official_source", "create_funding_brief", "web_search"],
     "web": {

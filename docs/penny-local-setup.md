@@ -109,6 +109,7 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
 - Use `agents.defaults.model.primary: "openrouter/google/gemini-3.1-flash-lite"` for the default OpenRouter setup
+- Keep `models.providers.openrouter.params.reasoning.effort: "high"` so Gemini 3.1 Flash Lite uses high reasoning
 
 Restart:
 

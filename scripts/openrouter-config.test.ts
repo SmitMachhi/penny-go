@@ -16,6 +16,14 @@ test('penny openclaw config defaults to openrouter gemini flash lite', async () 
 	assert.match(config, new RegExp(DEEPSEEK_MODEL));
 });
 
+test('penny openrouter config requests high reasoning effort', async () => {
+	const config = await readProjectFile('config/openclaw.penny.example.json5');
+
+	assert.match(config, /"models":\s*\{/);
+	assert.match(config, /"openrouter":\s*\{/);
+	assert.match(config, /"reasoning":\s*\{\s*"effort":\s*"high"\s*\}/);
+});
+
 test('root env example asks for openrouter key and keeps deepseek fallback visible', async () => {
 	const envExample = await readProjectFile('.env.example');
 

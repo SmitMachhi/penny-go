@@ -111,6 +111,9 @@ The default agent model in `config/openclaw.penny.example.json5` is
 `agents.defaults.model.primary` to `deepseek/deepseek-v4-flash` and provide
 `DEEPSEEK_API_KEY` in the gateway environment.
 
+The same config sets `models.providers.openrouter.params.reasoning.effort` to
+`high` so Gemini 3.1 Flash Lite uses high reasoning through OpenRouter.
+
 Minimum web environment:
 
 ```bash

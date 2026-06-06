@@ -23,4 +23,11 @@ describe('ThinkingPanel markup', () => {
 		expect(source).toContain('penny-evidence-quest__thinking-label">working');
 		expect(source).not.toContain('penny-evidence-quest__thinking-label">thinking');
 	});
+
+	it('marks streamed answer text as a draft while Penny is working', async () => {
+		const source = await readComponentSource('MessageBubble.svelte');
+
+		expect(source).toContain('penny-draft-answer');
+		expect(source).toContain('drafting answer');
+	});
 });

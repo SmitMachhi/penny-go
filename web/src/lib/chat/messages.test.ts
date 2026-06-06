@@ -50,6 +50,28 @@ describe('normalizeHistoryMessages', () => {
 		expect(messages[1]?.text).toBe('Brief created.');
 		expect(messages[1]?.thinkingTrace).toBe('Searching corpus…\n\nVerifying sources…');
 	});
+
+	it('keeps commentary-only assistant text marked as commentary', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Find grants' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Let me verify the official program pages.',
+						textSignature: JSON.stringify({ v: 1, id: 'a1', phase: 'commentary' })
+					}
+				]
+			}
+		]);
+
+		expect(messages[1]).toMatchObject({
+			role: 'assistant',
+			text: 'Let me verify the official program pages.',
+			phase: 'commentary'
+		});
+	});
 });
 
 describe('toolLabel', () => {

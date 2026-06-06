@@ -13,7 +13,7 @@ export function findCompletedAssistantAfterLastUser(
 
 	for (let index = lastUserIndex + 1; index < messages.length; index += 1) {
 		const message = messages[index];
-		if (message?.role === 'assistant' && message.text.trim()) {
+		if (message?.role === 'assistant' && message.phase !== 'commentary' && message.text.trim()) {
 			return message;
 		}
 	}

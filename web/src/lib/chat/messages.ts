@@ -7,6 +7,7 @@ export type ChatMessage = {
 	role: ChatRole;
 	text: string;
 	timestamp?: number;
+	phase?: AssistantPhase;
 	artifactIds?: string[];
 	thinkingTrace?: string;
 };
@@ -155,6 +156,7 @@ function coalesceAssistantGroup(group: ParsedHistoryMessage[]): ChatMessage[] {
 			id: visible.id,
 			role: 'assistant',
 			text: visible.text,
+			...(visible.phase ? { phase: visible.phase } : {}),
 			...(visible.timestamp !== undefined ? { timestamp: visible.timestamp } : {}),
 			...(traceParts.length > 0 ? { thinkingTrace: traceParts.join('\n\n') } : {})
 		}

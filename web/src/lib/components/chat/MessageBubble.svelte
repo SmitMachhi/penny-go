@@ -9,6 +9,7 @@
 	import { cn } from '$lib/utils.js';
 
 	const COPY_FEEDBACK_MS = 2000;
+	const STREAMING_DRAFT_LABEL = 'drafting answer';
 
 	type Props = {
 		message: ChatMessage;
@@ -109,7 +110,18 @@
 		</div>
 	</div>
 	{:else}
-		<article class="w-full">
+		<article
+			class={cn(
+				'w-full',
+				streaming &&
+					'penny-draft-answer max-w-prose rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5'
+			)}
+		>
+			{#if streaming}
+				<div class="mb-1 text-xs font-medium tracking-normal text-muted-foreground">
+					{STREAMING_DRAFT_LABEL}
+				</div>
+			{/if}
 			{#if rendered?.kind === 'text'}
 				<div
 					class="penny-markdown whitespace-pre-wrap"

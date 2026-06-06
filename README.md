@@ -113,8 +113,8 @@ The default agent model in `config/openclaw.penny.example.json5` is
 `DEEPSEEK_API_KEY` in the gateway environment.
 
 The same model entry sets `params.reasoning.effort` to `high` so Kimi K2.6 uses
-high reasoning through OpenRouter, and caps `params.max_tokens` at `3000` so
-artifact runs stay inside practical OpenRouter credit limits.
+high reasoning through OpenRouter, and caps `params.max_tokens` at `16384` to
+avoid Kimi's full-context output default overflowing Penny's prompt.
 
 Minimum web environment:
 

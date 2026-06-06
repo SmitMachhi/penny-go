@@ -111,7 +111,7 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Use `agents.defaults.model.primary: "openrouter/moonshotai/kimi-k2.6"` for the default OpenRouter setup
 - Keep the `openrouter/moonshotai/kimi-k2.6` model entry pinned to `params.provider.order: ["wandb/fp4"]` with `allow_fallbacks: false`
 - Keep `params.reasoning.effort: "high"` on that model entry so Kimi K2.6 uses high reasoning
-- Keep `params.max_tokens: 3000` on that model entry so artifact runs stay inside practical OpenRouter credit limits
+- Keep `params.max_tokens: 16384` on that model entry so Kimi's output budget does not overflow Penny's normal prompt
 
 Restart:
 

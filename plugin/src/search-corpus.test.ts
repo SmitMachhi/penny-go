@@ -119,6 +119,26 @@ test("official benefit scope preserves non-repayable contribution pages", () => 
   assert.equal(scope.scope_verdict, "unknown");
 });
 
+test("official benefit scope ignores page chrome loan links", () => {
+  const scope = officialBenefitScopeFromMarkdown(
+    [
+      "# Export Development Program",
+      "[Export Development Program](https://example.ca/export) [Business Loan Program](https://example.ca/loans)",
+      "The program reimburses Manitoba businesses for eligible market research and trade show costs.",
+    ].join("\n"),
+  );
+  assert.equal(scope.scope_verdict, "unknown");
+});
+
+test("official benefit scope returns matched veto evidence", () => {
+  const scope = officialBenefitScopeFromMarkdown(
+    "Funding is provided as an interest-free repayable contribution for eligible expansion costs.",
+  );
+  assert.equal(scope.scope_verdict, "ruled_out");
+  assert.equal(scope.matched_text, "Funding is provided as an interest-free repayable contribution for eligible expansion costs.");
+  assert.equal(scope.matched_term, "repayable contribution");
+});
+
 test("appendOfficialBenefitScope annotates successful source reads", () => {
   const payload = appendOfficialBenefitScope({
     success: true,

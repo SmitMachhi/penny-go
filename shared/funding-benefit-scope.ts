@@ -6,6 +6,11 @@ export type FundingBenefitScope = {
 	match?: string;
 };
 
+export type LoanLikeEvidence = {
+	match: string;
+	text: string;
+};
+
 const LOAN_LIKE_PATTERN =
 	/\b(?:loan|loan[- ]guarantee|loan[- ]insurance|unsecured financing|low[- ]cost financing|low[- ]cost startup loan|low interest|repayable contribution|repayable contributions|repayable royalty|repayable financing|forgivable loan|loan interest)\b/i;
 const REPAYABLE_LIKE_PATTERN =
@@ -21,6 +26,10 @@ const RULED_OUT_HEADING_PATTERN =
 	/\b(?:ruled out|not a fit|outside scope|what to skip|closed or out|programs ruled out|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
 const NON_LOAN_SCOPE_PATTERN = /\bnon[- ]loan\b/gi;
 const NON_REPAYABLE_SCOPE_PATTERN = /\bnon[- ]repayable\b/gi;
+const MARKDOWN_LINK_PATTERN = /\[[^\]]+\]\([^)]+\)/g;
+const URL_PATTERN = /https?:\/\/\S+/g;
+const PAGE_CHROME_LINK_LIMIT = 2;
+const PAGE_CHROME_REMAINDER_MAX_LEN = 80;
 
 export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 	const normalized = text.trim();
@@ -45,8 +54,24 @@ export function classifyFundingBenefitScope(text: string): FundingBenefitScope {
 }
 
 export function containsActionableLoanLikeLanguage(markdown: string): boolean {
+	return findActionableLoanLikeEvidence(markdown) !== null;
+}
+
+export function findActionableLoanLikeEvidence(markdown: string): LoanLikeEvidence | null {
 	const actionableMarkdown = stripRuledOutMarkdownSections(markdown);
-	return actionableMarkdown.split('\n').some((line) => actionableLoanLikeMatch(line) !== null);
+	for (const line of actionableMarkdown.split('\n')) {
+		if (isLikelyPageChromeLine(line)) {
+			continue;
+		}
+		const match = actionableLoanLikeMatch(line);
+		if (match) {
+			return {
+				match: match[0],
+				text: evidenceText(line)
+			};
+		}
+	}
+	return null;
 }
 
 export function stripRuledOutMarkdownSections(markdown: string): string {
@@ -92,6 +117,29 @@ function actionableLoanLikeMatch(text: string): RegExpExecArray | null {
 	}
 
 	return loanLike;
+}
+
+function isLikelyPageChromeLine(line: string): boolean {
+	const trimmed = line.trim();
+	if (!trimmed) {
+		return false;
+	}
+	const linkCount = trimmed.match(MARKDOWN_LINK_PATTERN)?.length ?? 0;
+	if (linkCount < PAGE_CHROME_LINK_LIMIT) {
+		return false;
+	}
+	const remainder = trimmed
+		.replace(MARKDOWN_LINK_PATTERN, '')
+		.replace(URL_PATTERN, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return remainder.length <= PAGE_CHROME_REMAINDER_MAX_LEN;
+}
+
+function evidenceText(line: string): string {
+	return line
+		.replace(/\s+/g, ' ')
+		.trim();
 }
 
 function normalizeLoanScopeText(text: string): string {

@@ -1,9 +1,12 @@
-import { containsActionableLoanLikeLanguage } from '@penny/shared/funding-benefit-scope';
+import { findActionableLoanLikeEvidence } from '@penny/shared/funding-benefit-scope';
 
 export type OfficialBenefitScope = {
 	scope_verdict: 'ruled_out' | 'unknown';
 	scope_reason: string;
 	instruction: string;
+	matched_text?: string;
+	matched_term?: string;
+	matched_region?: 'program_body';
 };
 
 const RULED_OUT_REASON = 'loan_like_or_repayable_language_detected';
@@ -14,11 +17,15 @@ const UNKNOWN_INSTRUCTION =
 	'No loan-like language was detected by the heuristic; still verify repayment status from the page before recommending.';
 
 export function officialBenefitScopeFromMarkdown(markdown: string): OfficialBenefitScope {
-	if (containsActionableLoanLikeLanguage(markdown)) {
+	const evidence = findActionableLoanLikeEvidence(markdown);
+	if (evidence) {
 		return {
 			scope_verdict: 'ruled_out',
 			scope_reason: RULED_OUT_REASON,
-			instruction: RULED_OUT_INSTRUCTION
+			instruction: RULED_OUT_INSTRUCTION,
+			matched_text: evidence.text,
+			matched_term: evidence.match,
+			matched_region: 'program_body'
 		};
 	}
 	return {

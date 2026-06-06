@@ -15,6 +15,13 @@ describe('renderMarkdown', () => {
 		expect(html).toContain('rel="noopener noreferrer"');
 	});
 
+	it('opens artifact api links in a new tab safely', () => {
+		const html = renderMarkdown('[Plan PDF](/api/artifacts/brief/download?format=pdf)');
+		expect(html).toContain('href="/api/artifacts/brief/download?format=pdf"');
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain('rel="noopener noreferrer"');
+	});
+
 	it('marks external links for hover previews', () => {
 		const html = renderMarkdown('[App Store](https://apps.apple.com/us/app/id123)');
 		expect(html).toContain('class="penny-link-preview"');

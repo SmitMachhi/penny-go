@@ -35,43 +35,6 @@
 			/\n\|[-:\s|]+\|/.test(message.text)
 	);
 
-	const ARTIFACT_API_LINK_PATTERN = /\/api\/artifacts\/([^/?#]+)/i;
-
-	function handleAssistantClick(event: MouseEvent): void {
-		if (!onOpenArtifact) {
-			return;
-		}
-		const anchor = (event.target as Element | null)?.closest('a');
-		if (!anchor) {
-			return;
-		}
-		const href = anchor.getAttribute('href') ?? '';
-		if (!ARTIFACT_API_LINK_PATTERN.test(href)) {
-			return;
-		}
-		event.preventDefault();
-		event.stopPropagation();
-		const artifactId = extractArtifactIdFromHref(href) ?? planNudgeArtifact?.artifactId;
-		if (artifactId) {
-			onOpenArtifact(artifactId);
-		}
-	}
-
-	function interceptArtifactLinks(node: HTMLElement): { destroy: () => void } {
-		const onClick = (event: MouseEvent) => handleAssistantClick(event);
-		node.addEventListener('click', onClick, true);
-		return {
-			destroy() {
-				node.removeEventListener('click', onClick, true);
-			}
-		};
-	}
-
-	function extractArtifactIdFromHref(href: string): string | null {
-		const match = href.match(/\/api\/artifacts\/([^/?]+)/i);
-		return match?.[1] ?? null;
-	}
-
 	async function copyMessageText(): Promise<void> {
 		try {
 			await navigator.clipboard.writeText(message.text);
@@ -132,7 +95,6 @@
 				<div
 					class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
 					use:enhanceLinkPreviews
-					use:interceptArtifactLinks
 				>
 					{@html rendered.html}
 				</div>

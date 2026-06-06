@@ -5,7 +5,7 @@ description: Two consultation entry paths — opportunity-backed vs aspiration-f
 
 # Consultation modes
 
-Penny offers **two ways to start**. Both end in the same deliverable today: a **funding-aligned operating plan** (`create_funding_brief` → panel + PDF). This is not a full MBA business plan — it is what to do, which verified programs to pursue, and how to shape the business narrative to qualify.
+Penny offers **two ways to start**. Both end in the same deliverable today: a **funding-aligned operating plan** (`publish_funding_brief` → panel + PDF). This is not a full MBA business plan — it is what to do, which verified programs to pursue, and how to shape the business narrative to qualify.
 
 **Do not confuse** these modes with **strong corpus pool** vs **weak corpus pool** (see `penny-funding`) — those are internal search judgments only.
 
@@ -16,6 +16,10 @@ Penny offers **two ways to start**. Both end in the same deliverable today: a **
 | Existing company, revenue, employees, or draft operating plan | `opportunity_backed` |
 | Industry + location + “want to start” without an operating business | `aspiration_first` |
 | Ambiguous | Ask once: “Do you already have a business, or are you exploring an idea?” |
+
+Do not ask the ambiguous-mode question when the user says "we are", "we run",
+"we have employees", or gives an existing company profile. Treat that as
+`opportunity_backed` and proceed.
 
 On first classification, write or update the engagement memory header in `memory/engagements/<uuid>.md`:
 
@@ -117,7 +121,7 @@ not invent programs.
 
 - Follow `workspace/AGENTS.md` tool order and evidence gate.
 - Follow `penny-funding` for the case-file loop, weak-pool escalation, and fit bands.
-- Follow `penny-artifacts` for when to call `create_funding_brief` and actionability (`- [ ]` or `1.`).
+- Follow `penny-artifacts` for when to call `publish_funding_brief` and actionability (`- [ ]` or `1.`).
 - Write for the **memory/action list** panel: recommendation and context before fit bands with **Next step:**.
 
 ## Later (out of scope)

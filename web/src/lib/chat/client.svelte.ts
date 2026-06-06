@@ -2,6 +2,7 @@ import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { closeArtifactPanel, openArtifactPanel, toggleArtifactPanel } from '$lib/chat/client-artifact-panel.js';
 import { abortChatRun, fetchArtifacts, sendChatMessage } from '$lib/chat/client-api.js';
+import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import { refreshGatewayHealth } from '$lib/chat/client-health.js';
 import { markFirstMessagePaint, markSendStart, markSessionSwitchStart, measureSendToFirstToken, measureSessionSwitch } from '$lib/chat/client-performance-flow.js';
 import { persistSessionThreadCache } from '$lib/chat/client-session-cache.js';
@@ -19,7 +20,6 @@ import { readSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 const HEALTH_POLL_MS = 30_000;
-const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
 
 export class ChatClient {
 	state = $state<ChatClientState>(createInitialChatState());
@@ -348,9 +348,7 @@ export class ChatClient {
 	}
 
 	private hasFundingBriefToolActivity(): boolean {
-		return this.state.tools.some(
-			(tool) => tool.name === CREATE_FUNDING_BRIEF_TOOL && tool.phase !== 'error'
-		);
+		return this.state.tools.some((tool) => isFundingBriefTool(tool.name) && tool.phase !== 'error');
 	}
 
 	private resetRun(): void {

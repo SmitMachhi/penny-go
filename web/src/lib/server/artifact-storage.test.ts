@@ -105,6 +105,20 @@ describe('artifact storage', () => {
 		expect(payload.artifact.artifactId).toBe(ARTIFACT_ID);
 	});
 
+	it('buildArtifactSseForToolDone returns create payload for publish tool', async () => {
+		const payload = await buildArtifactSseForToolDone(
+			SESSION_KEY,
+			'publish_funding_brief',
+			'run-123'
+		);
+
+		expect(payload).not.toBeNull();
+		if (!payload || payload.type !== 'artifact.create') {
+			throw new Error('expected artifact.create payload');
+		}
+		expect(payload.artifact.artifactId).toBe(ARTIFACT_ID);
+	});
+
 	it('lists artifacts from disk when index.json is missing', async () => {
 		const indexPath = resolveSessionArtifactIndexPath(repoRoot, SESSION_UUID);
 		await rm(indexPath);

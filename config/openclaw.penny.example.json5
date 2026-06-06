@@ -16,7 +16,7 @@
             // to another provider if that endpoint is unavailable.
             "provider": { "order": ["wandb/fp4"], "allow_fallbacks": false },
             "reasoning": { "effort": "high" },
-            "max_tokens": 16384
+            "max_tokens": 3000
           }
         }
       },
@@ -31,7 +31,12 @@
     }
   },
   "tools": {
-    "allow": ["search_corpus", "read_official_source", "create_funding_brief", "web_search"],
+    "allow": [
+      "search_corpus",
+      "read_official_source",
+      "publish_funding_brief",
+      "web_search"
+    ],
     "web": {
       "search": { "provider": "exa" },
       "fetch": { "enabled": false }
@@ -44,6 +49,9 @@
         "enabled": true,
         "config": {
           "corpusPath": "/ABSOLUTE_PATH_TO_REPO/database/data/funding/curated/verified-programs.jsonl",
+          // Optional when EXA_API_KEY is present in the Gateway environment.
+          // Used only as a same-URL fallback when Crawl4AI hits anti-bot protection.
+          "exaApiKey": "env:EXA_API_KEY",
           "pythonPath": "/ABSOLUTE_PATH_TO_REPO/.venv/bin/python",
           "repoRoot": "/ABSOLUTE_PATH_TO_REPO"
         }

@@ -1,6 +1,6 @@
 # Penny Phase 1 — Local brain setup
 
-Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated JSONL corpus, verifies every suggestion with Crawl4AI (`read_official_source`), and may use Exa `web_search` only when corpus results are insufficient.
+Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated JSONL corpus, verifies every suggestion with `read_official_source` (Crawl4AI first, Exa official contents fallback on anti-bot pages), and may use Exa `web_search` only when corpus results are insufficient.
 
 This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 
@@ -18,7 +18,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | Path | Role |
 | ---- | ---- |
 | `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skills including stop-slop) |
-| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `create_funding_brief`) |
+| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `publish_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
 | `database/data/funding/curated/verified-programs.jsonl` | Corpus |
 | `config/openclaw.penny.example.json5` | Example gateway merge snippet |
@@ -111,7 +111,7 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Use `agents.defaults.model.primary: "openrouter/moonshotai/kimi-k2.6"` for the default OpenRouter setup
 - Keep the `openrouter/moonshotai/kimi-k2.6` model entry pinned to `params.provider.order: ["wandb/fp4"]` with `allow_fallbacks: false`
 - Keep `params.reasoning.effort: "high"` on that model entry so Kimi K2.6 uses high reasoning
-- Keep `params.max_tokens: 16384` on that model entry so Kimi's output budget does not overflow Penny's normal prompt
+- Keep `params.max_tokens: 3000` on that model entry so artifact runs stay inside practical OpenRouter credit limits
 
 Restart:
 
@@ -155,7 +155,7 @@ openclaw models list --provider deepseek
 
 ### Exa
 
-If `web_search` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`).
+If `web_search` or the anti-bot fallback inside `read_official_source` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`).
 
 ## 6. Verification ladder (do in order)
 
@@ -218,7 +218,7 @@ openclaw agent --local \
 Pass when:
 
 1. Engagement memory or transcript reflects **opportunity-backed** intake
-2. `create_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
+2. `publish_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
 3. Evidence trace unchanged (corpus → verify)
 
 ### 6g — Consultation mode: aspiration-first
@@ -258,7 +258,7 @@ npm install && npm run dev
 
 Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
 
-**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `create_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `publish_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
 
 **Voice:** anti–AI-slop rules are in **`workspace/SOUL.md`** (always in context). Full checklist: **`workspace/skills/stop-slop/`**. Add `stop-slop` to `agents.defaults.skills` when merging `config/openclaw.penny.example.json5`.
 

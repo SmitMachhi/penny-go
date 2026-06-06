@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { SsePayload } from '$lib/chat/stream-events.js';
+import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js';
 import { mapAgentEventToSse, mapChatEventToSse } from '$lib/server/chat-event-mapper.js';
 import { buildArtifactSseForToolDone } from '$lib/server/artifact-sse-bridge.js';
@@ -46,7 +47,7 @@ function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 	if (
 		ssePayload?.type === 'tool.done' &&
 		payload.runId &&
-		ssePayload.name === 'create_funding_brief'
+		isFundingBriefTool(ssePayload.name)
 	) {
 		void emitArtifactEvent(sessionKey, payload.runId, ssePayload.name).catch((error) => {
 			console.error('artifact_sse_emit_failed', error);

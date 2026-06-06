@@ -10,7 +10,7 @@ Production-ready artifacts: agent-authored markdown → PDF, server-side persist
 
 ## When Penny creates artifacts
 
-Penny calls `create_funding_brief` when:
+Penny calls `publish_funding_brief` when:
 
 - The user asks for a brief, strategy, PDF, or export, or
 - Two or more verified programs are delivered with execution detail.
@@ -33,7 +33,7 @@ Legacy `brief.json` and `slides.html` are removed on the next create/update.
 - `artifact.create` — new artifact (version 1)
 - `artifact.update` — revised artifact (version N+1)
 
-Emitted after `create_funding_brief` tool completes.
+Emitted after `publish_funding_brief` or legacy `create_funding_brief` completes.
 
 ## Verification
 
@@ -45,11 +45,13 @@ Requires Playwright for full PDF smoke. Use `--skip-pdf` if document-only smoke 
 
 ## Tool
 
-`create_funding_brief` — registered in `penny-tools`, allowed in `config/openclaw.penny.example.json5`.
+`publish_funding_brief` — model-facing tool registered in `penny-tools`, allowed in `config/openclaw.penny.example.json5`.
 
-Required: `title`, `triggerReason`, `bodyMarkdown` (with checklist or numbered steps), `verification`.
+Required: `title`, `bodyMarkdown` (with checklist or numbered steps), `verifiedUrls`.
 
-Optional: `evidence.programs[]` (audit metadata only — not auto-rendered into PDF).
+Optional: `notes`.
+
+Penny still keeps `create_funding_brief` internally as the strict artifact action. `publish_funding_brief` fills trigger reason, verification time, and evidence metadata so the model does not have to guess internal schema fields.
 
 Example tool result:
 

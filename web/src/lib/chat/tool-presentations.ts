@@ -21,6 +21,19 @@ export type ToolPresentation = {
 	spinWhenRunning?: boolean;
 };
 
+const PLAN_PRESENTATION: ToolPresentation = {
+	label: 'Building plan',
+	Icon: FileText,
+	capsuleRunning:
+		'border-primary/50 text-primary dark:border-primary/55 dark:text-primary',
+	capsuleDone:
+		'border-primary/25 text-primary/85 dark:border-primary/30 dark:text-primary/80',
+	capsuleError:
+		'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
+	iconRunning: 'text-primary',
+	iconDone: 'text-primary/75'
+};
+
 const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 	search_corpus: {
 		label: 'Searching funding corpus',
@@ -59,18 +72,8 @@ const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 		iconRunning: 'text-primary',
 		iconDone: 'text-primary/75'
 	},
-	create_funding_brief: {
-		label: 'Building plan',
-		Icon: FileText,
-		capsuleRunning:
-			'border-primary/50 text-primary dark:border-primary/55 dark:text-primary',
-		capsuleDone:
-			'border-primary/25 text-primary/85 dark:border-primary/30 dark:text-primary/80',
-		capsuleError:
-			'border-destructive/30 bg-destructive/10 text-destructive dark:border-destructive/40 dark:bg-destructive/15',
-		iconRunning: 'text-primary',
-		iconDone: 'text-primary/75'
-	}
+	create_funding_brief: PLAN_PRESENTATION,
+	publish_funding_brief: PLAN_PRESENTATION
 };
 
 const DEFAULT_PRESENTATION: ToolPresentation = {

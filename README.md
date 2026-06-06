@@ -2,7 +2,7 @@
 
 Penny is an evidence-first funding consultant for Canadian businesses. It helps owners find non-loan government opportunities, including grants, tax credits, rebates, subsidies, and investment tax credits.
 
-Penny is not a generic search box. The tracked funding corpus is the base knowledge layer. Live search extends that corpus when coverage is thin, and every actionable recommendation still has to be checked against an official source before Penny presents it.
+Penny is not a generic search box. The tracked funding corpus is the base knowledge layer. Live search extends that corpus when coverage is thin, and every actionable recommendation still has to be checked against an official source before Penny presents it. Official-source reads use Crawl4AI first and Exa official contents only as a same-URL fallback when an official page blocks the crawler.
 
 ## What Penny Does
 
@@ -66,7 +66,7 @@ duplicate_program_keys 0
 - OpenClaw CLI
 - OpenRouter API key for the agent model
 - DeepSeek API key only if you switch the model fallback back later
-- Exa API key for web search extension
+- Exa API key for web search extension and official-source anti-bot fallback
 
 Install OpenClaw:
 
@@ -113,8 +113,8 @@ The default agent model in `config/openclaw.penny.example.json5` is
 `DEEPSEEK_API_KEY` in the gateway environment.
 
 The same model entry sets `params.reasoning.effort` to `high` so Kimi K2.6 uses
-high reasoning through OpenRouter, and caps `params.max_tokens` at `16384` to
-avoid Kimi's full-context output default overflowing Penny's prompt.
+high reasoning through OpenRouter, and caps `params.max_tokens` at `3000` so
+artifact runs stay inside practical OpenRouter credit limits.
 
 Minimum web environment:
 

@@ -39,6 +39,47 @@ function artifact(version: number): ArtifactSummary {
 	};
 }
 
+async function expectMissedArtifactToolLoadsArtifact(
+	toolName: string,
+	toolEventType: 'tool.start' | 'tool.done' = 'tool.done'
+): Promise<void> {
+	const loadedArtifact = artifact(UPDATED_ARTIFACT_VERSION);
+	const fetchMock = vi.fn<typeof fetch>(async (input) => {
+		const path = requestPath(input);
+		if (path === '/api/chat/send') {
+			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+		}
+		if (path.startsWith('/api/artifacts')) {
+			return jsonResponse({ artifacts: [loadedArtifact] });
+		}
+		return jsonResponse({});
+	});
+	vi.stubGlobal('fetch', fetchMock);
+
+	const client = new ChatClient();
+	client.state.sessionKey = SESSION_KEY;
+	client.state.sessionId = SESSION_ID;
+	await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+	(client as unknown as ChatClientInternals).handleStreamEvent({
+		type: toolEventType,
+		runId: RUN_ID,
+		name: toolName
+	});
+
+	await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
+		type: 'chat.final',
+		runId: RUN_ID,
+		text: 'Done. The artifact panel has the full plan.'
+	});
+
+	expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
+		`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+	);
+	expect(client.state.activeArtifactId).toBe(ARTIFACT_ID);
+	expect(client.state.artifactPanelOpen).toBe(true);
+	expect(client.state.messages.at(-1)?.artifactIds).toEqual([ARTIFACT_ID]);
+}
+
 describe('ChatClient', () => {
 	beforeEach(() => {
 		vi.stubGlobal('EventSource', class MockEventSource {
@@ -305,41 +346,15 @@ describe('ChatClient', () => {
 	});
 
 	it('loads and opens a funding brief when the artifact stream event was missed', async () => {
-		const loadedArtifact = artifact(UPDATED_ARTIFACT_VERSION);
-		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			const path = requestPath(input);
-			if (path === '/api/chat/send') {
-				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
-			}
-			if (path.startsWith('/api/artifacts')) {
-				return jsonResponse({ artifacts: [loadedArtifact] });
-			}
-			return jsonResponse({});
-		});
-		vi.stubGlobal('fetch', fetchMock);
+		await expectMissedArtifactToolLoadsArtifact('create_funding_brief');
+	});
 
-		const client = new ChatClient();
-		client.state.sessionKey = SESSION_KEY;
-		client.state.sessionId = SESSION_ID;
-		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
-		(client as unknown as ChatClientInternals).handleStreamEvent({
-			type: 'tool.done',
-			runId: RUN_ID,
-			name: 'create_funding_brief'
-		});
+	it('loads and opens a funding brief after a missed publish stream event', async () => {
+		await expectMissedArtifactToolLoadsArtifact('publish_funding_brief');
+	});
 
-		await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
-			type: 'chat.final',
-			runId: RUN_ID,
-			text: 'Done. The artifact panel has the full plan.'
-		});
-
-		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
-			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
-		);
-		expect(client.state.activeArtifactId).toBe(ARTIFACT_ID);
-		expect(client.state.artifactPanelOpen).toBe(true);
-		expect(client.state.messages.at(-1)?.artifactIds).toEqual([ARTIFACT_ID]);
+	it('loads and opens a funding brief after only a publish start event', async () => {
+		await expectMissedArtifactToolLoadsArtifact('publish_funding_brief', 'tool.start');
 	});
 
 	it('does not append a final brief reply after the active session changes', async () => {

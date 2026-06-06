@@ -4,7 +4,7 @@ Local SvelteKit chat front-end for Penny. The browser talks to SvelteKit API rou
 
 ## Prerequisites
 
-- Phase 1 Penny stack working (`penny-tools`, Crawl4AI, DeepSeek, Exa)
+- Phase 1 Penny stack working (`penny-tools`, Crawl4AI, OpenRouter, Exa)
 - OpenClaw gateway running on `ws://127.0.0.1:18789`
 
 ```bash
@@ -55,7 +55,7 @@ Funding plan PDFs persist under `workspace/artifacts/<sessionUuid>/`. See **`../
 - `GET /api/artifacts/:id?sessionKey=&preview=pdf` — PDF bytes for panel preview
 - `GET /api/artifacts/:id/download?sessionKey=&format=pdf` — PDF download
 
-SSE: `artifact.create` / `artifact.update` after `create_funding_brief` tool completes.
+SSE: `artifact.create` / `artifact.update` after `publish_funding_brief` or legacy `create_funding_brief` completes.
 
 ## Run
 

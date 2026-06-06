@@ -108,8 +108,10 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
-- Use `agents.defaults.model.primary: "openrouter/google/gemini-3.1-flash-lite"` for the default OpenRouter setup
-- Keep `models.providers.openrouter.params.reasoning.effort: "high"` so Gemini 3.1 Flash Lite uses high reasoning
+- Use `agents.defaults.model.primary: "openrouter/moonshotai/kimi-k2.6"` for the default OpenRouter setup
+- Keep the `openrouter/moonshotai/kimi-k2.6` model entry pinned to `params.provider.order: ["wandb/fp4"]` with `allow_fallbacks: false`
+- Keep `params.reasoning.effort: "high"` on that model entry so Kimi K2.6 uses high reasoning
+- Keep `params.max_tokens: 16384` on that model entry so Kimi's output budget does not overflow Penny's normal prompt
 
 Restart:
 
@@ -121,7 +123,7 @@ openclaw plugins inspect penny-tools --runtime
 
 ### Model provider key (where it actually lives)
 
-Penny defaults to OpenRouter with **`openrouter/google/gemini-3.1-flash-lite`**. OpenClaw resolves OpenRouter auth from **`OPENROUTER_API_KEY`**.
+Penny defaults to OpenRouter with **`openrouter/moonshotai/kimi-k2.6`**, pinned to the **`wandb/fp4`** OpenRouter endpoint. OpenClaw resolves OpenRouter auth from **`OPENROUTER_API_KEY`**.
 
 **Recommended (interactive):**
 
@@ -139,7 +141,7 @@ OPENROUTER_API_KEY=sk-or-...
 
 If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `OPENROUTER_API_KEY`, or the daemon will not see shell-only exports.
 
-Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `openrouter/google/gemini-3.1-flash-lite`. Then confirm the catalog:
+Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `openrouter/moonshotai/kimi-k2.6` and the model entry has `params.provider.order: ["wandb/fp4"]`. Then confirm the catalog:
 
 ```bash
 openclaw models list --provider openrouter

@@ -8,22 +8,25 @@
     "defaults": {
       // OpenRouter default. To switch back to DeepSeek later, set this to
       // "deepseek/deepseek-v4-flash" and provide DEEPSEEK_API_KEY again.
-      "model": { "primary": "openrouter/google/gemini-3.1-flash-lite" },
+      "models": {
+        "openrouter/moonshotai/kimi-k2.6": {
+          "alias": "Kimi K2.6 (WandB FP4)",
+          "params": {
+            // Pin OpenRouter to the WandB FP4 endpoint; do not silently fall back
+            // to another provider if that endpoint is unavailable.
+            "provider": { "order": ["wandb/fp4"], "allow_fallbacks": false },
+            "reasoning": { "effort": "high" },
+            "max_tokens": 16384
+          }
+        }
+      },
+      "model": { "primary": "openrouter/moonshotai/kimi-k2.6" },
       "workspace": "/ABSOLUTE_PATH_TO_REPO/workspace",
       "skills": ["penny-consultation-modes", "penny-funding", "penny-artifacts", "stop-slop"],
       // Keep memory search scoped to workspace Markdown only — do NOT add "sessions"
       // and do NOT enable experimental.sessionMemory (cross-session transcript indexing).
       "memorySearch": {
         "sources": ["memory"]
-      }
-    }
-  },
-  "models": {
-    "providers": {
-      "openrouter": {
-        // Forwarded to OpenRouter request payloads; Gemini 3.1 Flash Lite supports
-        // minimal, low, medium, and high thinking levels.
-        "params": { "reasoning": { "effort": "high" } }
       }
     }
   },

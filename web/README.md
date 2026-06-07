@@ -49,7 +49,7 @@ API routes:
 
 ## Artifacts
 
-Funding plan PDFs persist under `workspace/artifacts/<sessionUuid>/`. See **`../docs/penny-artifacts.md`** and **`../docs/superpowers/specs/2026-06-03-consultation-modes.md`**.
+Funding plan PDFs persist under `workspace/artifacts/<sessionUuid>/`. See **`../docs/penny-artifacts.md`**.
 
 - `GET /api/artifacts?sessionKey=` — list artifacts
 - `GET /api/artifacts/:id?sessionKey=&preview=pdf` — PDF bytes for panel preview

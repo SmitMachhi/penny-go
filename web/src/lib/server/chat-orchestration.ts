@@ -1,6 +1,5 @@
 import { normalizeHistoryMessages } from '$lib/chat/messages.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
-import { ValidationError } from '$lib/server/api-error.js';
 import {
 	CHAT_HISTORY_LIMIT,
 	CHAT_HISTORY_MAX_CHARS
@@ -8,14 +7,12 @@ import {
 import { subscribeToStream } from '$lib/server/chat-stream-hub.js';
 import {
 	abortChatRun,
-	fetchChatHistory,
-	sendChatMessage
+	fetchChatHistory
 } from '$lib/server/gateway-chat-service.js';
 import { listSessionArtifactSummaries } from '$lib/server/artifact-storage.js';
 import { bumpPennySessionIndex } from '$lib/server/penny-session-index.js';
+import { submitPennyTurn } from '$lib/server/penny-turn-service.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
-
-const CHAT_DELIVER = false;
 
 export async function getChatHistory(sessionKeyRaw: string | null | undefined) {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
@@ -35,18 +32,14 @@ export async function sendChat(input: {
 	sessionKey?: string;
 	message?: string;
 	sessionId?: string;
+	turnId?: string;
 }) {
-	const message = input.message?.trim();
-	if (!message) {
-		throw new ValidationError('message is required');
-	}
-
 	const sessionKey = resolveSessionKey(input.sessionKey);
-	const response = await sendChatMessage({
-		message,
+	const response = await submitPennyTurn({
+		message: input.message,
 		sessionKey,
 		sessionId: input.sessionId,
-		deliver: CHAT_DELIVER
+		turnId: input.turnId
 	});
 	await bumpPennySessionIndex(sessionKey);
 	return response;

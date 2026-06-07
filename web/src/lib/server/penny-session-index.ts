@@ -7,6 +7,11 @@ import type { PennySessionView } from '$lib/types/penny-session.js';
 const INDEX_RELATIVE_PATH = ['workspace', 'penny-session-index.json'] as const;
 const JSON_INDENT_SPACES = 2;
 
+export type PennySessionIndexSnapshot = {
+	exists: boolean;
+	sessions: PennySessionView[];
+};
+
 function sessionIndexPath(): string {
 	return join(resolvePennyRepoRootFromEnv(), ...INDEX_RELATIVE_PATH);
 }
@@ -38,15 +43,19 @@ async function writeIndex(sessions: readonly PennySessionView[]): Promise<void> 
 }
 
 export async function readPennySessionIndex(): Promise<PennySessionView[]> {
+	return (await readPennySessionIndexSnapshot()).sessions;
+}
+
+export async function readPennySessionIndexSnapshot(): Promise<PennySessionIndexSnapshot> {
 	try {
 		const raw = await readFile(sessionIndexPath(), 'utf8');
 		const parsed = JSON.parse(raw) as unknown;
 		if (!Array.isArray(parsed)) {
-			return [];
+			return { exists: true, sessions: [] };
 		}
-		return sortSessions(parsed.filter(isPennySessionView));
+		return { exists: true, sessions: sortSessions(parsed.filter(isPennySessionView)) };
 	} catch {
-		return [];
+		return { exists: false, sessions: [] };
 	}
 }
 

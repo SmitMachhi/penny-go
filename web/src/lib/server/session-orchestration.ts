@@ -19,6 +19,7 @@ import { deleteSessionArtifacts } from '$lib/server/artifact-storage.js';
 import {
 	deletePennySessionIndex,
 	readPennySessionIndex,
+	readPennySessionIndexSnapshot,
 	replacePennySessionIndex,
 	upsertPennySessionIndex
 } from '$lib/server/penny-session-index.js';
@@ -102,9 +103,9 @@ export async function listPennySessions(): Promise<PennySessionView[]> {
 }
 
 export async function getPennySessionIndex(): Promise<PennySessionView[]> {
-	const indexed = await readPennySessionIndex();
-	if (indexed.length > 0) {
-		return indexed;
+	const snapshot = await readPennySessionIndexSnapshot();
+	if (snapshot.exists) {
+		return snapshot.sessions;
 	}
 	return listPennySessions();
 }

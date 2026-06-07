@@ -39,6 +39,7 @@ import {
 	listPennySessions
 } from './session-orchestration.js';
 import { readPennyTurn, upsertPennyTurn } from './penny-turn-store.js';
+import { replacePennySessionIndex } from './penny-session-index.js';
 import { LEGACY_SESSION_KEY } from './session-key.js';
 
 describe('session orchestration', () => {
@@ -104,6 +105,15 @@ describe('session orchestration', () => {
 		expect(sessions[0]?.title).toBe('Indexed chat');
 		expect(cached[0]?.title).toBe('Indexed chat');
 		expect(listGatewaySessions).toHaveBeenCalledOnce();
+	});
+
+	it('uses a persisted empty session index without gateway reconciliation', async () => {
+		await replacePennySessionIndex([]);
+
+		const sessions = await getPennySessionIndex();
+
+		expect(sessions).toEqual([]);
+		expect(listGatewaySessions).not.toHaveBeenCalled();
 	});
 
 	it('uses New chat for unlabeled sessions', async () => {

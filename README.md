@@ -1,5 +1,19 @@
 # Penny
 
+![OpenClaw](https://img.shields.io/badge/powered%20by-OpenClaw-111827?style=for-the-badge)
+![DeepSeek](https://img.shields.io/badge/DeepSeek-5786FE?style=for-the-badge&logo=deepseek&logoColor=white)
+![SvelteKit](https://img.shields.io/badge/sveltekit-%23ff3e00.svg?style=for-the-badge&logo=svelte&logoColor=white)
+![TypeScript](https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white)
+![Vite](https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white)
+![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
+![Node.js](https://img.shields.io/badge/node.js-6DA55F.svg?style=for-the-badge&logo=node.js&logoColor=white)
+![Python](https://img.shields.io/badge/python-3670A0?style=for-the-badge&logo=python&logoColor=ffdd54)
+![Docker](https://img.shields.io/badge/docker-%230db7ed.svg?style=for-the-badge&logo=docker&logoColor=white)
+![Fly.io](https://img.shields.io/badge/fly.io-8A2BE2?style=for-the-badge&logo=flydotio&logoColor=white)
+![Vitest](https://img.shields.io/badge/-Vitest-252529?style=for-the-badge&logo=vitest&logoColor=FCC72B)
+[![License](https://img.shields.io/github/license/SmitMachhi/penny-go?style=for-the-badge)](LICENSE)
+![Funding Database](https://img.shields.io/badge/funding%20database-331%20verified%20programs-0F766E?style=for-the-badge)
+
 Penny is an AI agent powered by OpenClaw. It helps Canadian business owners find non-loan government funding: grants, tax credits, rebates, subsidies, and investment tax credits.
 
 Penny starts with a tracked, curated funding database. It uses live web search only when the database has weak coverage for the user's location, sector, or project. Before Penny recommends a program, it verifies the official source and checks whether the benefit is in scope.
@@ -175,7 +189,7 @@ Fly settings:
 | --- | --- |
 | Region | Toronto, `yyz` |
 | Machine | `shared-cpu-1x` |
-| Memory | `1gb` |
+| Memory | `2gb` |
 | Idle cost control | `auto_stop_machines = "stop"` and `min_machines_running = 0` |
 
 Set production secrets:

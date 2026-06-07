@@ -1,0 +1,63 @@
+{
+  "gateway": {
+    "mode": "local",
+    "auth": { "mode": "token" },
+    "port": 18789,
+    "bind": "loopback"
+  },
+  "session": {
+    "reset": { "mode": "idle", "idleMinutes": 10080 }
+  },
+  "agents": {
+    "defaults": {
+      "models": {
+        "deepseek/deepseek-v4-flash": {
+          "alias": "DeepSeek V4 Flash",
+          "params": {
+            "provider": { "order": ["deepseek"], "allow_fallbacks": false },
+            "reasoning": { "effort": "high" },
+            "max_tokens": 16384
+          }
+        }
+      },
+      "model": { "primary": "deepseek/deepseek-v4-flash" },
+      "workspace": "/app/workspace",
+      "skills": ["penny-consultation-modes", "penny-funding", "penny-artifacts", "stop-slop"],
+      "memorySearch": {
+        "sources": ["memory"]
+      }
+    }
+  },
+  "tools": {
+    "allow": [
+      "search_corpus",
+      "read_official_source",
+      "publish_funding_brief",
+      "web_search"
+    ],
+    "web": {
+      "search": { "provider": "exa" },
+      "fetch": { "enabled": false }
+    }
+  },
+  "plugins": {
+    "enabled": true,
+    "allow": ["deepseek", "exa", "penny-tools"],
+    "load": {
+      "paths": ["/app/plugin"]
+    },
+    "entries": {
+      "deepseek": { "enabled": true },
+      "exa": { "enabled": true },
+      "penny-tools": {
+        "enabled": true,
+        "config": {
+          "corpusPath": "/app/database/data/funding/curated/verified-programs.jsonl",
+          "exaApiKey": "env:EXA_API_KEY",
+          "pythonPath": "/app/.venv/bin/python",
+          "repoRoot": "/app"
+        }
+      }
+    }
+  }
+}

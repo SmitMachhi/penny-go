@@ -64,8 +64,8 @@ duplicate_program_keys 0
 - npm
 - Python 3.11 or newer
 - OpenClaw CLI
-- OpenRouter API key for the agent model
-- DeepSeek API key only if you switch the model fallback back later
+- DeepSeek API key for the agent model
+- OpenRouter API key only if you switch the model back later
 - Exa API key for web search extension and official-source anti-bot fallback
 
 Install OpenClaw:
@@ -99,7 +99,7 @@ Configure secrets outside Git. Use `.env.example` and `web/.env.example` as chec
 Minimum OpenClaw environment:
 
 ```bash
-OPENROUTER_API_KEY=<your-openrouter-key>
+DEEPSEEK_API_KEY=<your-deepseek-key>
 EXA_API_KEY=<your-exa-key>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
 PENNY_CORPUS_PATH=/absolute/path/to/penny-go/database/data/funding/curated/verified-programs.jsonl
@@ -107,14 +107,9 @@ PENNY_PYTHON=/absolute/path/to/penny-go/.venv/bin/python
 ```
 
 The default agent model in `config/openclaw.penny.example.json5` is
-`openrouter/moonshotai/kimi-k2.6`. Its model entry pins OpenRouter routing to
-`wandb/fp4` with fallbacks disabled. To switch back to DeepSeek later, set
-`agents.defaults.model.primary` to `deepseek/deepseek-v4-flash` and provide
-`DEEPSEEK_API_KEY` in the gateway environment.
-
-The same model entry sets `params.reasoning.effort` to `high` so Kimi K2.6 uses
-high reasoning through OpenRouter, and caps `params.max_tokens` at `16384` to
-avoid Kimi's full-context output default overflowing Penny's prompt.
+`deepseek/deepseek-v4-flash`. Its model entry pins provider routing to
+`deepseek` with fallbacks disabled, uses high reasoning, and caps
+`params.max_tokens` at `16384` to keep Penny's output budget bounded.
 
 Minimum web environment:
 
@@ -193,7 +188,7 @@ fly secrets set \
   OPENCLAW_GATEWAY_URL=<wss-or-private-gateway-url> \
   OPENCLAW_GATEWAY_TOKEN=<gateway-token> \
   PENNY_REPO_ROOT=/app \
-  OPENROUTER_API_KEY=<your-openrouter-key> \
+  DEEPSEEK_API_KEY=<your-deepseek-key> \
   EXA_API_KEY=<your-exa-key>
 ```
 

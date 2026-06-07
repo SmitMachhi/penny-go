@@ -11,7 +11,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | Node.js | 22.x or newer (`node -v`) |
 | OpenClaw CLI | `npm install -g openclaw@latest` |
 | Python | 3.11+ for Crawl4AI |
-| API keys | `OPENROUTER_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
+| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
 
 ## Repo layout involved
 
@@ -37,7 +37,7 @@ That creates `~/.openclaw/openclaw.json`.
 Use the repo root `.env.example` as a checklist. Minimum:
 
 ```
-OPENROUTER_API_KEY=...
+DEEPSEEK_API_KEY=...
 EXA_API_KEY=...
 
 PENNY_REPO_ROOT=/ABSOLUTE_PATH_TO/penny-go
@@ -108,10 +108,10 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
-- Use `agents.defaults.model.primary: "openrouter/moonshotai/kimi-k2.6"` for the default OpenRouter setup
-- Keep the `openrouter/moonshotai/kimi-k2.6` model entry pinned to `params.provider.order: ["wandb/fp4"]` with `allow_fallbacks: false`
-- Keep `params.reasoning.effort: "high"` on that model entry so Kimi K2.6 uses high reasoning
-- Keep `params.max_tokens: 16384` on that model entry so Kimi's output budget does not overflow Penny's normal prompt
+- Use `agents.defaults.model.primary: "deepseek/deepseek-v4-flash"` for the default DeepSeek setup
+- Keep the `deepseek/deepseek-v4-flash` model entry pinned to `params.provider.order: ["deepseek"]` with `allow_fallbacks: false`
+- Keep `params.reasoning.effort: "high"` on that model entry
+- Keep `params.max_tokens: 16384` on that model entry so Penny's output budget stays bounded
 
 Restart:
 
@@ -123,31 +123,25 @@ openclaw plugins inspect penny-tools --runtime
 
 ### Model provider key (where it actually lives)
 
-Penny defaults to OpenRouter with **`openrouter/moonshotai/kimi-k2.6`**, pinned to the **`wandb/fp4`** OpenRouter endpoint. OpenClaw resolves OpenRouter auth from **`OPENROUTER_API_KEY`**.
+Penny defaults to DeepSeek with **`deepseek/deepseek-v4-flash`**, pinned to the first-party **`deepseek`** provider endpoint. OpenClaw resolves DeepSeek auth from **`DEEPSEEK_API_KEY`**.
 
 **Recommended (interactive):**
 
 ```bash
-openclaw models auth login --provider openrouter
+openclaw models auth login --provider deepseek
 ```
 
-That stores OpenRouter auth in your OpenClaw profile.
+That stores DeepSeek auth in your OpenClaw profile.
 
 **Recommended (file the gateway can read):** add the same variable to **`~/.openclaw/.env`**:
 
 ```
-OPENROUTER_API_KEY=sk-or-...
+DEEPSEEK_API_KEY=...
 ```
 
-If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `OPENROUTER_API_KEY`, or the daemon will not see shell-only exports.
+If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `DEEPSEEK_API_KEY`, or the daemon will not see shell-only exports.
 
-Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `openrouter/moonshotai/kimi-k2.6` and the model entry has `params.provider.order: ["wandb/fp4"]`. Then confirm the catalog:
-
-```bash
-openclaw models list --provider openrouter
-```
-
-To switch back to DeepSeek later, set `agents.defaults.model.primary` to `deepseek/deepseek-v4-flash`, provide **`DEEPSEEK_API_KEY`**, restart the gateway, and confirm the catalog:
+Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `deepseek/deepseek-v4-flash` and the model entry has `params.provider.order: ["deepseek"]`. Then confirm the catalog:
 
 ```bash
 openclaw models list --provider deepseek

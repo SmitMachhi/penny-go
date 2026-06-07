@@ -5,6 +5,8 @@
 4. No magic numbers: name every numeric literal with a semantic constant.
 5. Penny stays agentic: reasoning, context, evidence, tools, and model output drives decisions; deterministic code only frames tools, safety gates, and evidence constraints.
 
+make sure penny thinks from first principles and works like a human consultant would just as ai agent. SHE MUST THINK FIRST PRINCIPLES.
+
 ## Commit Rules — MANDATORY, NO EXCEPTIONS
 1. Auto-commit each verified logical change immediately.
 2. Stage files explicitly by name; never use `git add .` or `git add -A`.

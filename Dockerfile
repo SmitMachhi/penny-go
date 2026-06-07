@@ -36,7 +36,6 @@ ENV PENNY_REPO_ROOT=/app
 ENV PENNY_CORPUS_PATH=/app/database/data/funding/curated/verified-programs.jsonl
 ENV PENNY_PYTHON=/app/.venv/bin/python
 ENV OPENCLAW_CONFIG_PATH=/app/config/openclaw.fly.json5
-ENV OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
 ENV OPENCLAW_STATE_DIR=/app/workspace/.openclaw-state
 
 COPY --from=build /app/web/build ./web/build

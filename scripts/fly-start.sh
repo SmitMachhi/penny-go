@@ -3,14 +3,27 @@ set -eu
 
 : "${OPENCLAW_GATEWAY_TOKEN:?OPENCLAW_GATEWAY_TOKEN is required}"
 
+ephemeral_port_min="49152"
+ephemeral_port_span="16384"
+
+random_gateway_port() {
+  random_value="$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')"
+  echo $((ephemeral_port_min + random_value % ephemeral_port_span))
+}
+
+gateway_port="${OPENCLAW_GATEWAY_PORT:-}"
+if [ -z "$gateway_port" ]; then
+  gateway_port="$(random_gateway_port)"
+fi
+
 export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-/app/config/openclaw.fly.json5}"
-export OPENCLAW_GATEWAY_URL="${OPENCLAW_GATEWAY_URL:-ws://127.0.0.1:18789}"
+export OPENCLAW_GATEWAY_URL="ws://127.0.0.1:${gateway_port}"
+export OPENCLAW_GATEWAY_PORT="$gateway_port"
 export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/app/workspace/.openclaw-state}"
 export PENNY_REPO_ROOT="${PENNY_REPO_ROOT:-/app}"
 export PENNY_CORPUS_PATH="${PENNY_CORPUS_PATH:-/app/database/data/funding/curated/verified-programs.jsonl}"
 export PENNY_PYTHON="${PENNY_PYTHON:-/app/.venv/bin/python}"
 
-gateway_port="${OPENCLAW_GATEWAY_PORT:-18789}"
 gateway_health_attempts="${OPENCLAW_GATEWAY_HEALTH_ATTEMPTS:-120}"
 gateway_health_pid=""
 

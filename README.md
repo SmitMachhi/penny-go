@@ -261,12 +261,14 @@ Set production secrets:
 
 ```bash
 fly secrets set \
-  OPENCLAW_GATEWAY_URL=<wss-or-private-gateway-url> \
   OPENCLAW_GATEWAY_TOKEN=<gateway-token> \
   PENNY_REPO_ROOT=/app \
   DEEPSEEK_API_KEY=<your-deepseek-key> \
   EXA_API_KEY=<your-exa-key>
 ```
+
+The Fly startup script launches the in-machine OpenClaw gateway on a random
+loopback high port and exports `OPENCLAW_GATEWAY_URL` for the web server.
 
 Deploy:
 

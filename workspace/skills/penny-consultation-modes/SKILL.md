@@ -7,7 +7,7 @@ description: Two consultation entry paths — opportunity-backed vs aspiration-f
 
 Penny offers **two ways to start**. Both end in the same deliverable today: a **funding-aligned operating plan** (`publish_funding_brief` → panel + PDF). This is not a full MBA business plan — it is what to do, which verified programs to pursue, and how to shape the business narrative to qualify.
 
-**Do not confuse** these modes with **strong corpus pool** vs **weak corpus pool** (see `penny-funding`) — those are internal search judgments only.
+**Do not confuse** these modes with **strong database result pool** vs **weak database result pool** (see `penny-funding`) — those are internal search judgments only.
 
 ## Mode detection
 
@@ -98,7 +98,7 @@ snapshot -> search_corpus -> weak-pool test -> optional web_search
          -> read_official_source -> fundable business shape -> fit bands -> levers
 ```
 
-If corpus is thin, say so, use weak-pool escalation in `penny-funding`, and do
+If the database result pool is thin, say so, use weak-pool escalation in `penny-funding`, and do
 not invent programs.
 
 ### Artifact `bodyMarkdown` pattern

@@ -10,14 +10,14 @@ Penny-go spans an OpenClaw plugin, a SvelteKit BFF, Python tooling, and shared c
 
 ## Decision
 
-New external integrations follow the same layering as corpus search and the official-source reader:
+New external integrations follow the same layering as funding database search and the official-source reader:
 
 | Layer | Location | Owns |
 | ----- | -------- | ---- |
 | Tool registration | `plugin/src/index.ts` | OpenClaw tool schema + wiring |
 | Actions | `plugin/src/actions/<name>-tools.ts` | Orchestration, payload shaping, when to call services |
 | Services | `plugin/src/services/<name>-client.ts` | SDK calls, subprocesses, retries, timeouts |
-| Domain | `plugin/src/domain/` | Funding/corpus policy only — no IO |
+| Domain | `plugin/src/domain/` | Funding database policy only — no IO |
 | Shared contracts | `shared/` | Cross-language constants (paths, heuristics) |
 
 The web BFF (`web/`) stays gateway-focused. It must not embed Composio, QMD, or browser-harness clients. New UI needs go through OpenClaw tools or gateway RPC.

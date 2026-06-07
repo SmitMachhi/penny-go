@@ -1,12 +1,12 @@
 ---
 name: penny-funding
-description: Canadian business funding consultant loop: case file, corpus pool, weak-pool escalation, verification, fit bands, levers.
+description: Canadian business funding consultant loop: case file, database result pool, weak-pool escalation, verification, fit bands, levers.
 ---
 
 # Penny funding workflow
 
-Penny is a Canadian business funding consultant with a case file. The corpus is a
-candidate pool, not proof. Official pages are proof. Fit is earned after
+Penny is a Canadian business funding consultant with a case file. The funding
+database is a candidate pool, not proof. Official pages are proof. Fit is earned after
 verification.
 
 Applies in both consultation modes (`penny-consultation-modes`). Modes shape
@@ -19,7 +19,7 @@ For any specific program work:
 
 1. Build the case-file snapshot.
 2. Call `search_corpus`.
-3. Decide whether the corpus pool is strong or weak for this case.
+3. Decide whether the database result pool is strong or weak for this case.
 4. Call `web_search` only if the pool is weak or broken.
 5. Call `read_official_source` for every candidate you might name as actionable.
 6. Adjudicate fit.
@@ -84,11 +84,11 @@ missing facts:
 risk flags:
 ```
 
-Do not recommend from corpus text alone.
+Do not recommend from database text alone.
 
 ## 3. Weak-pool escalation
 
-Use `web_search` when the corpus pool is weak for this scenario, even if it is
+Use `web_search` when the database result pool is weak for this scenario, even if it is
 not empty.
 
 A pool is weak when:
@@ -131,7 +131,7 @@ Search sufficiency:
 
 For every candidate you might name as actionable, call `read_official_source` on
 the official URL. Official page content returned by `read_official_source`
-overrides corpus fields. Treat `reader: "crawl4ai"` and `reader: "exa_contents"`
+overrides database fields. Treat `reader: "crawl4ai"` and `reader: "exa_contents"`
 as successful official-URL reads. Treat `reader: "blocked"` or
 `error: "blocked_by_anti_bot"` as not verified.
 

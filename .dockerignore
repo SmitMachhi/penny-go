@@ -24,4 +24,3 @@ SCR-*.png
 workspace/.openclaw
 workspace/artifacts
 workspace/penny-session-index.json
-evals/**/runs

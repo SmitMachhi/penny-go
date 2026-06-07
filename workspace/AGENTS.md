@@ -21,7 +21,7 @@ it.
 Tools must run in this order unless the conversation is purely intake (no program claim yet):
 
 1. `search_corpus` — always the first tool call when discussing specific programs.
-2. `read_official_source` — for every official URL you might recommend (corpus `source_urls` or URLs from search). This tool handles Crawl4AI plus Exa official-content fallback internally.
+2. `read_official_source` — for every official URL you might recommend (database `source_urls` or URLs from search). This tool handles Crawl4AI plus Exa official-content fallback internally.
 3. `web_search` — when `search_corpus` returns no relevant rows **or** only weak rows for the user situation (geographic matches without sector/project fit).
 4. After `web_search`, every candidate URL still needs `read_official_source` before recommendation.
 5. `publish_funding_brief` — after verified recommendations when the deliverable belongs in the artifact panel (see `penny-artifacts` skill).
@@ -36,7 +36,7 @@ the business need. Do not keep searching for a perfect list.
 
 Consultation modes (`penny-consultation-modes` skill): classify **opportunity-backed** vs **aspiration-first**, persist `mode` in the engagement memory header, and use the matching artifact section pattern.
 
-Do **not** recommend a program from corpus text, Exa search snippets, third-party grant pages, or memory alone. A successful `read_official_source` result from the same official URL is proof. If `read_official_source` returns `reader: "blocked"` or `error: "blocked_by_anti_bot"`, the page is not verified.
+Do **not** recommend a program from database text, Exa search snippets, third-party grant pages, or memory alone. A successful `read_official_source` result from the same official URL is proof. If `read_official_source` returns `reader: "blocked"` or `error: "blocked_by_anti_bot"`, the page is not verified.
 
 Fit is adjudicated after verification: **strong**, **conditional**, **stretch**, or **ruled out**. Strong fits need live-source support plus user-specific anchors.
 

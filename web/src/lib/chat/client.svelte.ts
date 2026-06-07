@@ -73,10 +73,7 @@ export class ChatClient {
 		}
 		this.dispose();
 		clearChatSessionState(this.state);
-		this.activeRunId = null;
-		this.abortRequested = false;
-		this.artifactVersionSnapshot = new Map();
-		this.pendingRunArtifactIds = [];
+		this.resetRunTracking();
 	}
 
 	async startSessionWithMessage(sessionKey: string, message: string, turnId: string): Promise<boolean> {
@@ -361,22 +358,25 @@ export class ChatClient {
 	private resetRun(): void {
 		this.clearRunRecovery();
 		resetRunState(this.state);
-		this.activeRunId = null;
-		this.abortRequested = false;
-		this.expectedUserMessageCount = 0;
-		this.artifactVersionSnapshot = new Map();
-		this.pendingRunArtifactIds = [];
+		this.resetRunTracking();
 		persistSessionThreadCache(this.state);
 	}
 
 	private applyOptimisticAbort(): void {
 		this.clearRunRecovery();
 		resetRunState(this.state);
+		this.resetRunTracking({ preserveAbortRequest: true });
+		persistSessionThreadCache(this.state);
+	}
+
+	private resetRunTracking(options?: { preserveAbortRequest?: boolean }): void {
 		this.activeRunId = null;
 		this.expectedUserMessageCount = 0;
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
-		persistSessionThreadCache(this.state);
+		if (!options?.preserveAbortRequest) {
+			this.abortRequested = false;
+		}
 	}
 
 	private async persistAbort(runId: string): Promise<void> {

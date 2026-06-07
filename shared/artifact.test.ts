@@ -320,6 +320,26 @@ test('composePdfMarkdown appends verification after body', () => {
 	assert.match(composed, /## Verification/);
 });
 
+test('composePdfMarkdown strips duplicate generated cover title and prepared line', () => {
+	const composed = composePdfMarkdown(
+		[
+			'# Ontario SaaS funding',
+			'',
+			'**Prepared:** June 6, 2026',
+			'**Business:** SaaS company',
+			'',
+			'## Recommendation',
+			'Pursue the grant.'
+		].join('\n'),
+		SAMPLE_META
+	);
+
+	assert.doesNotMatch(composed, /^# Ontario SaaS funding/m);
+	assert.doesNotMatch(composed, /^\*\*Prepared:\*\*/m);
+	assert.match(composed, /^\*\*Business:\*\* SaaS company/m);
+	assert.match(composed, /## Recommendation/);
+});
+
 test('renderMarkdownToPrintHtml renders tables and task lists', () => {
 	const html = renderMarkdownToPrintHtml('## Plan\n\n- [ ] Step one\n\n| Program | Fit |\n| --- | --- |\n| IRAP | Strong |', {
 		title: 'Test',

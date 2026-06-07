@@ -30,6 +30,26 @@ ${links}${notes}`;
 }
 
 const OUT_OF_SCOPE_HEADING_PATTERN = /^##\s+what\s+this\s+plan\s+does\s+not\s+include\s*$/i;
+const LEADING_H1_PATTERN = /^#\s+(.+?)\s*(?:\n|$)/;
+const LEADING_PREPARED_LINE_PATTERN = /^\*\*Prepared:\*\*[^\n]*(?:\n|$)/i;
+
+function normalizeTitleForComparison(value: string): string {
+	return value.replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function stripDuplicateGeneratedCoverIntro(markdown: string, title: string): string {
+	const heading = LEADING_H1_PATTERN.exec(markdown);
+	if (!heading || normalizeTitleForComparison(heading[1] ?? '') !== normalizeTitleForComparison(title)) {
+		return markdown;
+	}
+
+	return markdown
+		.slice(heading[0].length)
+		.replace(/^\s*\n/, '')
+		.replace(LEADING_PREPARED_LINE_PATTERN, '')
+		.replace(/^\s*\n/, '')
+		.trim();
+}
 
 /** Removes boilerplate scope disclaimers Penny sometimes adds; not part of the deliverable memo. */
 export function stripOutOfScopeDisclaimerSection(markdown: string): string {
@@ -54,7 +74,9 @@ export function stripOutOfScopeDisclaimerSection(markdown: string): string {
 }
 
 export function composePdfMarkdown(documentMarkdown: string, meta: ArtifactMetaRecord): string {
-	const body = stripOutOfScopeDisclaimerSection(documentMarkdown.trim());
+	const body = stripOutOfScopeDisclaimerSection(
+		stripDuplicateGeneratedCoverIntro(documentMarkdown.trim(), meta.title)
+	);
 	const appendix = buildVerificationAppendix(meta);
 	return `${body}\n\n${appendix}\n`;
 }

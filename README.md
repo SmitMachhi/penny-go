@@ -1,56 +1,44 @@
 # Penny
 
-Penny is an evidence-first funding consultant for Canadian businesses. It helps owners find non-loan government opportunities, including grants, tax credits, rebates, subsidies, and investment tax credits.
+Penny is an AI agent powered by OpenClaw. It helps Canadian business owners find non-loan government funding: grants, tax credits, rebates, subsidies, and investment tax credits.
 
-Penny is not a generic search box. The tracked funding corpus is the base knowledge layer. Live search extends that corpus when coverage is thin, and every actionable recommendation still has to be checked against an official source before Penny presents it. Official-source reads use Crawl4AI first and Exa official contents only as a same-URL fallback when an official page blocks the crawler.
+Penny starts with a tracked, curated funding corpus. It uses live web search only when the corpus has weak coverage for the user's location, sector, or project. Before Penny recommends a program, it verifies the official source and checks whether the benefit is in scope.
+
+Penny serves Canadian businesses. It does not provide legal advice, tax filing advice, personal-benefit advice, loans, loan guarantees, low-cost financing, or repayable contributions.
 
 ## What Penny Does
 
-- Searches a curated Canadian business funding corpus.
-- Rejects loans, loan guarantees, low-cost financing, and repayable contributions.
-- Verifies recommendations against official government or government-linked sources.
-- Separates strong, conditional, stretch, and ruled-out fits.
-- Creates funding plan artifacts with evidence, next steps, and business-specific qualification gaps.
-- Runs as an OpenClaw agent with a SvelteKit chat UI.
+- Searches a verified Canadian business funding corpus.
+- Reads official source pages before recommending programs.
+- Rejects loan-like or repayable products.
+- Labels fit as strong, conditional, stretch, or ruled out.
+- Creates funding plan artifacts with evidence, risks, next steps, and official URLs.
+- Runs as an OpenClaw agent behind a SvelteKit chat UI.
 
-Penny is for Canadian businesses only. It does not provide legal advice, tax filing advice, or personal-benefit recommendations.
+## Architecture
 
-## Repository Layout
+| Layer | Path | Role |
+| --- | --- | --- |
+| Web app | `web/` | SvelteKit chat UI and server API routes. |
+| Agent runtime | OpenClaw | Agent sessions, tool calls, skills, and gateway. |
+| Penny tools | `plugin/` | OpenClaw plugin for corpus search, source reading, and funding artifacts. |
+| Shared code | `shared/` | Artifact, session, markdown, PDF, and validation helpers. |
+| Agent workspace | `workspace/` | Penny instructions, skills, voice, and memory rules. |
+| Funding corpus | `database/data/funding/curated/` | Tracked data that powers Penny's recommendations. |
+| Source reader | `tools/read_official_source.py` | Crawl4AI official-page reader with Exa same-URL fallback. |
 
-| Path | Purpose |
-| --- | --- |
-| `web/` | SvelteKit chat UI and API routes. |
-| `plugin/` | OpenClaw plugin that exposes Penny tools. |
-| `shared/` | Shared artifact, session, markdown, PDF, and corpus utilities. |
-| `workspace/` | OpenClaw agent workspace, Penny instructions, and skills. |
-| `database/data/funding/curated/` | Tracked verified funding corpus that powers Penny. |
-| `database/scripts/` | Corpus verification scripts. |
-| `tools/` | Official-source reader and document rendering helpers. |
-| `config/` | Example OpenClaw configuration for Penny. |
-| `evals/` | Behavioral and frontend evaluation matrices. |
-| `docs/` | Setup notes, artifact docs, ADRs, and implementation notes. |
+The browser does not receive the OpenClaw gateway token. SvelteKit acts as a server-side BFF: browser requests hit `/api/*`, and those routes talk to the OpenClaw gateway.
 
 ## Funding Corpus
 
-The curated corpus is intentionally tracked in Git:
+The curated corpus is core product data and belongs in Git:
 
 - `database/data/funding/curated/verified-programs.jsonl`
 - `database/data/funding/curated/verified-programs.json`
 - `database/data/funding/curated/coverage-summary.md`
 - `database/data/funding/curated/curation-notes.md`
 
-This data is core product behavior, not disposable local output. Penny starts with this corpus so it can give stable, Canada-specific, business-only recommendations instead of relying on broad web search.
-
-Live web search is an extension path. Penny uses it when corpus matches are missing or weak for the user's jurisdiction, sector, or project. Search results are not recommendations until `read_official_source` verifies an official page.
-
-Verify the corpus from the database package:
-
-```bash
-cd database
-python3 scripts/verify_funding_corpus.py
-```
-
-Expected current baseline:
+Current baseline:
 
 ```text
 verified_profiles 331
@@ -58,15 +46,23 @@ jurisdictions 14
 duplicate_program_keys 0
 ```
 
+Verify it:
+
+```bash
+cd database
+python3 scripts/verify_funding_corpus.py
+```
+
+Penny searches the corpus first. If the result pool is thin, Penny can use `web_search` through Exa, then verify official URLs with `read_official_source`. Search results alone are not recommendations.
+
 ## Prerequisites
 
 - Node.js 22 or newer
 - npm
 - Python 3.11 or newer
 - OpenClaw CLI
-- DeepSeek API key for the agent model
-- OpenRouter API key only if you switch the model back later
-- Exa API key for web search extension and official-source anti-bot fallback
+- DeepSeek API key for the default model
+- Exa API key for web search and official-source fallback
 
 Install OpenClaw:
 
@@ -77,7 +73,7 @@ openclaw onboard
 
 ## Local Setup
 
-Create the Python environment for official-source reading:
+Create the Python environment:
 
 ```bash
 python3 -m venv .venv
@@ -106,11 +102,6 @@ PENNY_CORPUS_PATH=/absolute/path/to/penny-go/database/data/funding/curated/verif
 PENNY_PYTHON=/absolute/path/to/penny-go/.venv/bin/python
 ```
 
-The default agent model in `config/openclaw.penny.example.json5` is
-`deepseek/deepseek-v4-flash`. Its model entry pins provider routing to
-`deepseek` with fallbacks disabled, uses high reasoning, and caps
-`params.max_tokens` at `16384` to keep Penny's output budget bounded.
-
 Minimum web environment:
 
 ```bash
@@ -119,7 +110,9 @@ OPENCLAW_GATEWAY_TOKEN=<gateway-token>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
 ```
 
-Merge `config/openclaw.penny.example.json5` into your OpenClaw config and update the absolute paths.
+Merge `config/openclaw.penny.example.json5` into your OpenClaw config and replace the absolute paths.
+
+The default model is `deepseek/deepseek-v4-flash`. The example config pins provider routing to DeepSeek, disables fallbacks, enables high reasoning, and caps `params.max_tokens` at `16384`.
 
 ## Run Locally
 
@@ -131,7 +124,7 @@ npm --prefix plugin run plugin:build
 npm --prefix plugin run plugin:validate
 ```
 
-Start the OpenClaw gateway:
+Start the gateway:
 
 ```bash
 openclaw gateway
@@ -147,7 +140,7 @@ Open `http://localhost:5173`.
 
 ## Test
 
-Run the main proof suite:
+Run the main suite:
 
 ```bash
 npm --prefix web run check
@@ -156,13 +149,13 @@ npm --prefix shared test
 npm --prefix plugin test
 ```
 
-Verify the full Phase 1 stack without live reader calls:
+Verify the local stack without live reader calls:
 
 ```bash
 ./scripts/verify_penny_phase1.sh --skip-reader
 ```
 
-Run live official-source smoke checks when API keys and the Python reader are ready:
+Run live official-source checks when the gateway, keys, and Python reader are ready:
 
 ```bash
 ./scripts/verify_penny_phase1.sh --live
@@ -170,31 +163,22 @@ Run live official-source smoke checks when API keys and the Python reader are re
 
 ## Fly.io Deployment
 
-Penny is deployable on Fly.io as a gateway-backed web application. The repo
-includes:
+The repo includes Fly.io deployment files:
 
-- `fly.toml` with `primary_region = "yyz"` for Toronto.
-- `Dockerfile` for the SvelteKit Node server.
-- `.dockerignore` to keep local state, dependencies, and generated output out of
-  the deployment context.
+- `fly.toml`
+- `Dockerfile`
+- `.dockerignore`
 
-Recommended production shape:
+Fly settings:
 
-| Component | Fly.io role |
+| Setting | Value |
 | --- | --- |
-| SvelteKit web app | Public Fly app serving the chat UI and `/api/*` routes. |
-| OpenClaw gateway | Private Fly service or separately managed gateway reachable by the web app. |
-| Penny corpus | Tracked repo data mounted in the app image. |
-| Secrets | Fly secrets, never committed to Git. |
+| Region | Toronto, `yyz` |
+| Machine | `shared-cpu-1x` |
+| Memory | `512mb` |
+| Idle cost control | `auto_stop_machines = "stop"` and `min_machines_running = 0` |
 
-The default Fly Machine is pinned to cheap small compute:
-
-- `shared-cpu-1x`
-- `512mb`
-- `min_machines_running = 0`
-- auto-stop and auto-start enabled
-
-Set production secrets with Fly:
+Set production secrets:
 
 ```bash
 fly secrets set \
@@ -205,40 +189,40 @@ fly secrets set \
   EXA_API_KEY=<your-exa-key>
 ```
 
-Deployment checklist:
+Deploy:
 
-1. Confirm the Fly app name in `fly.toml`.
-2. Build the web app with `npm --prefix web run build`.
-3. Deploy with `fly deploy`.
-4. Ensure the OpenClaw gateway is reachable from the Fly app.
-5. Ensure `OPENCLAW_GATEWAY_TOKEN` never reaches browser code.
-6. Run `/api/health` after deployment.
-7. Test a corpus-backed prompt and a weak-corpus prompt that escalates to web search.
+```bash
+npm --prefix web run build
+fly deploy
+```
 
-The web app is already designed as a BFF: the browser talks to SvelteKit routes, and SvelteKit holds the gateway token server-side.
+After deployment:
+
+1. Call `/api/health`.
+2. Send a prompt that should hit the corpus.
+3. Send a thin-coverage prompt that should use web search.
+4. Confirm the browser does not receive `OPENCLAW_GATEWAY_TOKEN`.
 
 ## Agent Rules
 
-Penny's agent behavior lives in `workspace/`.
+Penny's behavior lives in `workspace/`.
 
 Core rules:
 
-- Search the corpus first.
-- Verify official URLs before recommending programs.
+- Search the corpus before web search.
+- Verify official URLs before recommendations.
 - Treat `read_official_source` benefit-scope vetoes as binding.
-- Keep user business facts scoped to the active engagement.
-- Do not present loans or repayable contributions as opportunities.
-- Write substantial recommendations into funding plan artifacts.
+- Keep business facts scoped to the active engagement.
+- Refuse loans and repayable contributions.
+- Put substantial recommendations into funding plan artifacts.
 
-## Public Release Notes
+## Public Release Checklist
 
-Before publishing this repo, confirm:
-
-- A project license exists at the repo root.
-- Secrets are stored only in local env files or Fly secrets.
-- Dependency audit findings are reviewed.
-- Third-party vendored skills have attribution and license notes.
-- Generated local outputs remain ignored.
+- Root MIT license exists.
+- Third-party notices cover vendored skills.
+- Secrets stay in env files or Fly secrets.
+- Generated local outputs stay ignored.
+- Dependency audit findings are reviewed before launch.
 
 ## More Docs
 

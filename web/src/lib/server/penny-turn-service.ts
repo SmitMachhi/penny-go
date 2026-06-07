@@ -4,11 +4,13 @@ import { ValidationError } from '$lib/server/api-error.js';
 import { sendChatMessage } from '$lib/server/gateway-chat-service.js';
 import {
 	patchPennyTurn,
+	readPennyTurns,
 	readPennyTurn,
 	upsertPennyTurn,
 	type PennyTurn
 } from '$lib/server/penny-turn-store.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
+import type { ChatMessage } from '$lib/chat/messages.js';
 
 type SubmitPennyTurnInput = {
 	message?: string;
@@ -24,9 +26,24 @@ type SubmitPennyTurnResult = {
 	turn: PennyTurn;
 };
 
+type RecordPennyTurnRunEventInput = {
+	error?: string;
+	runId: string;
+	sessionKey: string;
+	status: Extract<PennyTurn['status'], 'running' | 'completed' | 'failed' | 'aborted'>;
+	updatedAt?: number;
+};
+
+type ReconcileActivePennyTurnInput = {
+	messages: ChatMessage[];
+	sessionKey: string;
+	updatedAt?: number;
+};
+
 const CHAT_DELIVER = false;
 const MAX_TURN_ID_LENGTH = 128;
 const TURN_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
+const ACTIVE_TURN_STATUSES = new Set<PennyTurn['status']>(['pending', 'submitted', 'running']);
 
 function normalizeTurnId(candidate: string | undefined): string {
 	const turnId = candidate?.trim() || randomUUID();
@@ -102,4 +119,66 @@ export async function submitPennyTurn(
 		});
 		throw error;
 	}
+}
+
+function findLatestActiveTurn(turns: readonly PennyTurn[]): PennyTurn | null {
+	for (let index = turns.length - 1; index >= 0; index -= 1) {
+		const turn = turns[index];
+		if (turn && ACTIVE_TURN_STATUSES.has(turn.status)) {
+			return turn;
+		}
+	}
+	return null;
+}
+
+function turnHasAssistantReply(turn: PennyTurn, messages: readonly ChatMessage[]): boolean {
+	for (let index = messages.length - 1; index >= 0; index -= 1) {
+		const message = messages[index];
+		if (message?.role !== 'user' || message.text.trim() !== turn.message) {
+			continue;
+		}
+		return messages.slice(index + 1).some((entry) => entry.role === 'assistant' && entry.text.trim());
+	}
+	return false;
+}
+
+export async function recordPennyTurnRunEvent(
+	input: RecordPennyTurnRunEventInput
+): Promise<PennyTurn | null> {
+	const sessionKey = resolveSessionKey(input.sessionKey);
+	const turns = await readPennyTurns(sessionKey);
+	const turn = turns.find((entry) => entry.runId === input.runId || entry.turnId === input.runId);
+	if (!turn) {
+		return null;
+	}
+	return patchPennyTurn(sessionKey, turn.turnId, {
+		status: input.status,
+		runId: input.runId,
+		updatedAt: input.updatedAt ?? Date.now(),
+		...(input.error ? { error: input.error } : {})
+	});
+}
+
+export async function reconcileActivePennyTurn(
+	input: ReconcileActivePennyTurnInput
+): Promise<PennyTurn | null> {
+	const sessionKey = resolveSessionKey(input.sessionKey);
+	const activeTurn = findLatestActiveTurn(await readPennyTurns(sessionKey));
+	if (!activeTurn) {
+		return null;
+	}
+	if (turnHasAssistantReply(activeTurn, input.messages)) {
+		await patchPennyTurn(sessionKey, activeTurn.turnId, {
+			status: 'completed',
+			updatedAt: input.updatedAt ?? Date.now()
+		});
+		return null;
+	}
+	if (activeTurn.status !== 'running') {
+		return patchPennyTurn(sessionKey, activeTurn.turnId, {
+			status: 'running',
+			updatedAt: input.updatedAt ?? Date.now()
+		});
+	}
+	return activeTurn;
 }

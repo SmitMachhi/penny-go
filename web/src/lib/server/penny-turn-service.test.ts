@@ -13,7 +13,11 @@ vi.mock('$lib/server/gateway-chat-service.js', () => ({
 }));
 
 import { readPennyTurn } from './penny-turn-store.js';
-import { submitPennyTurn } from './penny-turn-service.js';
+import {
+	reconcileActivePennyTurn,
+	recordPennyTurnRunEvent,
+	submitPennyTurn
+} from './penny-turn-service.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const SESSION_ID = 'session-1';
@@ -104,5 +108,54 @@ describe('penny turn service', () => {
 				turnId: TURN_ID
 			})
 		).rejects.toThrow('turnId already belongs to a different message');
+	});
+
+	it('marks a submitted turn completed from its final run event', async () => {
+		await submitPennyTurn({
+			message: MESSAGE,
+			now: CREATED_AT,
+			sessionKey: SESSION_KEY,
+			turnId: TURN_ID
+		});
+
+		await recordPennyTurnRunEvent({
+			runId: RUN_ID,
+			sessionKey: SESSION_KEY,
+			status: 'completed',
+			updatedAt: CREATED_AT
+		});
+
+		expect(await readPennyTurn(SESSION_KEY, TURN_ID)).toMatchObject({
+			runId: RUN_ID,
+			status: 'completed'
+		});
+	});
+
+	it('reconciles submitted turns against loaded history', async () => {
+		await submitPennyTurn({
+			message: MESSAGE,
+			now: CREATED_AT,
+			sessionKey: SESSION_KEY,
+			turnId: TURN_ID
+		});
+
+		const activeBeforeReply = await reconcileActivePennyTurn({
+			messages: [{ id: 'history-0', role: 'user', text: MESSAGE }],
+			sessionKey: SESSION_KEY,
+			updatedAt: CREATED_AT
+		});
+		expect(activeBeforeReply?.turnId).toBe(TURN_ID);
+
+		const activeAfterReply = await reconcileActivePennyTurn({
+			messages: [
+				{ id: 'history-0', role: 'user', text: MESSAGE },
+				{ id: 'history-1', role: 'assistant', text: 'answer' }
+			],
+			sessionKey: SESSION_KEY,
+			updatedAt: CREATED_AT
+		});
+
+		expect(activeAfterReply).toBeNull();
+		expect(await readPennyTurn(SESSION_KEY, TURN_ID)).toMatchObject({ status: 'completed' });
 	});
 });

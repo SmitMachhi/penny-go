@@ -112,6 +112,21 @@ discovery only. Every web result still needs `read_official_source` before
 recommendation. `read_official_source` may use Exa `/contents` internally after
 Crawl4AI is blocked, but only for the same official URL.
 
+Search sufficiency:
+
+- Think like a consultant, not a scraper. Cover the material funding lanes for
+  the case: jurisdiction, sector, and spend mechanism (hiring, capex, training,
+  export, R&D, tourism, clean tech, etc.).
+- Prefer official-domain searches over broad web queries.
+- A normal plan has 2-4 actionable fits. Fewer is acceptable when the verified
+  landscape is thin; more is acceptable when distinct material lanes remain
+  untested or the user asked for a comprehensive scan.
+- Continue searching when all current candidates are ruled out, the official
+  page is ambiguous, a major funding lane is still uncovered, or a fresh query
+  is likely to change the recommendation.
+- Stop searching when the next query would mostly add duplicates, famous generic
+  programs, weak stretches, or evidence that will not change the operating plan.
+
 ## 4. Verification ledger
 
 For every candidate you might name as actionable, call `read_official_source` on
@@ -120,10 +135,16 @@ overrides corpus fields. Treat `reader: "crawl4ai"` and `reader: "exa_contents"`
 as successful official-URL reads. Treat `reader: "blocked"` or
 `error: "blocked_by_anti_bot"` as not verified.
 
-Verification budget: before the first artifact, read at most 4 official
+Verification sufficiency: before the first artifact, usually verify 3-6 official
 candidate URLs. Choose the highest-fit candidates from the case-file thesis. If
-the first verified set is thin, publish the honest plan with gaps instead of
-continuing an open-ended search.
+the verified set is thin, publish the honest plan with gaps instead of continuing
+an open-ended search. If a distinct high-value lane is still unresolved, verify
+that lane before publishing.
+
+Duplicate reads are forbidden. If a URL was already read in the current run,
+reuse that result mentally; do not call `read_official_source` on the same URL
+again. One official policy PDF can verify multiple nearby program schedules when
+the returned content covers them.
 
 Never use Radware, browser-verification, CAPTCHA, access-denied, or incident-ID
 text as evidence. If the tool returns that status after fallback, rule the

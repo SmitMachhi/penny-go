@@ -30,9 +30,9 @@ Never start a funding run with `read_official_source` or `web_search`. The first
 
 If the user asks for an artifact, PDF, export, operating plan, or "put it in the panel," do not end with a draft, a promise, or a request for approval after you have at least one verified actionable program. Call `publish_funding_brief` before the final chat answer.
 
-For speed: publish once you have 2-4 verified strong or conditional fits plus any necessary ruled-out note. Do not keep searching for a perfect list when the current verified set already answers the business need.
-
-Before the first artifact call, verify at most 4 official candidate URLs. If all 4 fail or are ruled out, say the verified set is thin and publish the best honest plan or answer with the verified gaps. Do not run an open-ended source-reading loop.
+For speed, follow the search budget in `penny-funding`: small candidate pool,
+no duplicate official URL reads, and publish once the verified set can answer
+the business need. Do not keep searching for a perfect list.
 
 Consultation modes (`penny-consultation-modes` skill): classify **opportunity-backed** vs **aspiration-first**, persist `mode` in the engagement memory header, and use the matching artifact section pattern.
 

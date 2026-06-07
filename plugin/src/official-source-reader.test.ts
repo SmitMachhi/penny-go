@@ -11,6 +11,13 @@ import { resolveExaApiKey } from './services/penny-config.js';
 const OFFICIAL_URL = 'https://www.princeedwardisland.ca/en/service/employ-pei';
 const EXA_KEY = 'exa-test-key';
 const TEST_EXA_ENV_VAR = 'PENNY_TEST_EXA_KEY';
+const FAST_FALLBACK_WAIT_MS = 20;
+
+function wait(ms: number): Promise<'waiting'> {
+	return new Promise((resolve) => {
+		setTimeout(() => resolve('waiting'), ms);
+	});
+}
 
 test('detectBlockedSourceContent catches Radware challenge text', () => {
 	assert.equal(
@@ -65,6 +72,67 @@ test('readOfficialSourceWithFallback uses Exa contents when Crawl4AI is blocked'
 	assert.equal(result.reader, 'exa_contents');
 	assert.equal(result.verification_source, 'exa_official_contents');
 	assert.match(result.markdown ?? '', /wage subsidy/);
+});
+
+test('readOfficialSourceWithFallback returns clean Exa contents without waiting for slow Crawl4AI', async () => {
+	clearOfficialSourceReadCacheForTests();
+	let resolveCrawl:
+		| ((value: {
+				success: boolean;
+				url: string;
+				error: string;
+				fetched_at: string;
+		  }) => void)
+		| undefined;
+
+	const resultPromise = readOfficialSourceWithFallback({
+		url: OFFICIAL_URL,
+		exaApiKey: EXA_KEY,
+		readWithCrawl4Ai: async () =>
+			new Promise((resolve) => {
+				resolveCrawl = resolve;
+			}),
+		readWithExaContents: async () => ({
+			success: true,
+			url: OFFICIAL_URL,
+			markdown: '# Employ PEI\n\nEmploy PEI is a wage subsidy for eligible employers.',
+			fetched_at: '2026-06-06T20:44:26.000Z'
+		})
+	});
+
+	const early = await Promise.race([resultPromise, wait(FAST_FALLBACK_WAIT_MS)]);
+	resolveCrawl?.({
+		success: false,
+		url: OFFICIAL_URL,
+		error: 'crawl_late',
+		fetched_at: '2026-06-06T20:44:27.000Z'
+	});
+	const result = await resultPromise;
+
+	assert.notEqual(early, 'waiting');
+	assert.equal(result.success, true);
+	assert.equal(result.reader, 'exa_contents');
+});
+
+test('readOfficialSourceWithFallback keeps clean Exa contents when Crawl4AI errors', async () => {
+	clearOfficialSourceReadCacheForTests();
+
+	const result = await readOfficialSourceWithFallback({
+		url: OFFICIAL_URL,
+		exaApiKey: EXA_KEY,
+		readWithCrawl4Ai: async () => {
+			throw new Error('crawl failed');
+		},
+		readWithExaContents: async () => ({
+			success: true,
+			url: OFFICIAL_URL,
+			markdown: '# Employ PEI\n\nEmploy PEI is a wage subsidy for eligible employers.',
+			fetched_at: '2026-06-06T20:44:26.000Z'
+		})
+	});
+
+	assert.equal(result.success, true);
+	assert.equal(result.reader, 'exa_contents');
 });
 
 test('readOfficialSourceWithFallback rejects Exa contents challenge text', async () => {

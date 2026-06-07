@@ -73,7 +73,9 @@ Write like a funding consultant who **just finished a call with this owner**:
 2. The tool binds to the active Penny web chat session automatically and fills `triggerReason`, `verifiedAt`, and artifact metadata.
 
 For speed, do not wait for exhaustive coverage. If the artifact can answer the
-business need with 2-4 verified strong or conditional fits, publish it.
+business need with a sufficient verified set, publish it. Normal plans have 2-4
+actionable fits; publish fewer when the landscape is thin, and include more when
+distinct material funding lanes would change the operating plan.
 
 If a tool call fails, correct the document content or verified URL list. Do not search OpenClaw docs, guess hidden schema values, or retry with invented metadata.
 

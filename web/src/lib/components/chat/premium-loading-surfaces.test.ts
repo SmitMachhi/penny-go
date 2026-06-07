@@ -56,4 +56,13 @@ describe('premium loading surfaces', () => {
 		expect(source).toContain('min-h-[100dvh]');
 		expect(source).not.toContain('h-screen');
 	});
+
+	it('keeps gateway status visible in the header', async () => {
+		const source = await readChatComponent('PennyShell.svelte');
+
+		expect(source).toContain('connectionStatusLabel');
+		expect(source).toContain('Online');
+		expect(source).toContain('Working');
+		expect(source).toContain('Offline');
+	});
 });

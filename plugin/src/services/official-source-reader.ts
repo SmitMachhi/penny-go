@@ -88,26 +88,33 @@ export async function readOfficialSourceWithFallback(input: {
 		return cached;
 	}
 
-	const crawl = await input.readWithCrawl4Ai({
-		url: normalizedUrl,
-		timeoutMs: resolveTimeoutMs(normalizedUrl, input),
-		signal: input.signal
-	});
-	const crawlResult = normalizeReaderPayload(crawl, normalizedUrl, 'crawl4ai');
-	if (isCleanSuccessfulRead(crawlResult, normalizedUrl)) {
-		return cacheAndReturn(normalizedUrl, crawlResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS);
+	const crawlPromise = readSafely(
+		input.readWithCrawl4Ai({
+			url: normalizedUrl,
+			timeoutMs: resolveTimeoutMs(normalizedUrl, input),
+			signal: input.signal
+		}),
+		normalizedUrl,
+		'crawl4ai'
+	);
+	const exaPromise = readSafely(
+		input.readWithExaContents({
+			url: normalizedUrl,
+			apiKey: input.exaApiKey,
+			signal: input.signal
+		}),
+		normalizedUrl,
+		'exa_contents'
+	);
+	const cleanResult = await firstCleanSuccessfulRead(
+		[crawlPromise, exaPromise],
+		normalizedUrl
+	);
+	if (cleanResult) {
+		return cacheAndReturn(normalizedUrl, cleanResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS);
 	}
 
-	const exa = await input.readWithExaContents({
-		url: normalizedUrl,
-		apiKey: input.exaApiKey,
-		signal: input.signal
-	});
-	const exaResult = normalizeReaderPayload(exa, normalizedUrl, 'exa_contents');
-	if (isCleanSuccessfulRead(exaResult, normalizedUrl)) {
-		return cacheAndReturn(normalizedUrl, exaResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS);
-	}
-
+	const [crawlResult, exaResult] = await Promise.all([crawlPromise, exaPromise]);
 	return cacheAndReturn(
 		normalizedUrl,
 		blockedResult(normalizedUrl, exaResult.fetched_at ?? crawlResult.fetched_at),
@@ -159,6 +166,28 @@ function normalizeReaderPayload(
 	};
 }
 
+async function readSafely(
+	promise: Promise<RawSourceReadResult>,
+	requestedUrl: string,
+	reader: Exclude<OfficialSourceReader, 'blocked'>
+): Promise<OfficialSourceReadResult> {
+	try {
+		const payload = await promise;
+		return normalizeReaderPayload(payload, requestedUrl, reader);
+	} catch (error) {
+		return normalizeReaderPayload(
+			{
+				success: false,
+				url: requestedUrl,
+				error: error instanceof Error ? error.message : 'source_reader_failed',
+				fetched_at: new Date().toISOString()
+			},
+			requestedUrl,
+			reader
+		);
+	}
+}
+
 function isCleanSuccessfulRead(result: OfficialSourceReadResult, requestedUrl: string): boolean {
 	if (result.success !== true || !result.markdown) {
 		return false;
@@ -170,6 +199,23 @@ function isCleanSuccessfulRead(result: OfficialSourceReadResult, requestedUrl: s
 		return false;
 	}
 	return !detectBlockedSourceContent(result.markdown);
+}
+
+async function firstCleanSuccessfulRead(
+	promises: Promise<OfficialSourceReadResult>[],
+	requestedUrl: string
+): Promise<OfficialSourceReadResult | null> {
+	const pending = [...promises];
+	while (pending.length > 0) {
+		const settled = await Promise.race(
+			pending.map((promise, index) => promise.then((result) => ({ index, result })))
+		);
+		pending.splice(settled.index, 1);
+		if (isCleanSuccessfulRead(settled.result, requestedUrl)) {
+			return settled.result;
+		}
+	}
+	return null;
 }
 
 function isMeaningfulSourceContent(text: string): boolean {

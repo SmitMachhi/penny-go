@@ -41,6 +41,19 @@
 			: APP_TITLE
 	);
 	const showSidebarBrand = $derived(sessions.state.sidebarCollapsed);
+	const connectionStatusLabel = $derived(
+		chat.state.sending ? 'Working' : chat.state.connected ? 'Online' : 'Offline'
+	);
+	const connectionStatusTitle = $derived(
+		chat.state.connected ? 'Penny gateway is connected' : (chat.state.connectionError ?? 'Penny gateway is offline')
+	);
+	const connectionStatusDotClass = $derived(
+		chat.state.sending
+			? 'bg-amber-500'
+			: chat.state.connected
+				? 'bg-emerald-500'
+				: 'bg-destructive'
+	);
 
 	$effect(() => {
 		if (bannerError) {
@@ -124,6 +137,15 @@
 				>
 					<Menu class="h-4 w-4" />
 				</Button>
+				<div
+					class="flex h-8 shrink-0 items-center gap-2 rounded-full border border-border/80 bg-background/80 px-2.5 text-xs font-medium text-muted-foreground"
+					role="status"
+					aria-label={`Penny status: ${connectionStatusLabel}`}
+					title={connectionStatusTitle}
+				>
+					<span class={cn('h-2 w-2 rounded-full', connectionStatusDotClass)}></span>
+					<span>{connectionStatusLabel}</span>
+				</div>
 			</div>
 
 			<div class="flex items-center gap-2 sm:gap-3">
@@ -140,21 +162,13 @@
 					</Button>
 				{/if}
 				{#if !chat.state.connected}
-					<div class="flex items-center gap-2">
-						<span
-							class="max-w-[10rem] truncate text-xs text-destructive sm:max-w-xs"
-							title={chat.state.connectionError ?? undefined}
-						>
-							Not connected
-						</span>
-						<Button
-							variant="outline"
-							class="h-8 px-2.5 text-xs"
-							onclick={() => void chat.refreshHealth()}
-						>
-							Retry
-						</Button>
-					</div>
+					<Button
+						variant="outline"
+						class="h-8 px-2.5 text-xs"
+						onclick={() => void chat.refreshHealth()}
+					>
+						Retry
+					</Button>
 				{/if}
 				<ThemeToggle />
 			</div>

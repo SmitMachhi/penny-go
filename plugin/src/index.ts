@@ -8,11 +8,15 @@ import {
 } from "./actions/penny-tools.js";
 import type { PennyToolsConfigShape } from "./services/penny-config.js";
 import { createFundingBriefTool, createFundingBriefToolDefinition } from "./tools/create-funding-brief-tool.js";
+import { publishFundingBriefTool, publishFundingBriefToolDefinition } from "./tools/publish-funding-brief-tool.js";
 
 const configSchema = Type.Object(
   {
     corpusPath: Type.Optional(
       Type.String({ description: "Absolute path to verified-programs.jsonl" }),
+    ),
+    exaApiKey: Type.Optional(
+      Type.String({ description: "Exa API key for read_official_source fallback" }),
     ),
     pythonPath: Type.Optional(
       Type.String({ description: "Python interpreter for read_official_source.py" }),
@@ -68,6 +72,14 @@ export default defineToolPlugin({
       ...createFundingBriefToolDefinition,
       factory: ({ config, toolContext }) =>
         createFundingBriefTool(
+          config as PennyToolsConfigShape,
+          toolContext.sessionKey,
+        ) as unknown as AnyAgentTool,
+    }),
+    tool({
+      ...publishFundingBriefToolDefinition,
+      factory: ({ config, toolContext }) =>
+        publishFundingBriefTool(
           config as PennyToolsConfigShape,
           toolContext.sessionKey,
         ) as unknown as AnyAgentTool,

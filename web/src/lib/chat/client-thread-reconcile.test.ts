@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { countUserMessages, hasPendingReply } from './client-thread-reconcile.js';
 import type { ChatMessage } from './messages.js';
+import { normalizeHistoryMessages } from './messages.js';
 
 describe('client-thread-reconcile', () => {
 	it('counts user messages', () => {
@@ -24,5 +25,46 @@ describe('client-thread-reconcile', () => {
 			{ id: '2', role: 'assistant', text: 'a' }
 		];
 		expect(hasPendingReply(messages)).toBe(false);
+	});
+
+	it('keeps a latest commentary turn pending', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Find grants' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Let me verify the official program pages.',
+						textSignature: JSON.stringify({ v: 1, id: 'a1', phase: 'commentary' })
+					}
+				]
+			}
+		]);
+
+		expect(hasPendingReply(messages)).toBe(true);
+	});
+
+	it('keeps a latest persisted tool-use assistant turn pending', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Build the PDF-ready plan' }] },
+			{
+				role: 'assistant',
+				stopReason: 'toolUse',
+				content: [
+					{
+						type: 'text',
+						text: 'Now I have a clear picture. Let me create the funding brief with my findings.'
+					},
+					{
+						type: 'toolCall',
+						toolCallId: 'call-create-brief',
+						toolName: 'create_funding_brief'
+					}
+				]
+			}
+		]);
+
+		expect(hasPendingReply(messages)).toBe(true);
 	});
 });

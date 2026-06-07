@@ -4,11 +4,10 @@ import {
 	applyThinkingDelta
 } from '$lib/chat/client-run-trace.js';
 import { upsertTool } from '$lib/chat/client-tools.js';
+import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
 
 import type { ChatClientState } from './client-state.js';
-
-const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
 
 type StreamEventHandlers = {
 	activeRunId: string | null;
@@ -36,6 +35,13 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			});
 			handlers.state.runTrace = { ...handlers.state.runTrace };
 			break;
+		case 'chat.progress':
+			handlers.state.streamingAnswerText = '';
+			applyCommentaryDelta(handlers.state.runTrace, payload.text, {
+				replace: false
+			});
+			handlers.state.runTrace = { ...handlers.state.runTrace };
+			break;
 		case 'thinking.delta':
 			applyThinkingDelta(handlers.state.runTrace, payload.text);
 			handlers.state.runTrace = { ...handlers.state.runTrace };
@@ -45,7 +51,7 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			break;
 		case 'tool.done':
 			handlers.state.tools = upsertTool(handlers.state.tools, payload.name, 'done');
-			if (payload.name === CREATE_FUNDING_BRIEF_TOOL) {
+			if (isFundingBriefTool(payload.name)) {
 				void handlers.refreshArtifactsAfterBrief();
 			}
 			break;

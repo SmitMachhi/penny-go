@@ -33,15 +33,12 @@
 		messagesForDisplay
 	} from '$lib/chat/display-messages.js';
 	import { sanitizeAssistantDisplayText } from '$lib/chat/sanitize-assistant-text.js';
-	import {
-		clearPendingFirstMessage,
-		peekPendingFirstMessage
-	} from '$lib/chat/pending-first-message.js';
 	import { hydrateSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
 	import ArtifactPanel from '$lib/components/artifacts/ArtifactPanel.svelte';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import ConversationSkeleton from '$lib/components/chat/ConversationSkeleton.svelte';
 	import MessageBubble from '$lib/components/chat/MessageBubble.svelte';
 	import PennyActiveTurn from '$lib/components/chat/PennyActiveTurn.svelte';
 	import ThinkingPanel from '$lib/components/chat/ThinkingPanel.svelte';
@@ -245,17 +242,10 @@
 				) {
 					return;
 				}
-				const pending = peekPendingFirstMessage(sessionKey);
-				if (!pending || chat.state.sending) {
-					return;
+				followThread = chat.state.sending;
+				if (followThread) {
+					await pinThreadToBottom('smooth');
 				}
-			followThread = true;
-			const sent = await chat.sendMessage(pending, { skipHistoryReload: true });
-			if (sent) {
-				clearPendingFirstMessage();
-				sessions.setTitleFromFirstMessage(sessionKey, pending);
-				await pinThreadToBottom('smooth');
-			}
 		})();
 	});
 
@@ -299,7 +289,7 @@
 				onscroll={handleThreadScroll}
 			>
 				{#if showThreadLoading}
-					<p class="text-[0.9375rem] text-muted-foreground">Loading conversation…</p>
+					<ConversationSkeleton />
 				{:else if showAwaitingReply}
 					<div class="space-y-2 py-8 text-center">
 						<h2 class="font-display text-2xl font-semibold tracking-tight text-foreground">
@@ -313,6 +303,13 @@
 					<p class="py-8 text-center text-[0.9375rem] text-muted-foreground">
 						{CHAT_EMPTY_THREAD_SUBHEAD}
 					</p>
+				{/if}
+
+				{#if chat.state.historyRefreshing && !showThreadLoading}
+					<div class="flex items-center gap-2 text-xs text-muted-foreground" role="status">
+						<span class="h-1.5 w-1.5 rounded-full bg-primary/70"></span>
+						<span>Syncing latest context</span>
+					</div>
 				{/if}
 
 				{#each displayMessages as message (message.id)}
@@ -364,7 +361,7 @@
 	{#if showArtifactPanelChrome}
 		<button
 			type="button"
-			aria-label="Resize funding plan panel"
+			aria-label="Resize plan panel"
 			class="artifact-panel-resizer hidden shrink-0 lg:block"
 			onpointerdown={startArtifactPanelResize}
 			onkeydown={handleArtifactPanelResizeKeydown}

@@ -9,7 +9,7 @@
     "build": "tsc -p tsconfig.json",
     "plugin:build": "openclaw plugins build",
     "plugin:validate": "openclaw plugins validate",
-    "test": "npm run build && node --test dist/search-corpus.test.js dist/create-funding-brief.test.js dist/create-funding-brief-tool.test.js && npm --prefix ../shared test"
+    "test": "npm run build && node --test dist/search-corpus.test.js dist/official-source-reader.test.js dist/create-funding-brief.test.js dist/create-funding-brief-tool.test.js && npm --prefix ../shared test"
   },
   "dependencies": {
     "@penny/shared": "file:../shared",

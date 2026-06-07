@@ -12,7 +12,8 @@ describe('toolLabel', () => {
 		expect(toolLabel('search_corpus')).toContain('corpus');
 		expect(toolLabel('read_official_source')).toContain('official');
 		expect(toolLabel('web_search')).toContain('Exa');
-		expect(toolLabel('create_funding_brief')).toContain('funding plan');
+		expect(toolLabel('create_funding_brief')).toBe('Building plan');
+		expect(toolLabel('publish_funding_brief')).toBe('Building plan');
 	});
 });
 

@@ -4,6 +4,7 @@ import type { ArtifactSummary } from '$lib/chat/artifacts.js';
 
 export type SsePayload =
 	| { type: 'chat.delta'; runId: string; text: string; replace?: boolean }
+	| { type: 'chat.progress'; runId: string; text: string }
 	| { type: 'thinking.delta'; runId: string; text: string; replace?: boolean }
 	| { type: 'chat.final'; runId: string; text: string }
 	| { type: 'chat.error'; runId: string; message: string }

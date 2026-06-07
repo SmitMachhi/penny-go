@@ -1,4 +1,4 @@
-import { pennyBrandCssVariables } from './penny-brand.ts';
+import { pennyBrandCssVariables } from '../penny-brand.ts';
 
 const LETTER_WIDTH_IN = 8.5;
 const LETTER_HEIGHT_IN = 11;

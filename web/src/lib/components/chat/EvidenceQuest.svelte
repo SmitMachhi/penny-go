@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { buildEvidenceQuestState } from '$lib/chat/evidence-quest.js';
+	import { resolveEvidenceQuestThinking } from '$lib/chat/evidence-quest-visibility.js';
 	import type { ToolActivity } from '$lib/chat/messages.js';
 	import ToolStrip from '$lib/components/chat/ToolStrip.svelte';
 	import { cn } from '$lib/utils.js';
@@ -23,7 +24,7 @@
 	const quest = $derived(buildEvidenceQuestState({ tools, answerStarted }));
 	const stageCount = $derived(quest.stages.length);
 	const visibleThinking = $derived(
-		answerStarted ? thinkingText.trim() : thinkingText.trim() || statusHeadline.trim()
+		resolveEvidenceQuestThinking({ answerStarted, thinkingText, statusHeadline })
 	);
 	const showTools = $derived(tools.length > 0);
 </script>
@@ -78,7 +79,7 @@
 
 		{#if visibleThinking}
 			<p class="penny-evidence-quest__thinking">
-				<span class="penny-evidence-quest__thinking-label">thinking</span>
+				<span class="penny-evidence-quest__thinking-label">working</span>
 				<span class="penny-evidence-quest__thinking-text">{visibleThinking}</span>
 			</p>
 		{/if}

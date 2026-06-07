@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
 	classifyFundingBenefitScope,
 	containsActionableLoanLikeLanguage,
+	findActionableLoanLikeEvidence,
 	stripRuledOutMarkdownSections
 } from './funding-benefit-scope.ts';
 
@@ -78,4 +79,29 @@ test('strips does-not-fit markdown before actionable loan scan', () => {
 	const stripped = stripRuledOutMarkdownSections(markdown);
 	assert.doesNotMatch(stripped, /ACOA Business Development/);
 	assert.equal(containsActionableLoanLikeLanguage(markdown), false);
+});
+
+test('ignores loan language from link-heavy page chrome', () => {
+	const markdown = [
+		'# Export Development Program',
+		'[Export Development Program](https://example.ca/export) [Business Loan Program](https://example.ca/loans) [Benefits](https://example.ca/benefits)',
+		'The program reimburses eligible Manitoba companies for market research and trade shows.',
+		'Eligible applicants may receive up to 75% reimbursement for approved costs.'
+	].join('\n');
+
+	assert.equal(containsActionableLoanLikeLanguage(markdown), false);
+	assert.equal(findActionableLoanLikeEvidence(markdown), null);
+});
+
+test('returns source evidence for real program-body loan language', () => {
+	const markdown = [
+		'# Business Development Program',
+		'Funding is provided as an interest-free repayable contribution for eligible expansion costs.'
+	].join('\n');
+
+	assert.deepEqual(findActionableLoanLikeEvidence(markdown), {
+		match: 'repayable contribution',
+		text: 'Funding is provided as an interest-free repayable contribution for eligible expansion costs.'
+	});
+	assert.equal(containsActionableLoanLikeLanguage(markdown), true);
 });

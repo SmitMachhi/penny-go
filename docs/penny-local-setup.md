@@ -1,6 +1,6 @@
 # Penny Phase 1 — Local brain setup
 
-Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated JSONL corpus, verifies every suggestion with Crawl4AI (`read_official_source`), and may use Exa `web_search` only when corpus results are insufficient.
+Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated JSONL corpus, verifies every suggestion with `read_official_source` (Crawl4AI first, Exa official contents fallback on anti-bot pages), and may use Exa `web_search` only when corpus results are insufficient.
 
 This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 
@@ -11,14 +11,14 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | Node.js | 22.x or newer (`node -v`) |
 | OpenClaw CLI | `npm install -g openclaw@latest` |
 | Python | 3.11+ for Crawl4AI |
-| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 DeepSeek) |
+| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
 
 ## Repo layout involved
 
 | Path | Role |
 | ---- | ---- |
 | `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skills including stop-slop) |
-| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `create_funding_brief`) |
+| `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `publish_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
 | `database/data/funding/curated/verified-programs.jsonl` | Corpus |
 | `config/openclaw.penny.example.json5` | Example gateway merge snippet |
@@ -108,6 +108,10 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
+- Use `agents.defaults.model.primary: "deepseek/deepseek-v4-flash"` for the default DeepSeek setup
+- Keep the `deepseek/deepseek-v4-flash` model entry pinned to `params.provider.order: ["deepseek"]` with `allow_fallbacks: false`
+- Keep `params.reasoning.effort: "high"` on that model entry
+- Keep `params.max_tokens: 16384` on that model entry so Penny's output budget stays bounded
 
 Restart:
 
@@ -117,38 +121,27 @@ openclaw skills list
 openclaw plugins inspect penny-tools --runtime
 ```
 
-### DeepSeek API key (where it actually lives)
+### Model provider key (where it actually lives)
 
-OpenClaw’s DeepSeek integration uses the environment variable **`DEEPSEEK_API_KEY`** (documented in OpenClaw under the `deepseek` provider).
+Penny defaults to DeepSeek with **`deepseek/deepseek-v4-flash`**, pinned to the first-party **`deepseek`** provider endpoint. OpenClaw resolves DeepSeek auth from **`DEEPSEEK_API_KEY`**.
 
 **Recommended (interactive):**
 
 ```bash
-openclaw onboard --auth-choice deepseek-api-key
+openclaw models auth login --provider deepseek
 ```
 
-That stores auth in your OpenClaw profile and sets `deepseek/deepseek-v4-flash` as a sensible default model.
+That stores DeepSeek auth in your OpenClaw profile.
 
 **Recommended (file the gateway can read):** add the same variable to **`~/.openclaw/.env`**:
 
 ```
-DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_API_KEY=...
 ```
 
 If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `DEEPSEEK_API_KEY`, or the daemon will not see shell-only exports.
 
-**Headless / CI-style one-liner:**
-
-```bash
-openclaw onboard --non-interactive \
-  --mode local \
-  --auth-choice deepseek-api-key \
-  --deepseek-api-key "$DEEPSEEK_API_KEY" \
-  --skip-health \
-  --accept-risk
-```
-
-Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` stays `deepseek/deepseek-v4-flash`. Then confirm the catalog:
+Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `deepseek/deepseek-v4-flash` and the model entry has `params.provider.order: ["deepseek"]`. Then confirm the catalog:
 
 ```bash
 openclaw models list --provider deepseek
@@ -156,7 +149,7 @@ openclaw models list --provider deepseek
 
 ### Exa
 
-If `web_search` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`).
+If `web_search` or the anti-bot fallback inside `read_official_source` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`).
 
 ## 6. Verification ladder (do in order)
 
@@ -219,7 +212,7 @@ openclaw agent --local \
 Pass when:
 
 1. Engagement memory or transcript reflects **opportunity-backed** intake
-2. `create_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
+2. `publish_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
 3. Evidence trace unchanged (corpus → verify)
 
 ### 6g — Consultation mode: aspiration-first
@@ -237,7 +230,7 @@ Pass when:
 2. Artifact includes `## Recommended business shape` and `## Launch strategy` (or honest thin corpus note)
 3. Corpus miss escalates to `web_search` only when needed
 
-**Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working DeepSeek auth). The repo cannot complete them in CI without your secrets.
+**Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working model auth). The repo cannot complete them in CI without your secrets.
 
 Ensure `agents.defaults.skills` includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (see `config/openclaw.penny.example.json5`).
 
@@ -259,7 +252,7 @@ npm install && npm run dev
 
 Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
 
-**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `create_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `publish_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
 
 **Voice:** anti–AI-slop rules are in **`workspace/SOUL.md`** (always in context). Full checklist: **`workspace/skills/stop-slop/`**. Add `stop-slop` to `agents.defaults.skills` when merging `config/openclaw.penny.example.json5`.
 

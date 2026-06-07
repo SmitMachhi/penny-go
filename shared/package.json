@@ -7,7 +7,7 @@
     "#session-key": "./session-key.ts"
   },
   "scripts": {
-    "test": "node --experimental-strip-types --test artifact-download-filename.test.ts artifact-paths.test.ts artifact-pdf-locations.test.ts artifact.test.ts brief-markdown.test.ts funding-benefit-scope.test.ts funding-brief-html.test.ts funding-brief-playbook.test.ts funding-brief.test.ts loan-heuristic.test.ts session-key.test.ts session-label-unique.test.ts session-title.test.ts"
+    "test": "node --experimental-strip-types --test artifact-download-filename.test.ts artifact-index.test.ts artifact-paths.test.ts artifact-pdf-locations.test.ts artifact.test.ts funding-benefit-scope.test.ts legacy/brief-markdown.test.ts legacy/funding-brief-html.test.ts legacy/funding-brief-playbook.test.ts legacy/funding-brief.test.ts legacy-layout.test.ts loan-heuristic.test.ts session-key.test.ts session-label-unique.test.ts session-title.test.ts"
   },
   "dependencies": {
     "marked": "^18.0.4"
@@ -18,6 +18,7 @@
     "./session-title": "./session-title.ts",
     "./session-label-unique": "./session-label-unique.ts",
     "./artifact-types": "./artifact-types.ts",
+    "./artifact-index": "./artifact-index.ts",
     "./artifact-validation": "./artifact-validation.ts",
     "./artifact-markdown": "./artifact-markdown.ts",
     "./artifact-download-filename": "./artifact-download-filename.ts",

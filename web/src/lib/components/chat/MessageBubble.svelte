@@ -9,6 +9,7 @@
 	import { cn } from '$lib/utils.js';
 
 	const COPY_FEEDBACK_MS = 2000;
+	const STREAMING_DRAFT_LABEL = 'drafting answer';
 
 	type Props = {
 		message: ChatMessage;
@@ -33,43 +34,6 @@
 			/\|/.test(message.text) &&
 			/\n\|[-:\s|]+\|/.test(message.text)
 	);
-
-	const ARTIFACT_API_LINK_PATTERN = /\/api\/artifacts\/([^/?#]+)/i;
-
-	function handleAssistantClick(event: MouseEvent): void {
-		if (!onOpenArtifact) {
-			return;
-		}
-		const anchor = (event.target as Element | null)?.closest('a');
-		if (!anchor) {
-			return;
-		}
-		const href = anchor.getAttribute('href') ?? '';
-		if (!ARTIFACT_API_LINK_PATTERN.test(href)) {
-			return;
-		}
-		event.preventDefault();
-		event.stopPropagation();
-		const artifactId = extractArtifactIdFromHref(href) ?? planNudgeArtifact?.artifactId;
-		if (artifactId) {
-			onOpenArtifact(artifactId);
-		}
-	}
-
-	function interceptArtifactLinks(node: HTMLElement): { destroy: () => void } {
-		const onClick = (event: MouseEvent) => handleAssistantClick(event);
-		node.addEventListener('click', onClick, true);
-		return {
-			destroy() {
-				node.removeEventListener('click', onClick, true);
-			}
-		};
-	}
-
-	function extractArtifactIdFromHref(href: string): string | null {
-		const match = href.match(/\/api\/artifacts\/([^/?]+)/i);
-		return match?.[1] ?? null;
-	}
 
 	async function copyMessageText(): Promise<void> {
 		try {
@@ -109,7 +73,18 @@
 		</div>
 	</div>
 	{:else}
-		<article class="w-full">
+		<article
+			class={cn(
+				'w-full',
+				streaming &&
+					'penny-draft-answer max-w-prose rounded-lg border border-border/70 bg-muted/20 px-3 py-2.5'
+			)}
+		>
+			{#if streaming}
+				<div class="mb-1 text-xs font-medium tracking-normal text-muted-foreground">
+					{STREAMING_DRAFT_LABEL}
+				</div>
+			{/if}
 			{#if rendered?.kind === 'text'}
 				<div
 					class="penny-markdown whitespace-pre-wrap"
@@ -120,7 +95,6 @@
 				<div
 					class={cn('penny-markdown', hasTable && 'penny-markdown-has-table')}
 					use:enhanceLinkPreviews
-					use:interceptArtifactLinks
 				>
 					{@html rendered.html}
 				</div>

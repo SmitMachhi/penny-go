@@ -18,11 +18,15 @@ vi.mock('$lib/server/artifact-storage.js', () => ({
 }));
 
 import { upsertPennySessionIndex } from './penny-session-index.js';
+import { upsertPennyTurn } from './penny-turn-store.js';
 import { getSessionBootstrap } from './session-bootstrap.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const ARTIFACT_ID = '00000000-0000-4000-8000-000000000001';
 const ARTIFACT_VERSION = 3;
+const TURN_ID = 'turn-1';
+const RUN_ID = 'run-1';
+const CREATED_AT = 1_000;
 
 describe('session bootstrap', () => {
 	let repoRoot = '';
@@ -99,5 +103,30 @@ describe('session bootstrap', () => {
 				pdfAvailable: true
 			}
 		]);
+	});
+
+	it('returns the backend active turn for an unfinished reply', async () => {
+		await upsertPennyTurn({
+			turnId: TURN_ID,
+			sessionKey: SESSION_KEY,
+			message: 'still running',
+			status: 'submitted',
+			runId: RUN_ID,
+			createdAt: CREATED_AT,
+			updatedAt: CREATED_AT
+		});
+		fetchChatHistory.mockResolvedValueOnce({
+			sessionKey: SESSION_KEY,
+			sessionId: 'session-1',
+			messages: [{ id: 'user-1', role: 'user', text: 'still running' }]
+		});
+
+		const bootstrap = await getSessionBootstrap(SESSION_KEY);
+
+		expect(bootstrap.activeTurn).toMatchObject({
+			runId: RUN_ID,
+			status: 'running',
+			turnId: TURN_ID
+		});
 	});
 });

@@ -22,10 +22,6 @@ marked.use({
 			const titleAttr = title ? ` title="${escapeHtmlAttribute(title)}"` : '';
 			const linkText = escapeHtmlAttribute(text);
 
-			if (rawHref.includes('/api/artifacts/')) {
-				return `<a href="${safeHref}"${titleAttr}>${linkText}</a>`;
-			}
-
 			if (isPreviewableHref(rawHref)) {
 				return renderPreviewLinkHtml(rawHref, text, title);
 			}

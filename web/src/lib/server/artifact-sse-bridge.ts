@@ -3,16 +3,15 @@ import {
 	getLatestSessionArtifact,
 	toArtifactSummary
 } from '$lib/server/artifact-storage.js';
+import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import type { SsePayload } from '$lib/chat/stream-events.js';
-
-export const CREATE_FUNDING_BRIEF_TOOL = 'create_funding_brief';
 
 export async function buildArtifactSseForToolDone(
 	sessionKey: string,
 	toolName: string,
 	runId: string
 ): Promise<SsePayload | null> {
-	if (toolName !== CREATE_FUNDING_BRIEF_TOOL) {
+	if (!isFundingBriefTool(toolName)) {
 		return null;
 	}
 

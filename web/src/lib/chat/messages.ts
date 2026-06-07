@@ -7,6 +7,7 @@ export type ChatMessage = {
 	role: ChatRole;
 	text: string;
 	timestamp?: number;
+	phase?: AssistantPhase;
 	artifactIds?: string[];
 	thinkingTrace?: string;
 };
@@ -24,6 +25,9 @@ export type StreamState = {
 	status: 'idle' | 'streaming' | 'error';
 	error: string | null;
 };
+
+const TOOL_CALL_BLOCK_TYPE = 'toolCall';
+const TOOL_USE_STOP_REASON = 'toolUse';
 
 export function extractMessageText(message: unknown): string {
 	if (!message || typeof message !== 'object') {
@@ -74,17 +78,34 @@ function parseAssistantTextSignature(value: unknown): { phase?: AssistantPhase }
 	}
 }
 
+function hasToolCallBlock(content: unknown): boolean {
+	if (!Array.isArray(content)) {
+		return false;
+	}
+	return content.some((block) => {
+		if (!block || typeof block !== 'object') {
+			return false;
+		}
+		const record = block as { type?: unknown };
+		return record.type === TOOL_CALL_BLOCK_TYPE;
+	});
+}
+
 export function resolveAssistantMessagePhase(message: unknown): AssistantPhase | undefined {
 	if (!message || typeof message !== 'object') {
 		return undefined;
 	}
-	const entry = message as { phase?: unknown; content?: unknown };
+	const entry = message as { phase?: unknown; content?: unknown; stopReason?: unknown };
 	const directPhase = normalizeAssistantPhase(entry.phase);
 	if (directPhase) {
 		return directPhase;
 	}
+	const implicitToolUsePhase =
+		entry.stopReason === TOOL_USE_STOP_REASON || hasToolCallBlock(entry.content)
+			? 'commentary'
+			: undefined;
 	if (!Array.isArray(entry.content)) {
-		return undefined;
+		return implicitToolUsePhase;
 	}
 	const explicitPhases = new Set<AssistantPhase>();
 	for (const block of entry.content) {
@@ -100,7 +121,7 @@ export function resolveAssistantMessagePhase(message: unknown): AssistantPhase |
 			explicitPhases.add(phase);
 		}
 	}
-	return explicitPhases.size === 1 ? [...explicitPhases][0] : undefined;
+	return explicitPhases.size === 1 ? [...explicitPhases][0] : implicitToolUsePhase;
 }
 
 type ParsedHistoryMessage = {
@@ -155,6 +176,7 @@ function coalesceAssistantGroup(group: ParsedHistoryMessage[]): ChatMessage[] {
 			id: visible.id,
 			role: 'assistant',
 			text: visible.text,
+			...(visible.phase ? { phase: visible.phase } : {}),
 			...(visible.timestamp !== undefined ? { timestamp: visible.timestamp } : {}),
 			...(traceParts.length > 0 ? { thinkingTrace: traceParts.join('\n\n') } : {})
 		}

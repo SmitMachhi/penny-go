@@ -11,6 +11,10 @@
         "description": "Absolute path to verified-programs.jsonl",
         "type": "string"
       },
+      "exaApiKey": {
+        "description": "Exa API key for read_official_source fallback",
+        "type": "string"
+      },
       "pythonPath": {
         "description": "Python interpreter for read_official_source.py",
         "type": "string"
@@ -28,7 +32,8 @@
     "tools": [
       "search_corpus",
       "read_official_source",
-      "create_funding_brief"
+      "create_funding_brief",
+      "publish_funding_brief"
     ]
   }
 }

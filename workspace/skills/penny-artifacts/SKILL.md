@@ -7,7 +7,7 @@ description: When and how Penny creates funding-aligned operating plans (markdow
 
 ## Purpose
 
-Use `create_funding_brief` to deliver a **funding-aligned operating plan** — one markdown document rendered to PDF that the owner can scroll, print, or hand to their team. Chat stays conversational; the artifact holds the full plan.
+Use `publish_funding_brief` to deliver a **funding-aligned operating plan** — one markdown document rendered to PDF that the owner can scroll, print, or hand to their team. Chat stays conversational; the artifact holds the full plan.
 
 **Not** a 40-page MBA business plan. Set that expectation in chat when users say “business plan.”
 
@@ -28,14 +28,21 @@ Both modes still need `## Recommendation`, fit-band sections, **Verdict:**, and 
 
 ## When to create
 
-Call `create_funding_brief` when **any** of these apply:
+Call `publish_funding_brief` when **any** of these apply:
 
 - The user asks for a strategy, plan, brief, PDF, export, artifact, playbook, or action plan.
 - You are delivering a substantial fit assessment or **two or more** verified program recommendations with execution detail.
 - The answer would need a comparison, checklist, or more than ~15 lines of structured program data.
 - The user says "show me everything" or "what should I do next."
 
-Use `triggerReason: "user_requested"` when the user explicitly asked for an export or document. Otherwise use `triggerReason: "auto"`.
+The tool fills artifact metadata. Do not invent `triggerReason`, `verifiedAt`,
+or schema details.
+
+If the user explicitly asked for an artifact/PDF/export/operating plan and you
+have at least one verified actionable program, you must call
+`publish_funding_brief` before the final chat answer. Do not end with "review
+this draft", "I can build it", or "reply when ready" unless there are zero
+verified actionable programs.
 
 ## When not to create
 
@@ -58,19 +65,28 @@ Write like a funding consultant who **just finished a call with this owner**:
 
 ## How to call the tool
 
-1. After all `read_official_source` calls for recommended programs, call `create_funding_brief` with:
-   - `title`, `triggerReason`
+1. After all `read_official_source` calls for recommended programs, call `publish_funding_brief` with:
+   - `title`
    - `bodyMarkdown` — full plan in markdown (GFM: headings, tables, task lists, links)
-   - `verification.verifiedAt` (ISO timestamp), `verification.urlsChecked[]`
-   - `evidence.programs[]` (0–5) for actionable programs — audit metadata only, **not rendered into the PDF body**
-2. To update an existing artifact, pass the same `artifactId` from the prior tool result (creates a new immutable version).
-3. On updates, include optional `changeSummary` — one sentence on what changed in this revision.
+   - `verifiedUrls[]` — official URLs that returned real content from `read_official_source`
+   - optional `notes` — one short verification note when useful
+2. The tool binds to the active Penny web chat session automatically and fills `triggerReason`, `verifiedAt`, and artifact metadata.
+
+For speed, do not wait for exhaustive coverage. If the artifact can answer the
+business need with a sufficient verified set, publish it. Normal plans have 2-4
+actionable fits; publish fewer when the landscape is thin, and include more when
+distinct material funding lanes would change the operating plan.
+
+If a tool call fails, correct the document content or verified URL list. Do not search OpenClaw docs, guess hidden schema values, or retry with invented metadata.
 
 The tool binds to the active Penny web chat session automatically — do not pass a session id.
 
-## Evidence programs (optional audit trail)
+## Evidence programs (internal audit trail)
 
-If you include `evidence.programs`, each entry needs:
+Evidence metadata is internal. The model-facing artifact tool only needs
+`verifiedUrls`. Put user-facing program narrative in `bodyMarkdown`.
+
+If an internal artifact result includes evidence programs, each entry needs:
 
 - `name`
 - `officialUrl`
@@ -95,17 +111,13 @@ Loan-like or repayable products must also use `skip` and appear only under
 `## Ruled out` in `bodyMarkdown`. The artifact tool rejects loan-like wording in
 actionable program sections.
 
-Legacy `programs[]` at the top level is accepted as an alias for `evidence.programs`.
-
-Before calling `create_funding_brief`, audit the body:
+Before calling `publish_funding_brief`, audit the body:
 
 - Any loan, repayable contribution, loan guarantee, loan insurance, loan-interest
   subsidy, financing-dependent incentive, or unclear repayment product must be
   under `## Ruled out`.
 - Do not write "worth a call", "best bet", "strong", "conditional", or "next
   step" for repayable programs.
-- `evidence.programs[]` may include loan-like products only with
-  `verdict: "skip"`.
 - If the artifact tool rejects the brief for loan-like wording, revise the memo
   by moving the program to `## Ruled out`; do not retry the same actionable
   recommendation.

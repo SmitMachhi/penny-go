@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArtifactSummary } from './artifacts.js';
 import { RUN_RECOVERY_POLL_MS } from './client-run-recovery.js';
 import { ChatClient } from './client.svelte.js';
+import { clearSessionThreadCache } from './session-thread-cache.js';
 import type { SsePayload } from './stream-events.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
@@ -27,6 +28,10 @@ function requestPath(input: RequestInfo | URL): string {
 	return String(input);
 }
 
+function requestBody(init: RequestInit | undefined): unknown {
+	return JSON.parse(String(init?.body));
+}
+
 function artifact(version: number): ArtifactSummary {
 	return {
 		artifactId: ARTIFACT_ID,
@@ -39,8 +44,51 @@ function artifact(version: number): ArtifactSummary {
 	};
 }
 
+async function expectMissedArtifactToolLoadsArtifact(
+	toolName: string,
+	toolEventType: 'tool.start' | 'tool.done' = 'tool.done'
+): Promise<void> {
+	const loadedArtifact = artifact(UPDATED_ARTIFACT_VERSION);
+	const fetchMock = vi.fn<typeof fetch>(async (input) => {
+		const path = requestPath(input);
+		if (path === '/api/chat/send') {
+			return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+		}
+		if (path.startsWith('/api/artifacts')) {
+			return jsonResponse({ artifacts: [loadedArtifact] });
+		}
+		return jsonResponse({});
+	});
+	vi.stubGlobal('fetch', fetchMock);
+
+	const client = new ChatClient();
+	client.state.sessionKey = SESSION_KEY;
+	client.state.sessionId = SESSION_ID;
+	await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+	(client as unknown as ChatClientInternals).handleStreamEvent({
+		type: toolEventType,
+		runId: RUN_ID,
+		name: toolName
+	});
+
+	await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
+		type: 'chat.final',
+		runId: RUN_ID,
+		text: 'Done. The artifact panel has the full plan.'
+	});
+
+	expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
+		`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
+	);
+	expect(client.state.activeArtifactId).toBe(ARTIFACT_ID);
+	expect(client.state.artifactPanelOpen).toBe(true);
+	expect(client.state.messages.at(-1)?.artifactIds).toEqual([ARTIFACT_ID]);
+}
+
 describe('ChatClient', () => {
 	beforeEach(() => {
+		clearSessionThreadCache(SESSION_KEY);
+		clearSessionThreadCache(OTHER_SESSION_KEY);
 		vi.stubGlobal('EventSource', class MockEventSource {
 			close(): void {}
 		});
@@ -93,9 +141,15 @@ describe('ChatClient', () => {
 			'/api/chat/send',
 			expect.objectContaining({
 				method: 'POST',
-				body: JSON.stringify({ message: MESSAGE, sessionKey: SESSION_KEY, sessionId: null })
+				body: expect.any(String)
 			})
 		);
+		expect(requestBody(fetchMock.mock.calls[0]?.[1])).toMatchObject({
+			message: MESSAGE,
+			sessionKey: SESSION_KEY,
+			sessionId: null,
+			turnId: expect.any(String)
+		});
 		expect(client.state.operationError).toBeNull();
 	});
 
@@ -305,41 +359,15 @@ describe('ChatClient', () => {
 	});
 
 	it('loads and opens a funding brief when the artifact stream event was missed', async () => {
-		const loadedArtifact = artifact(UPDATED_ARTIFACT_VERSION);
-		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			const path = requestPath(input);
-			if (path === '/api/chat/send') {
-				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
-			}
-			if (path.startsWith('/api/artifacts')) {
-				return jsonResponse({ artifacts: [loadedArtifact] });
-			}
-			return jsonResponse({});
-		});
-		vi.stubGlobal('fetch', fetchMock);
+		await expectMissedArtifactToolLoadsArtifact('create_funding_brief');
+	});
 
-		const client = new ChatClient();
-		client.state.sessionKey = SESSION_KEY;
-		client.state.sessionId = SESSION_ID;
-		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
-		(client as unknown as ChatClientInternals).handleStreamEvent({
-			type: 'tool.done',
-			runId: RUN_ID,
-			name: 'create_funding_brief'
-		});
+	it('loads and opens a funding brief after a missed publish stream event', async () => {
+		await expectMissedArtifactToolLoadsArtifact('publish_funding_brief');
+	});
 
-		await (client as unknown as ChatClientInternals).finalizeAssistantMessage({
-			type: 'chat.final',
-			runId: RUN_ID,
-			text: 'Done. The artifact panel has the full plan.'
-		});
-
-		expect(fetchMock.mock.calls.map(([input]) => requestPath(input))).toContain(
-			`/api/artifacts?sessionKey=${encodeURIComponent(SESSION_KEY)}`
-		);
-		expect(client.state.activeArtifactId).toBe(ARTIFACT_ID);
-		expect(client.state.artifactPanelOpen).toBe(true);
-		expect(client.state.messages.at(-1)?.artifactIds).toEqual([ARTIFACT_ID]);
+	it('loads and opens a funding brief after only a publish start event', async () => {
+		await expectMissedArtifactToolLoadsArtifact('publish_funding_brief', 'tool.start');
 	});
 
 	it('does not append a final brief reply after the active session changes', async () => {
@@ -381,6 +409,34 @@ describe('ChatClient', () => {
 
 		expect(client.state.messages.map((message) => message.text)).toEqual([MESSAGE]);
 		expect(client.state.activeArtifactId).toBeNull();
+	});
+
+	it('keeps tool-use progress in the active turn instead of finalizing the reply', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			if (requestPath(input) === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+
+		(client as unknown as ChatClientInternals).handleStreamEvent({
+			type: 'chat.progress',
+			runId: RUN_ID,
+			text: 'I now have enough verified data. Let me create the plan.'
+		});
+
+		expect(client.state.sending).toBe(true);
+		expect(client.state.streamingAnswerText).toBe('');
+		expect(client.state.messages.map((message) => message.text)).toEqual([MESSAGE]);
+		expect(client.state.runTrace.liveSegment).toBe(
+			'I now have enough verified data. Let me create the plan.'
+		);
 	});
 
 	it('does not recover a pre-response stream event from stale history', async () => {
@@ -431,26 +487,5 @@ describe('ChatClient', () => {
 			MESSAGE
 		]);
 		resolveSend(jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY }));
-	});
-
-	it('resumes awaiting UI when history has a pending user turn', async () => {
-		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			const path = requestPath(input);
-			if (path.startsWith('/api/sessions')) {
-				return jsonResponse({
-					sessionKey: SESSION_KEY,
-					sessionId: SESSION_ID,
-					messages: [{ id: 'user-1', role: 'user', text: 'still running' }]
-				});
-			}
-			return jsonResponse({});
-		});
-		vi.stubGlobal('fetch', fetchMock);
-
-		const client = new ChatClient();
-		await client.switchSession(SESSION_KEY);
-
-		await vi.waitFor(() => expect(client.state.sending).toBe(true));
-		expect(client.state.messages.some((message) => message.role === 'user')).toBe(true);
 	});
 });

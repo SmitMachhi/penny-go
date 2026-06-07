@@ -16,6 +16,9 @@ build/
 *.log
 npm-debug.log*
 .superpowers/
+.playwright-cli/
+shared/.playwright-cli/
+SCR-*.png
 
 # OS & editor
 .DS_Store
@@ -32,3 +35,7 @@ venv/
 workspace/.openclaw/
 workspace/artifacts/
 workspace/penny-session-index.json
+workspace/penny-turns/
+
+# local eval run output
+evals/**/runs/

@@ -1,17 +1,19 @@
-	<script lang="ts">
-		import { ExternalLink } from '@lucide/svelte';
+<script lang="ts">
+	import { ExternalLink } from '@lucide/svelte';
 
-		import { loadPdfObjectUrl, type PdfObjectUrl } from '$lib/chat/pdf-preview.js';
-		import { markPennyTiming } from '$lib/chat/performance-metrics.js';
+	import { loadPdfObjectUrl, type PdfObjectUrl } from '$lib/chat/pdf-preview.js';
+	import { markPennyTiming } from '$lib/chat/performance-metrics.js';
+	import DocumentPreviewSkeleton from '$lib/components/artifacts/DocumentPreviewSkeleton.svelte';
 
-		type Props = {
-			artifactId: string;
-			sessionKey: string;
+	type Props = {
+		artifactId: string;
+		sessionKey: string;
 		version: number;
 		pdfAvailable: boolean;
+		title?: string | null;
 	};
 
-	let { artifactId, sessionKey, version, pdfAvailable }: Props = $props();
+	let { artifactId, sessionKey, version, pdfAvailable, title = null }: Props = $props();
 
 	let loadError = $state<string | null>(null);
 	let previewReady = $state(false);
@@ -68,9 +70,7 @@
 
 <div class="absolute inset-0 flex min-h-0 flex-col bg-muted/30">
 	{#if !pdfAvailable}
-		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
-			PDF is still generating. Refresh in a moment or ask Penny to update the memo.
-		</div>
+		<DocumentPreviewSkeleton {title} {version} status="PDF is still generating" />
 	{:else if loadError}
 		<div class="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center text-sm">
 			<p class="text-destructive">{loadError}</p>
@@ -84,27 +84,15 @@
 			</button>
 		</div>
 	{:else if !previewReady}
-		<div class="flex flex-1 items-center justify-center px-4 text-sm text-muted-foreground">
-			Loading memo…
-		</div>
-		{:else if previewObjectUrl}
-			<div class="flex shrink-0 items-center justify-end gap-2 border-b border-border/60 px-3 py-1.5">
-				<button
-					type="button"
-				class="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground"
-				onclick={openInNewTab}
-			>
-				<ExternalLink class="h-3 w-3" />
-				Open in new tab
-			</button>
-		</div>
+		<DocumentPreviewSkeleton {title} {version} status="Preparing preview" />
+	{:else if previewObjectUrl}
 		<div class="min-h-0 flex-1 overflow-hidden bg-white">
-				<embed
-					title="Funding memo preview"
-					src="{previewObjectUrl}#view=FitH"
-					type="application/pdf"
-					class="block h-full w-full"
-				/>
+			<embed
+				title="Funding memo preview"
+				src="{previewObjectUrl}#view=FitH"
+				type="application/pdf"
+				class="block h-full w-full"
+			/>
 		</div>
 	{/if}
 </div>

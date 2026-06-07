@@ -3,18 +3,19 @@
 	import { onMount } from 'svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
-	import { stashPendingFirstMessage } from '$lib/chat/pending-first-message.js';
 	import { chatPathFromSessionKey } from '$lib/chat/session-routes.js';
 	import {
 		HOME_HEADLINE,
 		HOME_SUBHEAD
 	} from '$lib/chat/starter-prompts.js';
 	import ChatComposer from '$lib/components/chat/ChatComposer.svelte';
+	import PendingStartSurface from '$lib/components/chat/PendingStartSurface.svelte';
 	import StarterPromptChips from '$lib/components/chat/StarterPromptChips.svelte';
 
 	const { chat, sessions } = getPennyContext();
 	let draft = $state('');
 	let starting = $state(false);
+	let startingMessage = $state<string | null>(null);
 
 	const composerDisabled = $derived(!chat.state.connected);
 
@@ -29,6 +30,7 @@
 		}
 
 		starting = true;
+		startingMessage = trimmed;
 		draft = '';
 
 		try {
@@ -42,10 +44,19 @@
 				return;
 			}
 
-			stashPendingFirstMessage({ sessionKey: created.key, message: trimmed });
+			const sent = await chat.startSessionWithMessage(
+				created.key,
+				trimmed,
+				crypto.randomUUID()
+			);
+			if (!sent) {
+				return;
+			}
+			sessions.setTitleFromFirstMessage(created.key, trimmed);
 			await goto(path);
 		} finally {
 			starting = false;
+			startingMessage = null;
 		}
 	}
 
@@ -61,28 +72,32 @@
 	}
 </script>
 
-<main class="penny-canvas-surface flex flex-1 flex-col items-center justify-center py-12">
-	<div class="penny-chat-column w-full space-y-8">
-		<div class="space-y-2 text-center">
-			<h2 class="font-display text-3xl font-semibold tracking-tight text-foreground">
-				{HOME_HEADLINE}
-			</h2>
-			<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">{HOME_SUBHEAD}</p>
+{#if startingMessage}
+	<PendingStartSurface message={startingMessage} />
+{:else}
+	<main class="penny-canvas-surface flex flex-1 flex-col items-center justify-center py-12">
+		<div class="penny-chat-column w-full space-y-8">
+			<div class="space-y-2 text-center">
+				<h2 class="font-display text-3xl font-semibold tracking-tight text-foreground">
+					{HOME_HEADLINE}
+				</h2>
+				<p class="text-[0.9375rem] leading-relaxed text-muted-foreground">{HOME_SUBHEAD}</p>
+			</div>
+
+			<StarterPromptChips
+				disabled={composerDisabled || starting}
+				showExamples={false}
+				onStart={(prompt) => void beginChat(prompt)}
+			/>
+
+			<ChatComposer
+				bind:draft
+				disabled={composerDisabled}
+				sending={starting}
+				showDisclaimer={true}
+				onSubmit={() => void handleSend()}
+				onKeydown={handleKeydown}
+			/>
 		</div>
-
-		<StarterPromptChips
-			disabled={composerDisabled || starting}
-			showExamples={false}
-			onStart={(prompt) => void beginChat(prompt)}
-		/>
-
-		<ChatComposer
-			bind:draft
-			disabled={composerDisabled}
-			sending={starting}
-			showDisclaimer={true}
-			onSubmit={() => void handleSend()}
-			onKeydown={handleKeydown}
-		/>
-	</div>
-</main>
+	</main>
+{/if}

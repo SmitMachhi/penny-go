@@ -8,6 +8,25 @@ import {
 } from '$lib/server/chat-stream-text.js';
 import { clearThinkingStreamText, resolveThinkingStreamText } from '$lib/server/chat-stream-thinking.js';
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return value !== null && typeof value === 'object';
+}
+
+function messageHasToolCall(message: Record<string, unknown>): boolean {
+	const content = message.content;
+	if (!Array.isArray(content)) {
+		return false;
+	}
+	return content.some((block) => isRecord(block) && block.type === 'toolCall');
+}
+
+function isToolUseAssistantMessage(message: unknown): boolean {
+	if (!isRecord(message)) {
+		return false;
+	}
+	return message.stopReason === 'toolUse' || messageHasToolCall(message);
+}
+
 export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null {
 	const runId = payload.runId;
 	if (!runId) {
@@ -30,6 +49,9 @@ export function mapChatEventToSse(payload: ChatEventPayload): SsePayload | null 
 	if (payload.state === 'final') {
 		const finalText = extractMessageText(payload.message).trim() || readStreamingText(runId);
 		clearStreamingText(runId);
+		if (isToolUseAssistantMessage(payload.message)) {
+			return finalText ? { type: 'chat.progress', runId, text: finalText } : null;
+		}
 		clearThinkingStreamText(runId);
 		return { type: 'chat.final', runId, text: finalText };
 	}

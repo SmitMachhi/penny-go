@@ -7,7 +7,8 @@ export async function POST({ request }) {
 			message?: string;
 			sessionKey?: string;
 			sessionId?: string;
-			};
-			return sendChat(body);
-		}, 'failed to send message', { timingName: 'send' });
+			turnId?: string;
+		};
+		return sendChat(body);
+	}, 'failed to send message', { timingName: 'send' });
 }

@@ -7,7 +7,7 @@ describe('sanitizeAssistantDisplayText', () => {
 		const input = [
 			'Here is your plan.',
 			'',
-			'[embed ref="0b5f050d-7f44-49a0-8c31-c085a8a5faea" title="Funding Plan" height="600" /]',
+			'[embed ref="0b5f050d-7f44-49a0-8c31-c085a8a5faea" title="Plan" height="600" /]',
 			'MEDIA:/Users/me/Projects/penny-go/workspace/artifacts/session/id/brief.pdf'
 		].join('\n');
 

@@ -4,6 +4,7 @@ import { SessionClient } from './sessions.svelte.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const OTHER_SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440002';
+const LEGACY_SESSION_KEY = 'agent:main:main';
 const INITIAL_UPDATED_AT = 100;
 const TITLE = 'Ontario SaaS grant help';
 
@@ -145,5 +146,27 @@ describe('SessionClient', () => {
 		await client.initSidebar();
 
 		expect(fetchMock.mock.calls.map(([input]) => String(input))).toEqual(['/api/sessions/index']);
+	});
+
+	it('hides legacy fallback rows from the recents list', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () =>
+			jsonResponse({
+				sessions: [
+					{
+						key: LEGACY_SESSION_KEY,
+						title: 'Previous chat',
+						titleStatus: 'ready',
+						updatedAt: INITIAL_UPDATED_AT,
+						isLegacy: true
+					}
+				]
+			})
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new SessionClient();
+
+		await client.initSidebar();
+
+		expect(client.state.sessions).toEqual([]);
 	});
 });

@@ -50,6 +50,55 @@ describe('normalizeHistoryMessages', () => {
 		expect(messages[1]?.text).toBe('Brief created.');
 		expect(messages[1]?.thinkingTrace).toBe('Searching corpus…\n\nVerifying sources…');
 	});
+
+	it('keeps commentary-only assistant text marked as commentary', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Find grants' }] },
+			{
+				role: 'assistant',
+				content: [
+					{
+						type: 'text',
+						text: 'Let me verify the official program pages.',
+						textSignature: JSON.stringify({ v: 1, id: 'a1', phase: 'commentary' })
+					}
+				]
+			}
+		]);
+
+		expect(messages[1]).toMatchObject({
+			role: 'assistant',
+			text: 'Let me verify the official program pages.',
+			phase: 'commentary'
+		});
+	});
+
+	it('treats persisted tool-use assistant text as commentary', () => {
+		const messages = normalizeHistoryMessages([
+			{ role: 'user', content: [{ type: 'text', text: 'Create the funding brief' }] },
+			{
+				role: 'assistant',
+				stopReason: 'toolUse',
+				content: [
+					{
+						type: 'text',
+						text: 'Now I have a clear picture. Let me create the funding brief with my findings.'
+					},
+					{
+						type: 'toolCall',
+						toolCallId: 'call-create-brief',
+						toolName: 'create_funding_brief'
+					}
+				]
+			}
+		]);
+
+		expect(messages[1]).toMatchObject({
+			role: 'assistant',
+			text: 'Now I have a clear picture. Let me create the funding brief with my findings.',
+			phase: 'commentary'
+		});
+	});
 });
 
 describe('toolLabel', () => {

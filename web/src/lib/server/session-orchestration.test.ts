@@ -4,10 +4,16 @@ import { join } from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { listGatewaySessions, createGatewaySession, fetchChatHistory, patchGatewaySession } =
-	vi.hoisted(() => ({
+const {
+	listGatewaySessions,
+	createGatewaySession,
+	deleteGatewaySession,
+	fetchChatHistory,
+	patchGatewaySession
+} = vi.hoisted(() => ({
 		listGatewaySessions: vi.fn(),
 		createGatewaySession: vi.fn(),
+		deleteGatewaySession: vi.fn(),
 		fetchChatHistory: vi.fn(),
 		patchGatewaySession: vi.fn()
 	}));
@@ -15,7 +21,7 @@ const { listGatewaySessions, createGatewaySession, fetchChatHistory, patchGatewa
 vi.mock('$lib/server/gateway-session-service.js', () => ({
 	listGatewaySessions,
 	createGatewaySession,
-	deleteGatewaySession: vi.fn(),
+	deleteGatewaySession,
 	patchGatewaySession
 }));
 
@@ -27,10 +33,12 @@ import { titleFromFirstMessage } from '@penny/shared/session-title';
 
 import {
 	createPennySession,
+	deletePennySession,
 	generatePennySessionTitle,
 	getPennySessionIndex,
 	listPennySessions
 } from './session-orchestration.js';
+import { readPennyTurn, upsertPennyTurn } from './penny-turn-store.js';
 import { LEGACY_SESSION_KEY } from './session-key.js';
 
 describe('session orchestration', () => {
@@ -43,6 +51,7 @@ describe('session orchestration', () => {
 		process.env.PENNY_REPO_ROOT = repoRoot;
 		listGatewaySessions.mockReset();
 		createGatewaySession.mockReset();
+		deleteGatewaySession.mockReset();
 		fetchChatHistory.mockReset();
 		patchGatewaySession.mockReset();
 	});
@@ -178,5 +187,26 @@ describe('session orchestration', () => {
 				label: 'Ontario SaaS'
 			})
 		);
+	});
+
+	it('deletes the session turn ledger', async () => {
+		const sessionKey = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
+		await upsertPennyTurn({
+			turnId: 'turn-1',
+			sessionKey,
+			message: 'hello',
+			status: 'running',
+			runId: 'run-1',
+			createdAt: 1,
+			updatedAt: 1
+		});
+
+		await deletePennySession(sessionKey);
+
+		expect(await readPennyTurn(sessionKey, 'turn-1')).toBeNull();
+		expect(deleteGatewaySession).toHaveBeenCalledWith({
+			key: sessionKey,
+			deleteTranscript: true
+		});
 	});
 });

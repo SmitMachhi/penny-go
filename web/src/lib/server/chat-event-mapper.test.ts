@@ -18,6 +18,41 @@ describe('mapChatEventToSse', () => {
 			text: 'Hello world'
 		});
 	});
+
+	it('maps tool-use assistant text to progress instead of final', () => {
+		expect(
+			mapChatEventToSse({
+				runId: 'run-1',
+				state: 'final',
+				message: {
+					role: 'assistant',
+					stopReason: 'toolUse',
+					content: [
+						{ type: 'text', text: 'I now have enough verified data. Let me create the plan.' },
+						{ type: 'toolCall', name: 'create_funding_brief' }
+					]
+				}
+			})
+		).toEqual({
+			type: 'chat.progress',
+			runId: 'run-1',
+			text: 'I now have enough verified data. Let me create the plan.'
+		});
+	});
+
+	it('does not emit empty progress for tool-use assistant messages with only tool calls', () => {
+		expect(
+			mapChatEventToSse({
+				runId: 'run-1',
+				state: 'final',
+				message: {
+					role: 'assistant',
+					stopReason: 'toolUse',
+					content: [{ type: 'toolCall', name: 'create_funding_brief' }]
+				}
+			})
+		).toBeNull();
+	});
 });
 
 describe('mapAgentEventToSse', () => {

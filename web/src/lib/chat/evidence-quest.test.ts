@@ -72,6 +72,25 @@ describe('buildEvidenceQuestState', () => {
 		]);
 	});
 
+	it('shows plan building while the publish funding brief tool runs', () => {
+		const state = buildEvidenceQuestState({
+			answerStarted: false,
+			tools: [
+				tool('search_corpus', 'done'),
+				tool('read_official_source', 'done'),
+				tool('publish_funding_brief', 'running')
+			]
+		});
+
+		expect(state.status).toBe('building plan');
+		expect(state.stages.find((stage) => stage.id === 'plan')?.phase).toBe('active');
+		expect(state.tokens.map((token) => token.label)).toEqual([
+			'corpus match',
+			'official source',
+			'plan building'
+		]);
+	});
+
 	it('uses active tool status while search tools run', () => {
 		expect(
 			buildEvidenceQuestState({

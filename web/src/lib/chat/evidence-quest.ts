@@ -27,7 +27,12 @@ type EvidenceQuestInput = {
 	answerStarted: boolean;
 };
 
-type ToolName = 'search_corpus' | 'read_official_source' | 'web_search' | 'create_funding_brief';
+type ToolName =
+	| 'search_corpus'
+	| 'read_official_source'
+	| 'web_search'
+	| 'create_funding_brief'
+	| 'publish_funding_brief';
 
 const STAGE_LABELS: Record<EvidenceQuestStageId, string> = {
 	ask: 'Ask',
@@ -40,7 +45,8 @@ const TOOL_NAMES = {
 	searchCorpus: 'search_corpus',
 	readOfficialSource: 'read_official_source',
 	webSearch: 'web_search',
-	createFundingBrief: 'create_funding_brief'
+	createFundingBrief: 'create_funding_brief',
+	publishFundingBrief: 'publish_funding_brief'
 } as const satisfies Record<string, ToolName>;
 
 function hasToolPhase(
@@ -55,12 +61,29 @@ function hasTool(tools: readonly ToolActivity[], name: ToolName): boolean {
 	return tools.some((tool) => tool.name === name);
 }
 
+function hasArtifactTool(tools: readonly ToolActivity[]): boolean {
+	return (
+		hasTool(tools, TOOL_NAMES.createFundingBrief) ||
+		hasTool(tools, TOOL_NAMES.publishFundingBrief)
+	);
+}
+
+function hasArtifactToolPhase(
+	tools: readonly ToolActivity[],
+	phase: ToolActivity['phase']
+): boolean {
+	return (
+		hasToolPhase(tools, TOOL_NAMES.createFundingBrief, phase) ||
+		hasToolPhase(tools, TOOL_NAMES.publishFundingBrief, phase)
+	);
+}
+
 function isFindDone(tools: readonly ToolActivity[]): boolean {
 	return (
 		hasToolPhase(tools, TOOL_NAMES.searchCorpus, 'done') ||
 		hasToolPhase(tools, TOOL_NAMES.webSearch, 'done') ||
 		hasTool(tools, TOOL_NAMES.readOfficialSource) ||
-		hasTool(tools, TOOL_NAMES.createFundingBrief)
+		hasArtifactTool(tools)
 	);
 }
 
@@ -75,7 +98,7 @@ function isFindActive(tools: readonly ToolActivity[]): boolean {
 function isCheckDone(tools: readonly ToolActivity[]): boolean {
 	return (
 		hasToolPhase(tools, TOOL_NAMES.readOfficialSource, 'done') ||
-		hasTool(tools, TOOL_NAMES.createFundingBrief)
+		hasArtifactTool(tools)
 	);
 }
 
@@ -84,11 +107,11 @@ function isCheckActive(tools: readonly ToolActivity[]): boolean {
 }
 
 function isPlanDone(tools: readonly ToolActivity[], answerStarted: boolean): boolean {
-	return answerStarted || hasToolPhase(tools, TOOL_NAMES.createFundingBrief, 'done');
+	return answerStarted || hasArtifactToolPhase(tools, 'done');
 }
 
 function isPlanActive(tools: readonly ToolActivity[]): boolean {
-	return hasToolPhase(tools, TOOL_NAMES.createFundingBrief, 'running') || isCheckDone(tools);
+	return hasArtifactToolPhase(tools, 'running') || isCheckDone(tools);
 }
 
 function stage(id: EvidenceQuestStageId, phase: EvidenceQuestPhase): EvidenceQuestStage {
@@ -127,8 +150,8 @@ function buildTokens(tools: readonly ToolActivity[]): EvidenceQuestToken[] {
 		addToken(tokens, 'source', 'official source');
 	}
 	if (
-		hasToolPhase(tools, TOOL_NAMES.createFundingBrief, 'running') ||
-		hasToolPhase(tools, TOOL_NAMES.createFundingBrief, 'done')
+		hasArtifactToolPhase(tools, 'running') ||
+		hasArtifactToolPhase(tools, 'done')
 	) {
 		addToken(tokens, 'plan', 'plan building');
 	}
@@ -139,7 +162,7 @@ function resolveStatus(input: EvidenceQuestInput): string {
 	if (input.answerStarted) {
 		return 'answering from evidence';
 	}
-	if (hasToolPhase(input.tools, TOOL_NAMES.createFundingBrief, 'running')) {
+	if (hasArtifactToolPhase(input.tools, 'running')) {
 		return 'building plan';
 	}
 	if (hasToolPhase(input.tools, TOOL_NAMES.readOfficialSource, 'running')) {

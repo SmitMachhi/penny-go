@@ -6,6 +6,7 @@ import type { AgentEventPayload, ChatEventPayload } from '$lib/gateway/types.js'
 import { mapAgentEventToSse, mapChatEventToSse } from '$lib/server/chat-event-mapper.js';
 import { buildArtifactSseForToolDone } from '$lib/server/artifact-sse-bridge.js';
 import { ensureGatewayEventBus } from '$lib/server/gateway-events-service.js';
+import { recordPennyTurnRunEvent } from '$lib/server/penny-turn-service.js';
 
 type StreamSubscriber = {
 	id: string;
@@ -41,6 +42,7 @@ function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 
 	const ssePayload = mapper(payload);
 	if (ssePayload) {
+		recordTurnEvent(sessionKey, ssePayload);
 		broadcastToSession(sessionKey, ssePayload);
 	}
 
@@ -52,6 +54,36 @@ function dispatchMappedEvent<T extends { sessionKey?: string; runId?: string }>(
 		void emitArtifactEvent(sessionKey, payload.runId, ssePayload.name).catch((error) => {
 			console.error('artifact_sse_emit_failed', error);
 		});
+	}
+}
+
+function recordTurnEvent(sessionKey: string, payload: SsePayload): void {
+	if (payload.type === 'connected') {
+		return;
+	}
+	const status = turnStatusFromPayload(payload);
+	void recordPennyTurnRunEvent({
+		sessionKey,
+		runId: payload.runId,
+		status,
+		...(payload.type === 'chat.error' ? { error: payload.message } : {})
+	}).catch((error) => {
+		console.error('penny_turn_event_record_failed', error);
+	});
+}
+
+function turnStatusFromPayload(
+	payload: Exclude<SsePayload, { type: 'connected' }>
+): Parameters<typeof recordPennyTurnRunEvent>[0]['status'] {
+	switch (payload.type) {
+		case 'chat.final':
+			return 'completed';
+		case 'chat.error':
+			return 'failed';
+		case 'chat.aborted':
+			return 'aborted';
+		default:
+			return 'running';
 	}
 }
 

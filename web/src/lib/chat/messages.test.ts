@@ -103,7 +103,7 @@ describe('normalizeHistoryMessages', () => {
 
 describe('toolLabel', () => {
 	it('maps penny tools to friendly labels', () => {
-		expect(toolLabel('search_corpus')).toContain('corpus');
+		expect(toolLabel('search_corpus')).toContain('database');
 		expect(toolLabel('read_official_source')).toContain('official');
 	});
 });

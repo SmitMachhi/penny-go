@@ -1,8 +1,8 @@
-# Penny Phase 1 — Local brain setup
+# Penny local setup
 
-Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated JSONL corpus, verifies every suggestion with `read_official_source` (Crawl4AI first, Exa official contents fallback on anti-bot pages), and may use Exa `web_search` only when corpus results are insufficient.
+Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated funding database, verifies every suggestion with `read_official_source` (Crawl4AI first, Exa official contents fallback on anti-bot pages), and may use Exa `web_search` only when database results are insufficient.
 
-This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
+Use this document for local OpenClaw and gateway setup. For Fly.io deployment, use the root `README.md`.
 
 ## Prerequisites
 
@@ -20,7 +20,7 @@ This document matches the Phase 1 plan: no Fly.io, no SvelteKit.
 | `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skills including stop-slop) |
 | `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `publish_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
-| `database/data/funding/curated/verified-programs.jsonl` | Corpus |
+| `database/data/funding/curated/verified-programs.jsonl` | Funding database |
 | `config/openclaw.penny.example.json5` | Example gateway merge snippet |
 
 ## 1. OpenClaw baseline
@@ -103,7 +103,7 @@ Rebuild after edits: `npm run build && npm run plugin:build`.
 
 Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.openclaw/openclaw.json`:
 
-- Restrict tools to corpus + verifier + web search via explicit **`tools.allow`** only (do **not** combine `tools.profile: minimal` with `tools.allow` — OpenClaw intersects those policies and you end up with zero tools)
+- Restrict tools to database search + verifier + web search via explicit **`tools.allow`** only (do **not** combine `tools.profile: minimal` with `tools.allow` — OpenClaw intersects those policies and you end up with zero tools)
 - Set **`plugins.enabled: true`** and **`plugins.allow: ["penny-tools", "exa"]`**
 - Disable `web.fetch` so the model cannot replace `read_official_source`
 - Enable `plugins.entries.exa`
@@ -153,7 +153,7 @@ If `web_search` or the anti-bot fallback inside `read_official_source` fails, co
 
 ## 6. Verification ladder (do in order)
 
-### 6a — Corpus integrity
+### 6a — Funding database integrity
 
 ```bash
 cd database
@@ -172,9 +172,9 @@ cd plugin && npm test
 
 Use section **3** HTML + PDF commands.
 
-### 6d — Corpus hit — Ontario SaaS hiring
+### 6d — Database hit — Ontario SaaS hiring
 
-Use **embedded mode** for Phase 1 tasting (no gateway daemon required):
+Use **embedded mode** for local testing (no gateway daemon required):
 
 ```bash
 openclaw agent --local \
@@ -189,7 +189,7 @@ Pass when the transcript shows:
 2. `read_official_source` ≥ once per recommendation
 3. No loan products and no hallucinated eligibility
 
-### 6e — Corpus miss — Niche territorial search
+### 6e — Database miss — Niche territorial search
 
 ```bash
 openclaw agent --local \
@@ -198,7 +198,7 @@ openclaw agent --local \
   --json
 ```
 
-Pass when corpus-first behavior remains, weak corpus hits escalate to scoped `web_search`, and discovery routes through `read_official_source`.
+Pass when database-first behavior remains, weak database hits escalate to scoped `web_search`, and discovery routes through `read_official_source`.
 
 ### 6f — Consultation mode: opportunity-backed
 
@@ -213,7 +213,7 @@ Pass when:
 
 1. Engagement memory or transcript reflects **opportunity-backed** intake
 2. `publish_funding_brief` artifact includes `## Plan alignment` (or equivalent alignment section)
-3. Evidence trace unchanged (corpus → verify)
+3. Evidence trace unchanged (database → verify)
 
 ### 6g — Consultation mode: aspiration-first
 
@@ -227,14 +227,14 @@ openclaw agent --local \
 Pass when:
 
 1. **Aspiration-first** intake (industry + location)
-2. Artifact includes `## Recommended business shape` and `## Launch strategy` (or honest thin corpus note)
-3. Corpus miss escalates to `web_search` only when needed
+2. Artifact includes `## Recommended business shape` and `## Launch strategy` (or honest thin database note)
+3. Database miss escalates to `web_search` only when needed
 
 **Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working model auth). The repo cannot complete them in CI without your secrets.
 
 Ensure `agents.defaults.skills` includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (see `config/openclaw.penny.example.json5`).
 
-## 7. Web chat UI (Phase 2)
+## 7. Web chat UI
 
 SvelteKit app in `web/` — browser chat against the OpenClaw gateway via a server-side BFF (gateway token never reaches the browser).
 
@@ -269,6 +269,6 @@ Regression ladder (offline + optional live agent runs):
 The 50-case consultant-quality baseline lives in `evals/penny-behavioral-baseline/`.
 Use it when measuring whether Penny gives specific, verified, fit-banded Canadian business funding advice instead of generic program lists.
 
-## What we deliberately skip here
+## What this local setup skips
 
-Fly deployments, corpus refresh cron jobs, and auxiliary fetch/browser/exec tools—all deferred to later phases.
+This guide skips hosted deployment and scheduled database refresh jobs.

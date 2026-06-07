@@ -1,4 +1,4 @@
-/** Row shape aligned with corpus JSONL verified programs. */
+/** Row shape aligned with JSONL verified funding programs. */
 
 export type ProgramProfile = {
   business_only?: boolean;

@@ -29,12 +29,12 @@ const configSchema = Type.Object(
 export default defineToolPlugin({
   id: "penny-tools",
   name: "Penny Tools",
-  description: "Search verified Canadian business funding corpus and read live official URLs.",
+  description: "Search verified Canadian business funding database and read live official URLs.",
   configSchema,
   tools: (tool) => [
     tool({
       name: "search_corpus",
-      label: "Search funding corpus",
+      label: "Search funding database",
       description:
         "Search Penny curated verified-programs JSONL. Always call this before web_search.",
       parameters: Type.Object({
@@ -62,7 +62,7 @@ export default defineToolPlugin({
         "Fetch live HTTPS page or PDF via Crawl4AI. Required before recommending any program.",
       parameters: Type.Object({
         url: Type.String({
-          description: "Official https URL from corpus source_urls or web_search",
+          description: "Official https URL from database source_urls or web_search",
         }),
       }),
       execute: async (params, cfg, runtime) =>

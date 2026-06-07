@@ -2,7 +2,7 @@
   "name": "penny-tools",
   "version": "0.1.0",
   "private": true,
-  "description": "Penny corpus search and Crawl4AI official source reader tools for OpenClaw",
+  "description": "Penny funding database search and Crawl4AI official source reader tools for OpenClaw",
   "type": "module",
   "main": "./dist/index.js",
   "scripts": {

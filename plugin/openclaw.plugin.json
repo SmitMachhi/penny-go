@@ -1,7 +1,7 @@
 {
   "id": "penny-tools",
   "name": "Penny Tools",
-  "description": "Search verified Canadian business funding corpus and read live official URLs.",
+  "description": "Search verified Canadian business funding database and read live official URLs.",
   "version": "0.1.0",
   "configSchema": {
     "additionalProperties": false,

@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import type { ProgramProfile } from "../domain/corpus-types.js";
 
-/** Parse JSON line records from verified-programs corpus. */
+/** Parse JSON line records from the verified funding database. */
 export function parseJsonlPrograms(raw: string): ProgramProfile[] {
   const programs: ProgramProfile[] = [];
 

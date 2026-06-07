@@ -36,7 +36,7 @@ const PLAN_PRESENTATION: ToolPresentation = {
 
 const TOOL_PRESENTATIONS: Record<string, ToolPresentation> = {
 	search_corpus: {
-		label: 'Searching funding corpus',
+		label: 'Searching funding database',
 		Icon: Database,
 		capsuleRunning:
 			'border-amber-200/90 bg-amber-50 text-amber-950 dark:border-amber-800/80 dark:bg-amber-950/45 dark:text-amber-100',

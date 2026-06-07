@@ -4,7 +4,7 @@ Local SvelteKit chat front-end for Penny. The browser talks to SvelteKit API rou
 
 ## Prerequisites
 
-- Phase 1 Penny stack working (`penny-tools`, Crawl4AI, OpenRouter, Exa)
+- Penny OpenClaw stack working (`penny-tools`, Crawl4AI, DeepSeek, Exa)
 - OpenClaw gateway running on `ws://127.0.0.1:18789`
 
 ```bash

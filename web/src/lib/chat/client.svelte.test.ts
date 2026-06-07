@@ -27,6 +27,10 @@ function requestPath(input: RequestInfo | URL): string {
 	return String(input);
 }
 
+function requestBody(init: RequestInit | undefined): unknown {
+	return JSON.parse(String(init?.body));
+}
+
 function artifact(version: number): ArtifactSummary {
 	return {
 		artifactId: ARTIFACT_ID,
@@ -134,9 +138,15 @@ describe('ChatClient', () => {
 			'/api/chat/send',
 			expect.objectContaining({
 				method: 'POST',
-				body: JSON.stringify({ message: MESSAGE, sessionKey: SESSION_KEY, sessionId: null })
+				body: expect.any(String)
 			})
 		);
+		expect(requestBody(fetchMock.mock.calls[0]?.[1])).toMatchObject({
+			message: MESSAGE,
+			sessionKey: SESSION_KEY,
+			sessionId: null,
+			turnId: expect.any(String)
+		});
 		expect(client.state.operationError).toBeNull();
 	});
 

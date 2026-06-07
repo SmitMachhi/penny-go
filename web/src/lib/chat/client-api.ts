@@ -30,6 +30,7 @@ export function sendChatMessage(input: {
 	message: string;
 	sessionKey: string;
 	sessionId: string | null;
+	turnId: string;
 }): Promise<SendResponse> {
 	return apiJson('/api/chat/send', {
 		method: 'POST',

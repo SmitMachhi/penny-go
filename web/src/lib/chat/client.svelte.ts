@@ -196,7 +196,10 @@ export class ChatClient {
 		}
 	}
 
-	async sendMessage(message: string, options?: { skipHistoryReload?: boolean }): Promise<boolean> {
+	async sendMessage(
+		message: string,
+		options?: { skipHistoryReload?: boolean; turnId?: string }
+	): Promise<boolean> {
 		const trimmed = message.trim();
 		const sessionKey = this.state.sessionKey;
 		if (!trimmed || this.state.sending || !sessionKey) {
@@ -211,6 +214,7 @@ export class ChatClient {
 		}
 		this.ensureStreamConnected();
 		const sessionId = this.state.sessionId;
+		const turnId = options?.turnId ?? crypto.randomUUID();
 		const previousMessages = this.state.messages;
 		const userMessageCount = countUserMessages(previousMessages);
 		const expectedUserMessageCount = userMessageCount + 1;
@@ -224,7 +228,7 @@ export class ChatClient {
 		markSendStart();
 		persistSessionThreadCache(this.state);
 		try {
-			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId });
+			const payload = await sendChatMessage({ message: trimmed, sessionKey, sessionId, turnId });
 			if (this.abortRequested) {
 				this.activeRunId = payload.runId;
 				void this.persistAbort(payload.runId);

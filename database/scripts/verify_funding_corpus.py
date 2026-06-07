@@ -16,9 +16,6 @@ from load_loan_heuristic import load_loan_heuristic, loanlike_pattern
 DEFAULT_JSONL_PATH = Path("data/funding/curated/verified-programs.jsonl")
 DEFAULT_JSON_PATH = Path("data/funding/curated/verified-programs.json")
 DEFAULT_SUMMARY_PATH = Path("data/funding/curated/coverage-summary.md")
-DEFAULT_RAW_PATH = Path("data/funding/raw/exa-results/source-pages.jsonl")
-DEFAULT_NORMALIZED_PATH = Path("data/funding/normalized/source-pages.jsonl")
-DEFAULT_REJECTED_PATH = Path("data/funding/normalized/rejected-sources.jsonl")
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
 EXPECTED_JURISDICTION_COUNT = 14
@@ -45,13 +42,10 @@ TEXT_FIELDS_FOR_LOAN_AUDIT = tuple(_LOAN_HEURISTIC["auditFields"])
 JsonObject = dict[str, object]
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Verify curated Penny funding corpus.")
+    parser = argparse.ArgumentParser(description="Verify curated Penny funding database.")
     parser.add_argument("--jsonl", type=Path, default=DEFAULT_JSONL_PATH)
     parser.add_argument("--json", type=Path, default=DEFAULT_JSON_PATH)
     parser.add_argument("--summary", type=Path, default=DEFAULT_SUMMARY_PATH)
-    parser.add_argument("--raw", type=Path, default=DEFAULT_RAW_PATH)
-    parser.add_argument("--normalized", type=Path, default=DEFAULT_NORMALIZED_PATH)
-    parser.add_argument("--rejected", type=Path, default=DEFAULT_REJECTED_PATH)
     return parser.parse_args()
 
 def read_jsonl(path: Path) -> list[JsonObject]:
@@ -71,10 +65,6 @@ def read_json_array(path: Path) -> list[JsonObject]:
     if not isinstance(data, list):
         raise ValueError(f"{path} must contain a JSON array")
     return data
-
-def count_file_rows(path: Path) -> int:
-    with path.open("r", encoding="utf-8") as handle:
-        return sum(1 for line in handle if line.strip())
 
 def validate_row_shape(rows: list[JsonObject]) -> list[str]:
     problems: list[str] = []
@@ -132,20 +122,12 @@ def validate_summary(rows: list[JsonObject], args: argparse.Namespace) -> list[s
     profile_count = counts.get("verified non-loan business program profiles")
     jurisdiction_count = counts.get("jurisdictions with verified profiles")
     actual_jurisdictions = {str(row.get("jurisdiction")) for row in rows}
-    expected_file_counts = {
-        "raw Exa source rows": count_file_rows(args.raw),
-        "normalized official source rows": count_file_rows(args.normalized),
-        "rejected duplicate/non-official rows": count_file_rows(args.rejected),
-    }
     if profile_count != len(rows):
         problems.append(f"summary profile count {profile_count} != {len(rows)}")
     if jurisdiction_count != len(actual_jurisdictions):
         problems.append(f"summary jurisdiction count {jurisdiction_count} != {len(actual_jurisdictions)}")
     if len(actual_jurisdictions) != EXPECTED_JURISDICTION_COUNT:
         problems.append(f"jurisdiction coverage {len(actual_jurisdictions)} != {EXPECTED_JURISDICTION_COUNT}")
-    for label, expected_count in expected_file_counts.items():
-        if counts.get(label) != expected_count:
-            problems.append(f"summary {label} {counts.get(label)} != {expected_count}")
     return problems
 
 def verify(args: argparse.Namespace) -> list[str]:
@@ -171,9 +153,6 @@ def run() -> int:
     print(f"verified_profiles {len(rows)}")
     print(f"jurisdictions {jurisdiction_count}")
     print("duplicate_program_keys 0")
-    print(f"raw_source_rows {count_file_rows(args.raw)}")
-    print(f"normalized_source_rows {count_file_rows(args.normalized)}")
-    print(f"rejected_source_rows {count_file_rows(args.rejected)}")
     return EXIT_SUCCESS
 
 if __name__ == "__main__":

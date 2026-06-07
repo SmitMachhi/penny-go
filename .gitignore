@@ -37,5 +37,9 @@ workspace/artifacts/
 workspace/penny-session-index.json
 workspace/penny-turns/
 
+# local funding discovery scratch data
+database/data/funding/raw/
+database/data/funding/normalized/
+
 # local eval run output
 evals/**/runs/

@@ -4,10 +4,8 @@ Last updated: 2026-05-23
 
 Scope: Canadian federal, provincial, and territorial government-backed business funding only. This includes grants, non-repayable contributions, rebates, tax credits, tax rebates, tax deductions, vouchers, wage subsidies, payroll rebates, and investment incentives where businesses, companies, employers, or business investors are eligible. Loans, loan guarantees, low-cost financing, and repayable contributions are excluded. Individual-only, student-only, household-only, municipal-only, and purely procurement preference programs are excluded unless a business funding benefit is explicit.
 
-Current corpus:
+Current database:
 
-- raw Exa source rows: 1717
-- normalized official source rows: 911
 - verified non-loan business program profiles: 331
 - jurisdictions represented: 14
 - duplicate `(jurisdiction, program_name)` keys: 0

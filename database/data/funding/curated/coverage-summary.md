@@ -1,8 +1,5 @@
 # Curated Funding DB Coverage
 
-- raw Exa source rows: 1717
-- normalized official source rows: 911
-- rejected duplicate/non-official rows: 806
 - verified non-loan business program profiles: 331
 - jurisdictions with verified profiles: 14
 - completeness audit: docs/funding-db/completeness-audit.md
@@ -94,7 +91,7 @@
 
 ## Known Remaining Work
 
-- This is a verified working corpus, not a legal-complete inventory of every Canadian business grant and tax credit.
+- This is a verified working database, not a legal-complete inventory of every Canadian business grant and tax credit.
 - Loans, loan guarantees, low-cost financing, and repayable contributions are intentionally excluded from Penny's curated opportunity DB.
 - Continue follow-up discovery for municipal exclusions if scope changes; current scope is federal, provincial, and territorial only.
 - Use docs/funding-db/completeness-audit.md as the authoritative gap register for the next pass.

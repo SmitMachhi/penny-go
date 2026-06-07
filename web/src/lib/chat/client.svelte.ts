@@ -78,6 +78,15 @@ export class ChatClient {
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 	}
+
+	async startSessionWithMessage(sessionKey: string, message: string, turnId: string): Promise<boolean> {
+		await this.clearSession();
+		this.state.sessionKey = sessionKey;
+		this.state.sessionId = null;
+		this.connectStream();
+		return this.sendMessage(message, { skipHistoryReload: true, turnId });
+	}
+
 	openArtifact(artifactId: string): void {
 		openArtifactPanel(this.state, artifactId, () => void this.loadArtifacts());
 	}

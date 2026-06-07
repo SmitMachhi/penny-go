@@ -78,4 +78,27 @@ describe('ChatClient active turn resume', () => {
 			expect.objectContaining({ role: 'user', text: ACTIVE_MESSAGE })
 		]);
 	});
+
+	it('submits a new session first turn before route bootstrap', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async () =>
+			jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY })
+		);
+		vi.stubGlobal('fetch', fetchMock);
+		const client = new ChatClient();
+
+		await client.startSessionWithMessage(SESSION_KEY, ACTIVE_MESSAGE, 'turn-1');
+
+		expect(fetchMock).toHaveBeenCalledWith(
+			'/api/chat/send',
+			expect.objectContaining({
+				body: JSON.stringify({
+					message: ACTIVE_MESSAGE,
+					sessionKey: SESSION_KEY,
+					sessionId: null,
+					turnId: 'turn-1'
+				}),
+				method: 'POST'
+			})
+		);
+	});
 });

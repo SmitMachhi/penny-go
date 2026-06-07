@@ -33,10 +33,6 @@
 		messagesForDisplay
 	} from '$lib/chat/display-messages.js';
 	import { sanitizeAssistantDisplayText } from '$lib/chat/sanitize-assistant-text.js';
-	import {
-		clearPendingFirstMessage,
-		peekPendingFirstMessage
-	} from '$lib/chat/pending-first-message.js';
 	import { hydrateSessionThreadCache } from '$lib/chat/session-thread-cache.js';
 	import { isPendingFirstMessageRouteCurrent } from '$lib/chat/pending-first-message-route.js';
 	import { sessionKeyFromRouteId } from '$lib/chat/session-routes.js';
@@ -246,20 +242,10 @@
 				) {
 					return;
 				}
-				const pending = peekPendingFirstMessage(sessionKey);
-				if (!pending || chat.state.sending) {
-					return;
+				followThread = chat.state.sending;
+				if (followThread) {
+					await pinThreadToBottom('smooth');
 				}
-			followThread = true;
-			const sent = await chat.sendMessage(pending.message, {
-				skipHistoryReload: true,
-				turnId: pending.turnId
-			});
-			if (sent) {
-				clearPendingFirstMessage();
-				sessions.setTitleFromFirstMessage(sessionKey, pending.message);
-				await pinThreadToBottom('smooth');
-			}
 		})();
 	});
 

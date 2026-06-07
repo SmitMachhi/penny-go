@@ -3,7 +3,6 @@
 	import { onMount } from 'svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
-	import { stashPendingFirstMessage } from '$lib/chat/pending-first-message.js';
 	import { chatPathFromSessionKey } from '$lib/chat/session-routes.js';
 	import {
 		HOME_HEADLINE,
@@ -45,11 +44,15 @@
 				return;
 			}
 
-			stashPendingFirstMessage({
-				sessionKey: created.key,
-				message: trimmed,
-				turnId: crypto.randomUUID()
-			});
+			const sent = await chat.startSessionWithMessage(
+				created.key,
+				trimmed,
+				crypto.randomUUID()
+			);
+			if (!sent) {
+				return;
+			}
+			sessions.setTitleFromFirstMessage(created.key, trimmed);
 			await goto(path);
 		} finally {
 			starting = false;

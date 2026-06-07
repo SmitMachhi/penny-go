@@ -20,6 +20,7 @@ const OTHER_TURN_ID = 'turn-2';
 const CREATED_AT = 1_000;
 const UPDATED_AT = 2_000;
 const LATER_CREATED_AT = 3_000;
+const CONCURRENT_PATCH_COUNT = 12;
 
 function turn(overrides: Partial<PennyTurn> = {}): PennyTurn {
 	return {
@@ -108,5 +109,23 @@ describe('penny turn store', () => {
 		await deletePennyTurnsForSession(SESSION_KEY);
 
 		expect(await readPennyTurns(SESSION_KEY)).toEqual([]);
+	});
+
+	it('handles concurrent patches for the same session ledger', async () => {
+		await upsertPennyTurn(turn({ runId: TURN_ID }));
+
+		await Promise.all(
+			Array.from({ length: CONCURRENT_PATCH_COUNT }, (_, index) =>
+				patchPennyTurn(SESSION_KEY, TURN_ID, {
+					status: 'running',
+					updatedAt: UPDATED_AT + index
+				})
+			)
+		);
+
+		expect(await readPennyTurn(SESSION_KEY, TURN_ID)).toMatchObject({
+			runId: TURN_ID,
+			status: 'running'
+		});
 	});
 });

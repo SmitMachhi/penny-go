@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
@@ -28,6 +29,9 @@ type PennyTurnPatch = Partial<Pick<PennyTurn, 'status' | 'runId' | 'updatedAt' |
 const TURN_LEDGER_RELATIVE_DIR = ['workspace', 'penny-turns'] as const;
 const JSON_INDENT_SPACES = 2;
 const LEGACY_LEDGER_NAME = 'legacy';
+const TMP_FILE_EXTENSION = 'tmp';
+
+const ledgerOperationQueues = new Map<string, Promise<unknown>>();
 
 function isPennyTurnStatus(value: unknown): value is PennyTurnStatus {
 	return (
@@ -81,17 +85,25 @@ function turnLedgerPath(sessionKeyRaw: string): string {
 	);
 }
 
-async function writeTurnLedger(sessionKey: string, turns: readonly PennyTurn[]): Promise<void> {
-	const ledgerPath = turnLedgerPath(sessionKey);
-	const tmpPath = `${ledgerPath}.tmp`;
-	await mkdir(dirname(ledgerPath), { recursive: true });
-	await writeFile(tmpPath, `${JSON.stringify(sortTurns(turns), null, JSON_INDENT_SPACES)}\n`, 'utf8');
-	await rename(tmpPath, ledgerPath);
+async function runWithLedgerQueue<T>(
+	ledgerPath: string,
+	operation: () => Promise<T>
+): Promise<T> {
+	const previous = ledgerOperationQueues.get(ledgerPath) ?? Promise.resolve();
+	const next = previous.catch(() => undefined).then(operation);
+	ledgerOperationQueues.set(ledgerPath, next);
+	try {
+		return await next;
+	} finally {
+		if (ledgerOperationQueues.get(ledgerPath) === next) {
+			ledgerOperationQueues.delete(ledgerPath);
+		}
+	}
 }
 
-export async function readPennyTurns(sessionKey: string): Promise<PennyTurn[]> {
+async function readTurnLedger(ledgerPath: string): Promise<PennyTurn[]> {
 	try {
-		const raw = await readFile(turnLedgerPath(sessionKey), 'utf8');
+		const raw = await readFile(ledgerPath, 'utf8');
 		const parsed = JSON.parse(raw) as unknown;
 		if (!Array.isArray(parsed)) {
 			return [];
@@ -100,6 +112,17 @@ export async function readPennyTurns(sessionKey: string): Promise<PennyTurn[]> {
 	} catch {
 		return [];
 	}
+}
+
+async function writeTurnLedger(ledgerPath: string, turns: readonly PennyTurn[]): Promise<void> {
+	const tmpPath = `${ledgerPath}.${process.pid}.${randomUUID()}.${TMP_FILE_EXTENSION}`;
+	await mkdir(dirname(ledgerPath), { recursive: true });
+	await writeFile(tmpPath, `${JSON.stringify(sortTurns(turns), null, JSON_INDENT_SPACES)}\n`, 'utf8');
+	await rename(tmpPath, ledgerPath);
+}
+
+export async function readPennyTurns(sessionKey: string): Promise<PennyTurn[]> {
+	return readTurnLedger(turnLedgerPath(sessionKey));
 }
 
 export async function readPennyTurn(
@@ -112,13 +135,16 @@ export async function readPennyTurn(
 
 export async function upsertPennyTurn(turn: PennyTurn): Promise<PennyTurn> {
 	const sessionKey = resolveSessionKey(turn.sessionKey);
+	const ledgerPath = turnLedgerPath(sessionKey);
 	const normalized = { ...turn, sessionKey };
-	const existing = await readPennyTurns(sessionKey);
-	await writeTurnLedger(sessionKey, [
-		normalized,
-		...existing.filter((entry) => entry.turnId !== normalized.turnId)
-	]);
-	return normalized;
+	return runWithLedgerQueue(ledgerPath, async () => {
+		const existing = await readTurnLedger(ledgerPath);
+		await writeTurnLedger(ledgerPath, [
+			normalized,
+			...existing.filter((entry) => entry.turnId !== normalized.turnId)
+		]);
+		return normalized;
+	});
 }
 
 export async function patchPennyTurn(
@@ -127,19 +153,23 @@ export async function patchPennyTurn(
 	patch: PennyTurnPatch
 ): Promise<PennyTurn | null> {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
-	const existing = await readPennyTurns(sessionKey);
-	const current = existing.find((turn) => turn.turnId === turnId);
-	if (!current) {
-		return null;
-	}
-	const patched: PennyTurn = { ...current, ...patch, sessionKey };
-	await writeTurnLedger(sessionKey, [
-		patched,
-		...existing.filter((entry) => entry.turnId !== turnId)
-	]);
-	return patched;
+	const ledgerPath = turnLedgerPath(sessionKey);
+	return runWithLedgerQueue(ledgerPath, async () => {
+		const existing = await readTurnLedger(ledgerPath);
+		const current = existing.find((turn) => turn.turnId === turnId);
+		if (!current) {
+			return null;
+		}
+		const patched: PennyTurn = { ...current, ...patch, sessionKey };
+		await writeTurnLedger(ledgerPath, [
+			patched,
+			...existing.filter((entry) => entry.turnId !== turnId)
+		]);
+		return patched;
+	});
 }
 
 export async function deletePennyTurnsForSession(sessionKey: string): Promise<void> {
-	await rm(turnLedgerPath(sessionKey), { force: true });
+	const ledgerPath = turnLedgerPath(sessionKey);
+	await runWithLedgerQueue(ledgerPath, () => rm(ledgerPath, { force: true }));
 }

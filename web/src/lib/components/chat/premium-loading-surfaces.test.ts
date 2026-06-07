@@ -61,8 +61,16 @@ describe('premium loading surfaces', () => {
 		const source = await readChatComponent('PennyShell.svelte');
 
 		expect(source).toContain('connectionStatusLabel');
+		expect(source).toContain('Checking');
 		expect(source).toContain('Online');
 		expect(source).toContain('Working');
 		expect(source).toContain('Offline');
+	});
+
+	it('does not render a manual gateway retry button', async () => {
+		const source = await readChatComponent('PennyShell.svelte');
+
+		expect(source).not.toContain('Retry');
+		expect(source).not.toContain('chat.refreshHealth()}');
 	});
 });

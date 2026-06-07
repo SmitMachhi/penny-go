@@ -42,17 +42,29 @@
 	);
 	const showSidebarBrand = $derived(sessions.state.sidebarCollapsed);
 	const connectionStatusLabel = $derived(
-		chat.state.sending ? 'Working' : chat.state.connected ? 'Online' : 'Offline'
+		chat.state.sending
+			? 'Working'
+			: !chat.state.healthChecked
+				? 'Checking'
+				: chat.state.connected
+					? 'Online'
+					: 'Offline'
 	);
 	const connectionStatusTitle = $derived(
-		chat.state.connected ? 'Penny gateway is connected' : (chat.state.connectionError ?? 'Penny gateway is offline')
+		!chat.state.healthChecked
+			? 'Checking Penny gateway health'
+			: chat.state.connected
+				? 'Penny gateway is connected'
+				: (chat.state.connectionError ?? 'Penny gateway is offline')
 	);
 	const connectionStatusDotClass = $derived(
 		chat.state.sending
 			? 'bg-amber-500'
-			: chat.state.connected
-				? 'bg-emerald-500'
-				: 'bg-destructive'
+			: !chat.state.healthChecked
+				? 'bg-muted-foreground'
+				: chat.state.connected
+					? 'bg-emerald-500'
+					: 'bg-destructive'
 	);
 
 	$effect(() => {
@@ -159,15 +171,6 @@
 						onclick={() => chat.toggleArtifactPanel()}
 					>
 						<FileText class="h-4 w-4" />
-					</Button>
-				{/if}
-				{#if !chat.state.connected}
-					<Button
-						variant="outline"
-						class="h-8 px-2.5 text-xs"
-						onclick={() => void chat.refreshHealth()}
-					>
-						Retry
 					</Button>
 				{/if}
 				<ThemeToggle />

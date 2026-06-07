@@ -27,5 +27,7 @@ export async function refreshGatewayHealth(input: RefreshGatewayHealthInput): Pr
 	} catch (error) {
 		input.state.connected = false;
 		input.state.connectionError = formatClientError(error, GATEWAY_OFFLINE_MESSAGE);
+	} finally {
+		input.state.healthChecked = true;
 	}
 }

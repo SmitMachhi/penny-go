@@ -5,6 +5,7 @@ import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
 
 export type ChatClientState = {
 	connected: boolean;
+	healthChecked: boolean;
 	loading: boolean;
 	sending: boolean;
 	sessionKey: string;
@@ -27,6 +28,7 @@ export type ChatClientState = {
 export function createInitialChatState(): ChatClientState {
 	return {
 		connected: false,
+		healthChecked: false,
 		loading: true,
 		sending: false,
 		sessionKey: '',

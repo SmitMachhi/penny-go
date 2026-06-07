@@ -170,7 +170,13 @@ Run live official-source smoke checks when API keys and the Python reader are re
 
 ## Fly.io Deployment
 
-Penny is intended to be deployable on Fly.io as a gateway-backed web application.
+Penny is deployable on Fly.io as a gateway-backed web application. The repo
+includes:
+
+- `fly.toml` with `primary_region = "yyz"` for Toronto.
+- `Dockerfile` for the SvelteKit Node server.
+- `.dockerignore` to keep local state, dependencies, and generated output out of
+  the deployment context.
 
 Recommended production shape:
 
@@ -180,6 +186,13 @@ Recommended production shape:
 | OpenClaw gateway | Private Fly service or separately managed gateway reachable by the web app. |
 | Penny corpus | Tracked repo data mounted in the app image. |
 | Secrets | Fly secrets, never committed to Git. |
+
+The default Fly Machine is pinned to cheap small compute:
+
+- `shared-cpu-1x`
+- `512mb`
+- `min_machines_running = 0`
+- auto-stop and auto-start enabled
 
 Set production secrets with Fly:
 
@@ -194,12 +207,13 @@ fly secrets set \
 
 Deployment checklist:
 
-1. Add or confirm Fly config for the SvelteKit app.
+1. Confirm the Fly app name in `fly.toml`.
 2. Build the web app with `npm --prefix web run build`.
-3. Ensure the OpenClaw gateway is reachable from the Fly app.
-4. Ensure `OPENCLAW_GATEWAY_TOKEN` never reaches browser code.
-5. Run `/api/health` after deployment.
-6. Test a corpus-backed prompt and a weak-corpus prompt that escalates to web search.
+3. Deploy with `fly deploy`.
+4. Ensure the OpenClaw gateway is reachable from the Fly app.
+5. Ensure `OPENCLAW_GATEWAY_TOKEN` never reaches browser code.
+6. Run `/api/health` after deployment.
+7. Test a corpus-backed prompt and a weak-corpus prompt that escalates to web search.
 
 The web app is already designed as a BFF: the browser talks to SvelteKit routes, and SvelteKit holds the gateway token server-side.
 

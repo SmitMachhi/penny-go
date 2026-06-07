@@ -2,13 +2,13 @@
 
 Penny is an AI agent powered by OpenClaw. It helps Canadian business owners find non-loan government funding: grants, tax credits, rebates, subsidies, and investment tax credits.
 
-Penny starts with a tracked, curated funding corpus. It uses live web search only when the corpus has weak coverage for the user's location, sector, or project. Before Penny recommends a program, it verifies the official source and checks whether the benefit is in scope.
+Penny starts with a tracked, curated funding database. It uses live web search only when the database has weak coverage for the user's location, sector, or project. Before Penny recommends a program, it verifies the official source and checks whether the benefit is in scope.
 
 Penny serves Canadian businesses. It does not provide legal advice, tax filing advice, personal-benefit advice, loans, loan guarantees, low-cost financing, or repayable contributions.
 
 ## What Penny Does
 
-- Searches a verified Canadian business funding corpus.
+- Searches a verified Canadian business funding database.
 - Reads official source pages before recommending programs.
 - Rejects loan-like or repayable products.
 - Labels fit as strong, conditional, stretch, or ruled out.
@@ -21,17 +21,17 @@ Penny serves Canadian businesses. It does not provide legal advice, tax filing a
 | --- | --- | --- |
 | Web app | `web/` | SvelteKit chat UI and server API routes. |
 | Agent runtime | OpenClaw | Agent sessions, tool calls, skills, and gateway. |
-| Penny tools | `plugin/` | OpenClaw plugin for corpus search, source reading, and funding artifacts. |
+| Penny tools | `plugin/` | OpenClaw plugin for database search, source reading, and funding artifacts. |
 | Shared code | `shared/` | Artifact, session, markdown, PDF, and validation helpers. |
 | Agent workspace | `workspace/` | Penny instructions, skills, voice, and memory rules. |
-| Funding corpus | `database/data/funding/curated/` | Tracked data that powers Penny's recommendations. |
+| Funding database | `database/data/funding/curated/` | Tracked data that powers Penny's recommendations. |
 | Source reader | `tools/read_official_source.py` | Crawl4AI official-page reader with Exa same-URL fallback. |
 
 The browser does not receive the OpenClaw gateway token. SvelteKit acts as a server-side BFF: browser requests hit `/api/*`, and those routes talk to the OpenClaw gateway.
 
-## Funding Corpus
+## Funding Database
 
-The curated corpus is core product data and belongs in Git:
+The curated funding database is core product data and belongs in Git:
 
 - `database/data/funding/curated/verified-programs.jsonl`
 - `database/data/funding/curated/verified-programs.json`
@@ -53,7 +53,7 @@ cd database
 python3 scripts/verify_funding_corpus.py
 ```
 
-Penny searches the corpus first. If the result pool is thin, Penny can use `web_search` through Exa, then verify official URLs with `read_official_source`. Search results alone are not recommendations.
+Penny searches the database first. If the result pool is thin, Penny can use `web_search` through Exa, then verify official URLs with `read_official_source`. Search results alone are not recommendations.
 
 ## Prerequisites
 
@@ -175,7 +175,7 @@ Fly settings:
 | --- | --- |
 | Region | Toronto, `yyz` |
 | Machine | `shared-cpu-1x` |
-| Memory | `512mb` |
+| Memory | `1gb` |
 | Idle cost control | `auto_stop_machines = "stop"` and `min_machines_running = 0` |
 
 Set production secrets:
@@ -199,7 +199,7 @@ fly deploy
 After deployment:
 
 1. Call `/api/health`.
-2. Send a prompt that should hit the corpus.
+2. Send a prompt that should hit the database.
 3. Send a thin-coverage prompt that should use web search.
 4. Confirm the browser does not receive `OPENCLAW_GATEWAY_TOKEN`.
 
@@ -209,7 +209,7 @@ Penny's behavior lives in `workspace/`.
 
 Core rules:
 
-- Search the corpus before web search.
+- Search the database before web search.
 - Verify official URLs before recommendations.
 - Treat `read_official_source` benefit-scope vetoes as binding.
 - Keep business facts scoped to the active engagement.

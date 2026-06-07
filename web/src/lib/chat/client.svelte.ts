@@ -1,7 +1,7 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { closeArtifactPanel, openArtifactPanel, toggleArtifactPanel } from '$lib/chat/client-artifact-panel.js';
-import { abortChatRun, fetchArtifacts, sendChatMessage } from '$lib/chat/client-api.js';
+import { abortChatRun, fetchArtifacts, sendChatMessage, type ActiveTurn } from '$lib/chat/client-api.js';
 import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import { refreshGatewayHealth } from '$lib/chat/client-health.js';
 import { markFirstMessagePaint, markSendStart, markSessionSwitchStart, measureSendToFirstToken, measureSessionSwitch } from '$lib/chat/client-performance-flow.js';
@@ -12,7 +12,6 @@ import { appendAssistantMessage, appendUserMessage, applyCachedSessionThread, cl
 import { stripTrailingAssistantMessages } from '$lib/chat/display-messages.js';
 import { finalizeRunTrace } from '$lib/chat/client-run-trace.js';
 import { findCompletedAssistantAfterLastUser, RUN_RECOVERY_POLL_MS } from '$lib/chat/client-run-recovery.js';
-import { clearRunResumeHint, readRunResumeHint, writeRunResumeHint } from '$lib/chat/run-resume-hint.js';
 import { createChatStreamConnection, type ChatStreamConnection } from '$lib/chat/client-stream-connection.js';
 import { applyStreamEvent } from '$lib/chat/client-stream-events.js';
 import { formatClientError } from '$lib/chat/format-error.js';
@@ -156,7 +155,7 @@ export class ChatClient {
 			applyLoadedArtifacts(this.state, payload.artifacts ?? []);
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
-			this.reconcileThreadAfterHistory(payload.messages, sessionKey);
+			this.reconcileThreadAfterHistory(payload.messages, payload.activeTurn ?? null);
 			if (this.state.messages.length > 0) {
 				markFirstMessagePaint();
 			}
@@ -236,11 +235,6 @@ export class ChatClient {
 			}
 			if (this.state.sending) {
 				this.activeRunId = payload.runId;
-				writeRunResumeHint({
-					sessionKey,
-					runId: payload.runId,
-					startedAt: Date.now()
-				});
 				this.scheduleRunRecovery(expectedUserMessageCount);
 			}
 			return true;
@@ -361,7 +355,6 @@ export class ChatClient {
 		this.activeRunId = null;
 		this.abortRequested = false;
 		this.expectedUserMessageCount = 0;
-		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 		persistSessionThreadCache(this.state);
@@ -372,7 +365,6 @@ export class ChatClient {
 		resetRunState(this.state);
 		this.activeRunId = null;
 		this.expectedUserMessageCount = 0;
-		clearRunResumeHint(this.state.sessionKey);
 		this.artifactVersionSnapshot = new Map();
 		this.pendingRunArtifactIds = [];
 		persistSessionThreadCache(this.state);
@@ -402,34 +394,31 @@ export class ChatClient {
 
 	private reconcileThreadAfterHistory(
 		messages: ChatClientState['messages'],
-		sessionKey: string
+		activeTurn: ActiveTurn | null
 	): void {
-		const hint = readRunResumeHint(sessionKey);
 		const userCount = countUserMessages(messages);
+
+		if (activeTurn) {
+			const lastMessage = this.state.messages.at(-1);
+			if (lastMessage?.role !== 'user' || lastMessage.text !== activeTurn.message) {
+				appendUserMessage(this.state, activeTurn.message);
+			}
+			if (!this.state.sending) {
+				startRunState(this.state);
+			}
+			this.activeRunId = activeTurn.runId;
+			this.expectedUserMessageCount = countUserMessages(this.state.messages);
+			this.scheduleRunRecovery(this.expectedUserMessageCount);
+			return;
+		}
 
 		if (hasPendingReply(messages)) {
 			if (!this.state.sending) {
 				startRunState(this.state);
-				this.activeRunId = hint?.runId ?? null;
-			} else if (hint?.runId && this.activeRunId === null) {
-				this.activeRunId = hint.runId;
 			}
 			this.expectedUserMessageCount = userCount;
 			this.scheduleRunRecovery(userCount);
-			return;
 		}
-
-		if (userCount === 0 && hint) {
-			if (!this.state.sending) {
-				startRunState(this.state);
-				this.activeRunId = hint.runId;
-			}
-			this.expectedUserMessageCount = 1;
-			this.scheduleRunRecovery(1);
-			return;
-		}
-
-		clearRunResumeHint(sessionKey);
 	}
 
 	private clearRunRecovery(): void {

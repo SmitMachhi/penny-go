@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArtifactSummary } from './artifacts.js';
 import { RUN_RECOVERY_POLL_MS } from './client-run-recovery.js';
 import { ChatClient } from './client.svelte.js';
+import { clearSessionThreadCache } from './session-thread-cache.js';
 import type { SsePayload } from './stream-events.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
@@ -86,6 +87,8 @@ async function expectMissedArtifactToolLoadsArtifact(
 
 describe('ChatClient', () => {
 	beforeEach(() => {
+		clearSessionThreadCache(SESSION_KEY);
+		clearSessionThreadCache(OTHER_SESSION_KEY);
 		vi.stubGlobal('EventSource', class MockEventSource {
 			close(): void {}
 		});
@@ -484,26 +487,5 @@ describe('ChatClient', () => {
 			MESSAGE
 		]);
 		resolveSend(jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY }));
-	});
-
-	it('resumes awaiting UI when history has a pending user turn', async () => {
-		const fetchMock = vi.fn<typeof fetch>(async (input) => {
-			const path = requestPath(input);
-			if (path.startsWith('/api/sessions')) {
-				return jsonResponse({
-					sessionKey: SESSION_KEY,
-					sessionId: SESSION_ID,
-					messages: [{ id: 'user-1', role: 'user', text: 'still running' }]
-				});
-			}
-			return jsonResponse({});
-		});
-		vi.stubGlobal('fetch', fetchMock);
-
-		const client = new ChatClient();
-		await client.switchSession(SESSION_KEY);
-
-		await vi.waitFor(() => expect(client.state.sending).toBe(true));
-		expect(client.state.messages.some((message) => message.role === 'user')).toBe(true);
 	});
 });

@@ -7,11 +7,19 @@ export type HistoryResponse = {
 	sessionId?: string;
 	messages: ChatMessage[];
 	artifacts?: ArtifactSummary[];
+	activeTurn?: ActiveTurn | null;
 };
 
 export type SendResponse = {
 	runId: string;
 	sessionKey: string;
+};
+
+export type ActiveTurn = {
+	turnId: string;
+	runId: string | null;
+	status: 'pending' | 'submitted' | 'running';
+	message: string;
 };
 
 export function fetchHealth(): Promise<{ ok?: boolean; message?: string }> {

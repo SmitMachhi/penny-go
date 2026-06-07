@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
 	LIGHT_MODE_BOOTSTRAP_SCRIPT,
+	LIGHT_MODE_BOOTSTRAP_TAG,
 	MODE_WATCHER_STORAGE_KEY,
 	PENNY_DEFAULT_MODE,
 	PENNY_TRACK_SYSTEM_MODE
@@ -13,6 +14,12 @@ describe('light mode default', () => {
 	it('configures Penny to start in light mode without system tracking', () => {
 		expect(PENNY_DEFAULT_MODE).toBe('light');
 		expect(PENNY_TRACK_SYSTEM_MODE).toBe(false);
+	});
+
+	it('renders as an executable script tag', () => {
+		expect(LIGHT_MODE_BOOTSTRAP_TAG).toContain('<script>');
+		expect(LIGHT_MODE_BOOTSTRAP_TAG).toContain('localStorage.removeItem');
+		expect(LIGHT_MODE_BOOTSTRAP_TAG).not.toContain('{@html');
 	});
 
 	it('clears persisted dark mode before ModeWatcher starts', () => {

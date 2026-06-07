@@ -2,7 +2,7 @@
 	import '../app.css';
 	import { ModeWatcher } from 'mode-watcher';
 	import {
-		LIGHT_MODE_BOOTSTRAP_SCRIPT,
+		LIGHT_MODE_BOOTSTRAP_TAG,
 		PENNY_DEFAULT_MODE,
 		PENNY_TRACK_SYSTEM_MODE
 	} from '$lib/theme/light-mode-default.js';
@@ -18,7 +18,7 @@
 	<meta name="application-name" content={APP_TITLE} />
 	<meta name="theme-color" content="#3A6CF5" media="(prefers-color-scheme: light)" />
 	<meta name="theme-color" content="#4A7DF7" media="(prefers-color-scheme: dark)" />
-	<script>{@html LIGHT_MODE_BOOTSTRAP_SCRIPT}</script>
+	{@html LIGHT_MODE_BOOTSTRAP_TAG}
 </svelte:head>
 
 <ModeWatcher defaultMode={PENNY_DEFAULT_MODE} track={PENNY_TRACK_SYSTEM_MODE} />

@@ -9,3 +9,5 @@ export const LIGHT_MODE_BOOTSTRAP_SCRIPT = [
 	'document.documentElement.style.colorScheme = "light";',
 	'} catch {}'
 ].join('');
+
+export const LIGHT_MODE_BOOTSTRAP_TAG = `<script>${LIGHT_MODE_BOOTSTRAP_SCRIPT}</script>`;

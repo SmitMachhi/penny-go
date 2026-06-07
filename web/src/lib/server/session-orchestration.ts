@@ -22,6 +22,7 @@ import {
 	replacePennySessionIndex,
 	upsertPennySessionIndex
 } from '$lib/server/penny-session-index.js';
+import { deletePennyTurnsForSession } from '$lib/server/penny-turn-store.js';
 import { sanitizeSessionDisplayText } from '$lib/server/session-display-sanitize.js';
 import { parseOptionalSessionLabel, parseSessionLabel } from '$lib/server/session-label.js';
 import {
@@ -219,5 +220,6 @@ export async function deletePennySession(key: string): Promise<void> {
 	await deleteGatewaySession({ key: sessionKey, deleteTranscript: true });
 	await deleteEngagementMemory(sessionKey);
 	await deleteSessionArtifacts(sessionKey);
+	await deletePennyTurnsForSession(sessionKey);
 	await deletePennySessionIndex(sessionKey);
 }

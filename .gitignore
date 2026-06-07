@@ -35,6 +35,7 @@ venv/
 workspace/.openclaw/
 workspace/artifacts/
 workspace/penny-session-index.json
+workspace/penny-turns/
 
 # local eval run output
 evals/**/runs/

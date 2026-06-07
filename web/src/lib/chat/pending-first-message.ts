@@ -3,6 +3,7 @@ const STORAGE_KEY = 'penny:pending-first-message';
 export type PendingFirstMessage = {
 	sessionKey: string;
 	message: string;
+	turnId: string;
 };
 
 export function stashPendingFirstMessage(pending: PendingFirstMessage): void {
@@ -21,20 +22,39 @@ function readPendingFirstMessageRaw(): PendingFirstMessage | null {
 		return null;
 	}
 	try {
-		return JSON.parse(raw) as PendingFirstMessage;
+		const parsed: unknown = JSON.parse(raw);
+		if (!isPendingFirstMessage(parsed)) {
+			return null;
+		}
+		return parsed;
 	} catch {
 		sessionStorage.removeItem(STORAGE_KEY);
 		return null;
 	}
 }
 
-export function peekPendingFirstMessage(sessionKey: string): string | null {
+function isPendingFirstMessage(candidate: unknown): candidate is PendingFirstMessage {
+	if (typeof candidate !== 'object' || candidate === null) {
+		return false;
+	}
+	const pending = candidate as Record<string, unknown>;
+	return (
+		typeof pending.sessionKey === 'string' &&
+		typeof pending.message === 'string' &&
+		typeof pending.turnId === 'string'
+	);
+}
+
+export function peekPendingFirstMessage(sessionKey: string): PendingFirstMessage | null {
 	const parsed = readPendingFirstMessageRaw();
 	if (!parsed || parsed.sessionKey !== sessionKey || typeof parsed.message !== 'string') {
 		return null;
 	}
 	const trimmed = parsed.message.trim();
-	return trimmed.length > 0 ? trimmed : null;
+	if (!trimmed || !parsed.turnId.trim()) {
+		return null;
+	}
+	return { ...parsed, message: trimmed, turnId: parsed.turnId.trim() };
 }
 
 export function clearPendingFirstMessage(): void {
@@ -46,9 +66,9 @@ export function clearPendingFirstMessage(): void {
 
 /** @deprecated Prefer peek + clear on successful send */
 export function consumePendingFirstMessage(sessionKey: string): string | null {
-	const message = peekPendingFirstMessage(sessionKey);
-	if (message) {
+	const pending = peekPendingFirstMessage(sessionKey);
+	if (pending) {
 		clearPendingFirstMessage();
 	}
-	return message;
+	return pending?.message ?? null;
 }

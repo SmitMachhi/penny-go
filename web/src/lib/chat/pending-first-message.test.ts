@@ -28,22 +28,26 @@ describe('pending-first-message', () => {
 	});
 
 	it('consumes pending on read for legacy callers', () => {
-		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'Hello' });
+		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'Hello', turnId: 'turn-1' });
 		expect(consumePendingFirstMessage(SESSION_KEY)).toBe('Hello');
 		expect(consumePendingFirstMessage(SESSION_KEY)).toBeNull();
 	});
 
 	it('ignores pending for a different session', () => {
-		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'Hello' });
+		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'Hello', turnId: 'turn-1' });
 		expect(
 			peekPendingFirstMessage('agent:main:penny:00000000-0000-4000-8000-000000000002')
 		).toBeNull();
 	});
 
 	it('keeps pending until explicitly cleared', () => {
-		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'hello' });
-		expect(peekPendingFirstMessage(SESSION_KEY)).toBe('hello');
-		expect(peekPendingFirstMessage(SESSION_KEY)).toBe('hello');
+		stashPendingFirstMessage({ sessionKey: SESSION_KEY, message: 'hello', turnId: 'turn-1' });
+		expect(peekPendingFirstMessage(SESSION_KEY)).toEqual({
+			sessionKey: SESSION_KEY,
+			message: 'hello',
+			turnId: 'turn-1'
+		});
+		expect(peekPendingFirstMessage(SESSION_KEY)?.turnId).toBe('turn-1');
 		clearPendingFirstMessage();
 		expect(peekPendingFirstMessage(SESSION_KEY)).toBeNull();
 	});

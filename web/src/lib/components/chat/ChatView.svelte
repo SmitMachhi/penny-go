@@ -251,10 +251,13 @@
 					return;
 				}
 			followThread = true;
-			const sent = await chat.sendMessage(pending, { skipHistoryReload: true });
+			const sent = await chat.sendMessage(pending.message, {
+				skipHistoryReload: true,
+				turnId: pending.turnId
+			});
 			if (sent) {
 				clearPendingFirstMessage();
-				sessions.setTitleFromFirstMessage(sessionKey, pending);
+				sessions.setTitleFromFirstMessage(sessionKey, pending.message);
 				await pinThreadToBottom('smooth');
 			}
 		})();

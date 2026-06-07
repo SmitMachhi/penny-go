@@ -45,7 +45,11 @@
 				return;
 			}
 
-			stashPendingFirstMessage({ sessionKey: created.key, message: trimmed });
+			stashPendingFirstMessage({
+				sessionKey: created.key,
+				message: trimmed,
+				turnId: crypto.randomUUID()
+			});
 			await goto(path);
 		} finally {
 			starting = false;

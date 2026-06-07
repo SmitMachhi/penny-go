@@ -4,6 +4,11 @@
   "private": true,
   "type": "module",
   "imports": {
+    "#artifact-input-validation": "./artifact-input-validation.ts",
+    "#artifact-meta": "./artifact-meta.ts",
+    "#artifact-validation-constants": "./artifact-validation-constants.ts",
+    "#artifact-validation-utils": "./artifact-validation-utils.ts",
+    "#artifact-versioning": "./artifact-versioning.ts",
     "#session-key": "./session-key.ts"
   },
   "scripts": {

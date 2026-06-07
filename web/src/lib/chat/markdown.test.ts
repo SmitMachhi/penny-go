@@ -15,6 +15,14 @@ describe('renderMarkdown', () => {
 		expect(html).toContain('rel="noopener noreferrer"');
 	});
 
+	it('opens code-wrapped urls in a new tab safely', () => {
+		const html = renderMarkdown('➡️ `https://occ.ca/talent-opportunities-program/`');
+		expect(html).toContain('href="https://occ.ca/talent-opportunities-program/"');
+		expect(html).toContain('target="_blank"');
+		expect(html).toContain('rel="noopener noreferrer"');
+		expect(html).not.toContain('<code>');
+	});
+
 	it('opens artifact api links in a new tab safely', () => {
 		const html = renderMarkdown('[Plan PDF](/api/artifacts/brief/download?format=pdf)');
 		expect(html).toContain('href="/api/artifacts/brief/download?format=pdf"');

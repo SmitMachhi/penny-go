@@ -16,6 +16,12 @@ marked.setOptions({
 
 marked.use({
 	renderer: {
+		codespan({ text }) {
+			if (isPreviewableHref(text)) {
+				return renderPreviewLinkHtml(text, text, null);
+			}
+			return `<code>${escapeHtmlAttribute(text)}</code>`;
+		},
 		link({ href, title, text }) {
 			const rawHref = href ?? '';
 			const safeHref = escapeHtmlAttribute(rawHref);

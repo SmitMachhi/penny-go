@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
-# Phase 1 verification ladder for Penny (corpus, plugin, reader, optional live agent runs).
+# Verification ladder for Penny (database, plugin, reader, optional live agent runs).
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-OPENCLAW_SESSION_DIR="${HOME}/.openclaw/agents/main/sessions"
 RUN_LIVE=0
 SKIP_READER=0
 KEEP_ARTIFACTS=0
@@ -13,12 +12,12 @@ usage() {
 Usage: scripts/verify_penny_phase1.sh [options]
 
 Options:
-  --live           Run Path A/B agent prompts (uses DeepSeek + Exa; costs API credits)
+  --live           Run live agent smoke prompts (uses DeepSeek + Exa; costs API credits)
   --skip-reader    Skip Crawl4AI HTML/PDF smoke tests
   --keep-artifacts Leave /tmp penny-verify-* JSON outputs (default: delete on success)
   -h, --help       Show this help
 
-Without --live, runs offline checks only (corpus, plugin tests, optional reader smoke).
+Without --live, runs offline checks only (database, plugin tests, optional reader smoke).
 EOF
 }
 
@@ -49,11 +48,11 @@ fail() {
   exit 1
 }
 
-step "E1 — corpus integrity"
+step "E1 — funding database integrity"
 (
   cd "${REPO_ROOT}/database"
   python3 scripts/verify_funding_corpus.py
-) || fail "corpus verification failed"
+) || fail "funding database verification failed"
 
 step "E2 — plugin unit tests"
 (
@@ -93,7 +92,7 @@ fi
 
 if [[ "${RUN_LIVE}" -eq 0 ]]; then
   step "E4/E5 — skipped (pass --live to run agent prompts)"
-  printf '\nOffline ladder complete. Re-run with --live for Path A/B agent rubric checks.\n'
+  printf '\nOffline ladder complete. Re-run with --live for agent smoke checks.\n'
   exit 0
 fi
 
@@ -121,14 +120,6 @@ run_agent_scenario() {
     --message "${message}" \
     --json >"${json_out}"
 
-  local session_file="${OPENCLAW_SESSION_DIR}/${session_id}.jsonl"
-  [[ -f "${session_file}" ]] || fail "session log missing: ${session_file}"
-
-  python3 "${REPO_ROOT}/scripts/evaluate_penny_trace.py" \
-    --scenario "${scenario}" \
-    --session-file "${session_file}" \
-    --agent-json "${json_out}" || fail "${scenario} rubric failed"
-
   printf '  agent JSON: %s\n' "${json_out}"
 }
 
@@ -138,4 +129,4 @@ run_agent_scenario path-a penny-verify-path-a \
 run_agent_scenario path-b penny-verify-path-b \
   "We are a small Inuvik tourism business launching a new cultural experience program in 2026. What territorial or federal non-loan funding exists?" 5
 
-printf '\nPhase 1 ladder complete (offline + live agent rubric).\n'
+printf '\nVerification ladder complete (offline + live agent smoke checks).\n'

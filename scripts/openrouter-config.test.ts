@@ -8,6 +8,7 @@ const OPENCLAW_CONFIG_PATHS = [
 	'config/openclaw.fly.json5',
 	'config/openclaw.penny.example.json5'
 ] as const;
+const OPENCLAW_NATIVE_SKILLS_DISABLED_PATTERN = /"nativeSkills"\s*:\s*false/;
 const RUNTIME_SKILLS_KEY_PATTERN = /"skills"\s*:/;
 const GENERIC_READ_TOOL_PATTERN = /"read"/;
 const ARTIFACT_SKILL_POINTER_PATTERN = /penny-artifacts`?\s+skill|skills\/penny-artifacts/i;
@@ -62,6 +63,14 @@ test('locked Penny OpenClaw configs do not depend on runtime skill reads', async
 			false,
 			`${configPath} must not configure runtime skills unless generic read is allowed`
 		);
+	}
+});
+
+test('Penny OpenClaw configs disable native skill auto-loading', async () => {
+	for (const configPath of OPENCLAW_CONFIG_PATHS) {
+		const config = await readProjectFile(configPath);
+
+		assert.match(config, OPENCLAW_NATIVE_SKILLS_DISABLED_PATTERN);
 	}
 });
 

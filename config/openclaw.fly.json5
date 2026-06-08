@@ -27,6 +27,9 @@
       }
     }
   },
+  "commands": {
+    "nativeSkills": false
+  },
   "tools": {
     "allow": [
       "search_corpus",

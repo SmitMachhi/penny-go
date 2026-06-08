@@ -5,6 +5,9 @@ set -eu
 
 ephemeral_port_min="49152"
 ephemeral_port_span="16384"
+app_root="${PENNY_APP_ROOT:-/app}"
+workspace_dir="$app_root/workspace"
+seed_workspace_dir="$app_root/workspace.seed"
 
 random_gateway_port() {
   random_value="$(od -An -N4 -tu4 /dev/urandom | tr -d ' ')"
@@ -16,33 +19,39 @@ if [ -z "$gateway_port" ]; then
   gateway_port="$(random_gateway_port)"
 fi
 
-export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-/app/config/openclaw.fly.json5}"
+export OPENCLAW_CONFIG_PATH="${OPENCLAW_CONFIG_PATH:-$app_root/config/openclaw.fly.json5}"
 export OPENCLAW_GATEWAY_URL="ws://127.0.0.1:${gateway_port}"
 export OPENCLAW_GATEWAY_PORT="$gateway_port"
-export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-/app/workspace/.openclaw-state}"
-export PENNY_REPO_ROOT="${PENNY_REPO_ROOT:-/app}"
-export PENNY_CORPUS_PATH="${PENNY_CORPUS_PATH:-/app/database/data/funding/curated/verified-programs.jsonl}"
-export PENNY_PYTHON="${PENNY_PYTHON:-/app/.venv/bin/python}"
+export OPENCLAW_STATE_DIR="${OPENCLAW_STATE_DIR:-$workspace_dir/.openclaw-state}"
+export PENNY_REPO_ROOT="${PENNY_REPO_ROOT:-$app_root}"
+export PENNY_CORPUS_PATH="${PENNY_CORPUS_PATH:-$app_root/database/data/funding/curated/verified-programs.jsonl}"
+export PENNY_PYTHON="${PENNY_PYTHON:-$app_root/.venv/bin/python}"
 
 gateway_health_attempts="${OPENCLAW_GATEWAY_HEALTH_ATTEMPTS:-120}"
 gateway_health_pid=""
 
 seed_workspace() {
-  mkdir -p /app/workspace/memory/engagements
+  mkdir -p "$workspace_dir/memory/engagements"
   mkdir -p "$OPENCLAW_STATE_DIR"
-  if [ ! -d /app/workspace.seed ]; then
+  if [ ! -d "$seed_workspace_dir" ]; then
     return
   fi
 
-  for workspace_file in AGENTS.md HEARTBEAT.md IDENTITY.md MEMORY.md SOUL.md TOOLS.md USER.md; do
-    if [ -f "/app/workspace.seed/$workspace_file" ] && [ ! -f "/app/workspace/$workspace_file" ]; then
-      cp "/app/workspace.seed/$workspace_file" "/app/workspace/$workspace_file"
+  for workspace_file in AGENTS.md IDENTITY.md SOUL.md TOOLS.md; do
+    if [ -f "$seed_workspace_dir/$workspace_file" ]; then
+      cp "$seed_workspace_dir/$workspace_file" "$workspace_dir/$workspace_file"
     fi
   done
 
-  if [ -d /app/workspace.seed/skills ]; then
-    rm -rf /app/workspace/skills
-    cp -a /app/workspace.seed/skills /app/workspace/skills
+  for workspace_file in HEARTBEAT.md MEMORY.md USER.md; do
+    if [ -f "$seed_workspace_dir/$workspace_file" ] && [ ! -f "$workspace_dir/$workspace_file" ]; then
+      cp "$seed_workspace_dir/$workspace_file" "$workspace_dir/$workspace_file"
+    fi
+  done
+
+  if [ -d "$seed_workspace_dir/skills" ]; then
+    rm -rf "$workspace_dir/skills"
+    cp -a "$seed_workspace_dir/skills" "$workspace_dir/skills"
   fi
 }
 

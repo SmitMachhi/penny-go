@@ -223,6 +223,43 @@ test('validateCreateFundingArtifactInput allows loan-like language when ruled ou
 	assert.equal(result.ok, true);
 });
 
+test('validateCreateFundingArtifactInput rejects internal tool failure text', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# NorthBind Funding Plan',
+		'',
+		'## Ruled out',
+		'',
+		'- Page blocked by anti-bot protection; could not verify.',
+		'',
+		'1. Use a different source.'
+	].join('\n');
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
+	}
+});
+
+test('validateCreateFundingArtifactInput allows neutral ruled-out language', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# NorthBind Funding Plan',
+		'',
+		'## Ruled out',
+		'',
+		'- Could not verify this page, so it stays out of the recommendation set.',
+		'',
+		'1. Use a different source.'
+	].join('\n');
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, true);
+});
+
 test('validateCreateFundingArtifactInput allows loan-like language in does-not-fit section', () => {
 	const input = buildValidInput();
 	input.bodyMarkdown = [

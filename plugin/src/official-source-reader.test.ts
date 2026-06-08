@@ -4,7 +4,8 @@ import test from 'node:test';
 import {
 	clearOfficialSourceReadCacheForTests,
 	detectBlockedSourceContent,
-	readOfficialSourceWithFallback
+	readOfficialSourceWithFallback,
+	redactOfficialSourceResultForModel
 } from './services/official-source-reader.js';
 import { resolveExaApiKey } from './services/penny-config.js';
 
@@ -158,6 +159,37 @@ test('readOfficialSourceWithFallback rejects Exa contents challenge text', async
 	assert.equal(result.success, false);
 	assert.equal(result.reader, 'blocked');
 	assert.equal(result.error, 'blocked_by_anti_bot');
+});
+
+test('redactOfficialSourceResultForModel hides blocked source text', () => {
+	const publicResult = redactOfficialSourceResultForModel({
+		success: false,
+		url: OFFICIAL_URL,
+		reader: 'blocked',
+		verification_source: 'unverified_blocked',
+		error: 'blocked_by_anti_bot',
+		fetched_at: '2026-06-06T20:44:26.000Z'
+	});
+
+	assert.equal(publicResult.success, false);
+	assert.equal(publicResult.summary, 'Could not verify this page.');
+	assert.doesNotMatch(JSON.stringify(publicResult), /blocked_by_anti_bot|anti-bot protection/i);
+});
+
+test('redactOfficialSourceResultForModel preserves successful Exa content', () => {
+	const publicResult = redactOfficialSourceResultForModel({
+		success: true,
+		url: OFFICIAL_URL,
+		reader: 'exa_contents',
+		verification_source: 'exa_official_contents',
+		markdown: '# Employ PEI\n\nEmploy PEI is a wage subsidy for eligible employers.',
+		fetched_at: '2026-06-06T20:44:26.000Z'
+	});
+
+	assert.equal(publicResult.success, true);
+	assert.equal(publicResult.summary, 'Retrieved official page content via Exa.');
+	assert.match(publicResult.markdown ?? '', /wage subsidy/);
+	assert.equal(publicResult.benefit_scope?.scope_verdict, 'unknown');
 });
 
 test('readOfficialSourceWithFallback caches blocked URLs briefly', async () => {

@@ -38,6 +38,15 @@ const H2_HEADING_PATTERN = /^##\s+(.+)$/;
 const PROGRAM_HEADING_PATTERN = /^#{3,4}\s+(.+)$/;
 const RULED_OUT_SECTION_PATTERN =
 	/\b(ruled out|not a fit|excluded|outside scope|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
+const INTERNAL_TOOL_LEAK_PATTERNS = [
+	/blocked_by_anti_bot/i,
+	/anti-bot protection/i,
+	/verifying your browser before proceeding/i,
+	/read tool not found/i,
+	/\btoolCall\b/,
+	/\btoolResult\b/,
+	/\/app\/workspace\//i
+] as const;
 
 type MemoSection = 'neutral' | 'ruled_out';
 
@@ -197,6 +206,10 @@ function hasProgramMemoMarkdown(bodyMarkdown: string): boolean {
 	);
 }
 
+function hasInternalToolLeakLanguage(bodyMarkdown: string): boolean {
+	return INTERNAL_TOOL_LEAK_PATTERNS.some((pattern) => pattern.test(bodyMarkdown));
+}
+
 function classifyMemoSection(headingText: string): MemoSection {
 	if (RULED_OUT_SECTION_PATTERN.test(headingText)) {
 		return 'ruled_out';
@@ -257,6 +270,13 @@ function parseCreateInput(
 		errors.push({
 			field: 'bodyMarkdown',
 			message: 'include at least one checklist (- [ ]) or numbered step (1. )'
+		});
+		return null;
+	}
+	if (hasInternalToolLeakLanguage(bodyMarkdown)) {
+		errors.push({
+			field: 'bodyMarkdown',
+			message: 'internal tool failure text must not appear in the artifact'
 		});
 		return null;
 	}

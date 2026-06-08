@@ -2,6 +2,10 @@ import {
 	OFFICIAL_SOURCE_BLOCKED_CACHE_TTL_MS,
 	OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS
 } from '../constants.js';
+import {
+	officialBenefitScopeFromMarkdown,
+	type OfficialBenefitScope
+} from '../domain/official-benefit-scope.js';
 import type { PennyToolsConfigShape } from './penny-config.js';
 
 const WWW_PREFIX_PATTERN = /^www\./i;
@@ -37,6 +41,17 @@ export type OfficialSourceReadResult = Record<string, unknown> & {
 	fetched_at?: string | undefined;
 };
 
+export type OfficialSourceModelResult = {
+	success: boolean;
+	url: string;
+	reader: OfficialSourceReader;
+	verification_source: VerificationSource;
+	summary: string;
+	markdown?: string | undefined;
+	fetched_at?: string | undefined;
+	benefit_scope?: OfficialBenefitScope | undefined;
+};
+
 export type OfficialSourceReaderDeps = {
 	readWithCrawl4Ai: (input: {
 		url: string;
@@ -70,6 +85,35 @@ export function detectBlockedSourceContent(text: string): boolean {
 
 export function clearOfficialSourceReadCacheForTests(): void {
 	sourceReadCache.clear();
+}
+
+export function redactOfficialSourceResultForModel(
+	result: OfficialSourceReadResult
+): OfficialSourceModelResult {
+	if (!result.success || result.reader === 'blocked' || !result.markdown) {
+		return {
+			success: false,
+			url: result.url,
+			reader: result.reader,
+			verification_source: result.verification_source,
+			summary: 'Could not verify this page.',
+			fetched_at: result.fetched_at
+		};
+	}
+
+	return {
+		success: true,
+		url: result.url,
+		reader: result.reader,
+		verification_source: result.verification_source,
+		summary:
+			result.verification_source === 'exa_official_contents'
+				? 'Retrieved official page content via Exa.'
+				: 'Retrieved official page content.',
+		markdown: result.markdown,
+		fetched_at: result.fetched_at,
+		benefit_scope: officialBenefitScopeFromMarkdown(result.markdown)
+	};
 }
 
 export async function readOfficialSourceWithFallback(input: {

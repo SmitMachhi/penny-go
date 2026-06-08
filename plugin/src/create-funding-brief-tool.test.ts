@@ -61,6 +61,25 @@ test('createFundingBriefTool accepts local penny session ids before validation',
 	assert.equal(details.error, 'validation_failed');
 });
 
+test('createFundingBriefTool rejects internal tool failure text', async () => {
+	const tool = createFundingBriefTool({ repoRoot: '/tmp/penny-go' }, SESSION_KEY);
+	const result = await tool.execute('call-3b', {
+		...sampleParams,
+		bodyMarkdown: [
+			'# NorthBind Funding Plan',
+			'',
+			'## Ruled out',
+			'',
+			'- Page blocked by anti-bot protection; could not verify.',
+			'',
+			'1. Use a different source.'
+		].join('\n')
+	});
+	const details = result.details as Record<string, unknown>;
+	assert.equal(details.success, false);
+	assert.equal(details.error, 'validation_failed');
+});
+
 test('createFundingBriefTool accepts scoped local penny session ids before validation', async () => {
 	const tool = createFundingBriefTool({ repoRoot: '/tmp/penny-go' }, SCOPED_LOCAL_SESSION_KEY);
 	const result = await tool.execute('call-4', {

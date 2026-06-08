@@ -3,7 +3,6 @@ import {
 	READ_OFFICIAL_SOURCE_TIMEOUT_MS
 } from '../constants.js';
 import { filterAndRankPrograms, type SearchCorpusParams } from '../domain/corpus-search.js';
-import { appendOfficialBenefitScope } from '../domain/official-benefit-scope.js';
 import {
 	type PennyToolsConfigShape,
 	resolveExaApiKey,
@@ -15,7 +14,10 @@ import {
 import { loadProgramsFromFile } from '../services/corpus-load.js';
 import { runJsonStdinSubprocess } from '../services/subprocess-json.js';
 import { readExaOfficialContents } from '../services/exa-contents.js';
-import { readOfficialSourceWithFallback } from '../services/official-source-reader.js';
+import {
+	readOfficialSourceWithFallback,
+	redactOfficialSourceResultForModel
+} from '../services/official-source-reader.js';
 
 export type { SearchCorpusParams };
 
@@ -73,5 +75,5 @@ export async function readOfficialSourceAction(
 				signal: input.signal
 			})
 	});
-	return appendOfficialBenefitScope(result);
+	return redactOfficialSourceResultForModel(result);
 }

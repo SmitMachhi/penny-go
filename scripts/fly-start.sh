@@ -27,8 +27,8 @@ export PENNY_REPO_ROOT="${PENNY_REPO_ROOT:-$app_root}"
 export PENNY_CORPUS_PATH="${PENNY_CORPUS_PATH:-$app_root/database/data/funding/curated/verified-programs.jsonl}"
 export PENNY_PYTHON="${PENNY_PYTHON:-$app_root/.venv/bin/python}"
 
-gateway_health_attempts="${OPENCLAW_GATEWAY_HEALTH_ATTEMPTS:-120}"
-gateway_health_pid=""
+default_gateway_health_attempts="420"
+gateway_health_attempts="${OPENCLAW_GATEWAY_HEALTH_ATTEMPTS:-$default_gateway_health_attempts}"
 
 seed_workspace() {
   mkdir -p "$workspace_dir/memory/engagements"
@@ -67,9 +67,6 @@ openclaw gateway run \
 gateway_pid="$!"
 
 cleanup() {
-  if [ -n "$gateway_health_pid" ]; then
-    kill "$gateway_health_pid" 2>/dev/null || true
-  fi
   kill "$gateway_pid" 2>/dev/null || true
 }
 trap cleanup INT TERM EXIT
@@ -91,7 +88,6 @@ watch_gateway_health() {
   echo "OpenClaw gateway is healthy"
 }
 
-watch_gateway_health &
-gateway_health_pid="$!"
+watch_gateway_health
 
 node web/build

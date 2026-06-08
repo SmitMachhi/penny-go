@@ -74,6 +74,13 @@ test('Penny OpenClaw configs disable native skill auto-loading', async () => {
 	}
 });
 
+test('Fly keeps Penny gateway warm instead of scale-to-zero', async () => {
+	const config = await readProjectFile('fly.toml');
+
+	assert.match(config, /auto_stop_machines\s*=\s*"off"/);
+	assert.match(config, /min_machines_running\s*=\s*1/);
+});
+
 test('always-loaded Penny instructions contain artifact workflow without skill indirection', async () => {
 	const agentRules = await readProjectFile('workspace/AGENTS.md');
 	const voiceRules = await readProjectFile('workspace/SOUL.md');

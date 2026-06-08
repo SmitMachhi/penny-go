@@ -26,6 +26,17 @@ if [ "${1:-}" = "gateway" ] && [ "${2:-}" = "run" ]; then
 fi
 
 if [ "${1:-}" = "gateway" ] && [ "${2:-}" = "health" ]; then
+  health_count_file="$PENNY_FLY_START_GATEWAY_READY.health-count"
+  health_count=0
+  if [ -f "$health_count_file" ]; then
+    health_count="$(cat "$health_count_file")"
+  fi
+  health_count=$((health_count + 1))
+  printf '%s' "$health_count" > "$health_count_file"
+  if [ -n "${PENNY_FLY_START_HEALTH_FAILS:-}" ] \
+    && [ "$health_count" -le "$PENNY_FLY_START_HEALTH_FAILS" ]; then
+    exit 1
+  fi
   [ -f "$PENNY_FLY_START_GATEWAY_READY" ]
   exit $?
 fi
@@ -49,6 +60,7 @@ export OPENCLAW_GATEWAY_URL="ws://127.0.0.1:18789"
 export OPENCLAW_GATEWAY_HEALTH_ATTEMPTS="3"
 export PENNY_FLY_START_TEST_LOG="$log_file"
 export PENNY_FLY_START_GATEWAY_READY="$stub_dir/gateway-ready"
+export PENNY_FLY_START_HEALTH_FAILS="2"
 
 mkdir -p "$app_root/workspace.seed" "$app_root/workspace"
 printf 'seed agents\n' > "$app_root/workspace.seed/AGENTS.md"
@@ -70,6 +82,11 @@ sh "$repo_root/scripts/fly-start.sh"
 
 grep -F -- "--port 28941" "$log_file" >/dev/null
 grep -F -- "node:ws://127.0.0.1:28941" "$log_file" >/dev/null
+health_count="$(cat "$PENNY_FLY_START_GATEWAY_READY.health-count")"
+if [ "$health_count" -lt 3 ]; then
+  echo "expected Fly startup to wait for gateway health before starting web" >&2
+  exit 1
+fi
 grep -F -- "seed agents" "$app_root/workspace/AGENTS.md" >/dev/null
 grep -F -- "seed identity" "$app_root/workspace/IDENTITY.md" >/dev/null
 grep -F -- "seed soul" "$app_root/workspace/SOUL.md" >/dev/null
@@ -79,8 +96,10 @@ grep -F -- "existing memory" "$app_root/workspace/MEMORY.md" >/dev/null
 grep -F -- "existing user" "$app_root/workspace/USER.md" >/dev/null
 
 rm -f "$log_file" "$PENNY_FLY_START_GATEWAY_READY"
+rm -f "$PENNY_FLY_START_GATEWAY_READY.health-count"
 unset OPENCLAW_GATEWAY_PORT
 unset OPENCLAW_GATEWAY_URL
+unset PENNY_FLY_START_HEALTH_FAILS
 
 sh "$repo_root/scripts/fly-start.sh"
 

@@ -15,7 +15,8 @@ Penny calls `publish_funding_brief` when:
 - The user asks for a brief, strategy, PDF, or export, or
 - Two or more verified programs are delivered with execution detail.
 
-See `workspace/skills/penny-artifacts/SKILL.md` for agent workflow.
+The production workflow is in `workspace/AGENTS.md` and `workspace/SOUL.md`,
+which are always loaded. The skill file is reference material only.
 
 ## Storage layout (format v4)
 

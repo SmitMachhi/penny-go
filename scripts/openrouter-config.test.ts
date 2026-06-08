@@ -4,6 +4,15 @@ import test from 'node:test';
 
 const DEEPSEEK_MODEL = 'deepseek/deepseek-v4-flash';
 const DEEPSEEK_PROVIDER_TAG = 'deepseek';
+const OPENCLAW_CONFIG_PATHS = [
+	'config/openclaw.fly.json5',
+	'config/openclaw.penny.example.json5'
+] as const;
+const RUNTIME_SKILLS_KEY_PATTERN = /"skills"\s*:/;
+const GENERIC_READ_TOOL_PATTERN = /"read"/;
+const ARTIFACT_SKILL_POINTER_PATTERN = /penny-artifacts`?\s+skill|skills\/penny-artifacts/i;
+const PUBLISH_TOOL_PATTERN = /publish_funding_brief/;
+const RUNTIME_SKILL_SETUP_PATTERN = /agents\.defaults\.skills|openclaw skills list/i;
 
 async function readProjectFile(path: string): Promise<string> {
 	return readFile(path, 'utf8');
@@ -40,4 +49,33 @@ test('setup docs document deepseek default', async () => {
 		assert.match(doc, new RegExp(DEEPSEEK_MODEL));
 		assert.match(doc, /DEEPSEEK_API_KEY/);
 	}
+});
+
+test('locked Penny OpenClaw configs do not depend on runtime skill reads', async () => {
+	for (const configPath of OPENCLAW_CONFIG_PATHS) {
+		const config = await readProjectFile(configPath);
+		const hasRuntimeSkills = RUNTIME_SKILLS_KEY_PATTERN.test(config);
+		const exposesReadTool = GENERIC_READ_TOOL_PATTERN.test(config);
+
+		assert.equal(
+			hasRuntimeSkills && !exposesReadTool,
+			false,
+			`${configPath} must not configure runtime skills unless generic read is allowed`
+		);
+	}
+});
+
+test('always-loaded Penny instructions contain artifact workflow without skill indirection', async () => {
+	const agentRules = await readProjectFile('workspace/AGENTS.md');
+	const voiceRules = await readProjectFile('workspace/SOUL.md');
+	const alwaysLoadedRules = `${agentRules}\n${voiceRules}`;
+
+	assert.match(alwaysLoadedRules, PUBLISH_TOOL_PATTERN);
+	assert.doesNotMatch(alwaysLoadedRules, ARTIFACT_SKILL_POINTER_PATTERN);
+});
+
+test('setup docs do not reintroduce runtime skill loading', async () => {
+	const localSetup = await readProjectFile('docs/penny-local-setup.md');
+
+	assert.doesNotMatch(localSetup, RUNTIME_SKILL_SETUP_PATTERN);
 });

@@ -22,7 +22,6 @@
       },
       "model": { "primary": "deepseek/deepseek-v4-flash" },
       "workspace": "/app/workspace",
-      "skills": ["penny-consultation-modes", "penny-funding", "penny-artifacts", "stop-slop"],
       "memorySearch": {
         "sources": ["memory"]
       }

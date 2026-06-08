@@ -17,7 +17,7 @@ Use this document for local OpenClaw and gateway setup. For Fly.io deployment, u
 
 | Path | Role |
 | ---- | ---- |
-| `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, skills including stop-slop) |
+| `workspace/` | Agent Markdown home (`AGENTS.md`, `SOUL.md`, reference skills) |
 | `plugin/` | `penny-tools` OpenClaw plugin (`search_corpus`, `read_official_source`, `publish_funding_brief`) |
 | `tools/read_official_source.py` | Crawl4AI reader (stdin/stdout JSON) |
 | `database/data/funding/curated/verified-programs.jsonl` | Funding database |
@@ -112,12 +112,14 @@ Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.open
 - Keep the `deepseek/deepseek-v4-flash` model entry pinned to `params.provider.order: ["deepseek"]` with `allow_fallbacks: false`
 - Keep `params.reasoning.effort: "high"` on that model entry
 - Keep `params.max_tokens: 16384` on that model entry so Penny's output budget stays bounded
+- Do not configure runtime skills unless generic `read` is also allowed. Penny's
+  locked setup keeps behavior in always-loaded workspace files and tool
+  descriptions so the model never tries to read skill files at runtime.
 
 Restart:
 
 ```bash
 openclaw gateway restart
-openclaw skills list
 openclaw plugins inspect penny-tools --runtime
 ```
 
@@ -232,7 +234,8 @@ Pass when:
 
 **Note:** full-agent runs (6d–6g) require a live model session (Gateway plus keys, or `openclaw agent --local` with working model auth). The repo cannot complete them in CI without your secrets.
 
-Ensure `agents.defaults.skills` includes **`penny-consultation-modes`**, **`penny-funding`**, **`penny-artifacts`**, and **`stop-slop`** (see `config/openclaw.penny.example.json5`).
+The locked Penny config intentionally omits runtime skills. If an agent run tries
+to call generic `read`, the config is wrong for this setup.
 
 ## 7. Web chat UI
 
@@ -252,9 +255,9 @@ npm install && npm run dev
 
 Open http://localhost:5173. See **`web/README.md`** for API routes, env vars, and tests.
 
-**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `publish_funding_brief` is in `tools.allow` and `penny-artifacts` is in `agents.defaults.skills`.
+**Artifacts:** after verified recommendations, Penny can create a funding brief document in the right panel (scrollable preview + PDF download). See **`docs/penny-artifacts.md`**. Ensure `publish_funding_brief` is in `tools.allow`.
 
-**Voice:** anti–AI-slop rules are in **`workspace/SOUL.md`** (always in context). Full checklist: **`workspace/skills/stop-slop/`**. Add `stop-slop` to `agents.defaults.skills` when merging `config/openclaw.penny.example.json5`.
+**Voice:** anti–AI-slop rules are in **`workspace/SOUL.md`** (always in context). Reference material can live under `workspace/skills/`, but locked Penny runs do not load those files at runtime.
 
 Regression ladder (offline + optional live agent runs):
 

@@ -2,6 +2,7 @@
 	import { buildEvidenceQuestState } from '$lib/chat/evidence-quest.js';
 	import { resolveEvidenceQuestThinking } from '$lib/chat/evidence-quest-visibility.js';
 	import type { ToolActivity } from '$lib/chat/messages.js';
+	import AnimatedWorkingStatus from '$lib/components/chat/AnimatedWorkingStatus.svelte';
 	import ToolStrip from '$lib/components/chat/ToolStrip.svelte';
 	import { cn } from '$lib/utils.js';
 
@@ -45,7 +46,7 @@
 
 	<div class="penny-evidence-quest__body">
 		<div class="penny-evidence-quest__top">
-			<span class="penny-evidence-quest__status">{quest.status}</span>
+			<AnimatedWorkingStatus status={quest.status} active={!answerStarted} />
 			<div class="penny-evidence-quest__route" aria-hidden="true">
 				{#each quest.stages as stage, index (stage.id)}
 					<span

@@ -24,6 +24,14 @@ describe('ThinkingPanel markup', () => {
 		expect(source).not.toContain('penny-evidence-quest__thinking-label">thinking');
 	});
 
+	it('animates only the evidence quest headline status text', async () => {
+		const source = await readComponentSource('EvidenceQuest.svelte');
+
+		expect(source).toContain('AnimatedWorkingStatus');
+		expect(source).toContain('<AnimatedWorkingStatus status={quest.status} active={!answerStarted} />');
+		expect(source).toContain('<ToolStrip {tools} />');
+	});
+
 	it('marks streamed answer text as a draft while Penny is working', async () => {
 		const source = await readComponentSource('MessageBubble.svelte');
 

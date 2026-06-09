@@ -260,6 +260,63 @@ test('validateCreateFundingArtifactInput allows neutral ruled-out language', () 
 	assert.equal(result.ok, true);
 });
 
+test('validateCreateFundingArtifactInput rejects unverified recommendation sections', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Laval manufacturing funding',
+		'',
+		'## Recommendations',
+		'',
+		'### 1. Laval Economique - Virage Techno Manufacturier',
+		'',
+		'| Field | Detail |',
+		'| --- | --- |',
+		'| **Fit** | Strong |',
+		'| **Verdict** | Could not verify - official page blocked by anti-bot measures |',
+		'| **Next step** | Contact the program before buying equipment |',
+		'',
+		'## Action checklist',
+		'',
+		'- [ ] Call the advisor.'
+	].join('\n');
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, false);
+	if (!result.ok) {
+		assert.ok(result.errors.some((error) => error.field === 'bodyMarkdown'));
+	}
+});
+
+test('validateCreateFundingArtifactInput allows unverified leads outside recommendations', () => {
+	const input = buildValidInput();
+	input.bodyMarkdown = [
+		'# Laval manufacturing funding',
+		'',
+		'## Verified Funding Programs',
+		'',
+		'### 1. Quebec Investment and Innovation Tax Credit',
+		'',
+		'**Fit:** Strong',
+		'',
+		'**Verdict:** Verified official URL.',
+		'',
+		'**Next step:** Ask the accountant to prepare the claim.',
+		'',
+		'## Could not verify',
+		'',
+		'- Laval Economique Virage Techno could not verify from official source in this run, so keep it out of the recommendation set.',
+		'',
+		'## Action checklist',
+		'',
+		'- [ ] Prepare equipment invoices.'
+	].join('\n');
+
+	const result = validateCreateFundingArtifactInput(input);
+
+	assert.equal(result.ok, true);
+});
+
 test('validateCreateFundingArtifactInput allows loan-like language in does-not-fit section', () => {
 	const input = buildValidInput();
 	input.bodyMarkdown = [

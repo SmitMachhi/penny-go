@@ -15,6 +15,11 @@ Use `publish_funding_brief` to deliver a **funding-aligned operating plan** — 
 
 **Memo layout:** Write a consultant-grade **funding memo** the owner will download as PDF. Lead with Recommendation + Context or Aspiration, fit bands with **Fit:**, **Verdict:**, and **Next step:**, then Strategy or Launch strategy checklists. The web panel previews the **same PDF** they download.
 
+**Quality bar:** Final artifacts must follow the funding operating-plan
+framework: clear title, context, verified funding programs, fit/verdict/next step
+for every recommended program, practical checklist, verification clarity, and
+useful official links. A final artifact is never a checkpoint draft.
+
 ## Consultation mode sections
 
 Follow `penny-consultation-modes` for intake. Use the matching `bodyMarkdown` section pattern:
@@ -116,6 +121,14 @@ Before calling `publish_funding_brief`, audit the body:
 - Any loan, repayable contribution, loan guarantee, loan insurance, loan-interest
   subsidy, financing-dependent incentive, or unclear repayment product must be
   under `## Ruled out`.
+- Every program under `## Recommendations`, `## Verified Funding Programs`,
+  `## Strong fits`, `## Conditional fits`, or similar actionable sections must
+  be backed by a successful `read_official_source` result in `verifiedUrls`.
+- Put unverified discoveries under `## Could not verify`, `## Watchlist`, or
+  `## Ruled out`; never make them numbered recommendations, strong fits,
+  conditional fits, or next-step items.
+- Do not write anti-bot/tool failure details in the artifact. Say neutrally that
+  the program was not verified in this run if it matters.
 - Do not write "worth a call", "best bet", "strong", "conditional", or "next
   step" for repayable programs.
 - If the artifact tool rejects the brief for loan-like wording, revise the memo

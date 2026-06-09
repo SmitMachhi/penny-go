@@ -36,19 +36,30 @@ const PROGRAM_MEMO_SECTION_PATTERN =
 const NUMBERED_PROGRAM_HEADING_PATTERN = /^#{3,4}\s+\d+[.)]?\s+/m;
 const H2_HEADING_PATTERN = /^##\s+(.+)$/;
 const PROGRAM_HEADING_PATTERN = /^#{3,4}\s+(.+)$/;
+const ACTIONABLE_SECTION_PATTERN =
+	/\b(recommendations?|verified funding programs|strong fits|conditional fits|stretch|programs to pursue|apply now|plan toward|tax advantages)\b/i;
 const RULED_OUT_SECTION_PATTERN =
 	/\b(ruled out|not a fit|excluded|outside scope|what about loans|doesn['\u2019]t fit|does not fit|what doesn['\u2019]t fit|what does not fit)\b/i;
+const UNVERIFIED_SECTION_PATTERN = /\b(could not verify|couldn['\u2019]t verify|unverified|watchlist)\b/i;
 const INTERNAL_TOOL_LEAK_PATTERNS = [
 	/blocked_by_anti_bot/i,
-	/anti-bot protection/i,
+	/anti-bot (protection|measures)/i,
 	/verifying your browser before proceeding/i,
 	/read tool not found/i,
 	/\btoolCall\b/,
 	/\btoolResult\b/,
 	/\/app\/workspace\//i
 ] as const;
+const UNVERIFIED_RECOMMENDATION_PATTERNS = [
+	/\bcould not verify\b/i,
+	/\bcouldn['\u2019]t verify\b/i,
+	/\bcouldn['\u2019]t live-verify\b/i,
+	/\bnot verified\b/i,
+	/\bunverified\b/i,
+	/\bweb-search evidence\b/i
+] as const;
 
-type MemoSection = 'neutral' | 'ruled_out';
+type MemoSection = 'neutral' | 'ruled_out' | 'unverified' | 'actionable';
 
 function parseConfidence(
 	value: unknown,
@@ -214,6 +225,12 @@ function classifyMemoSection(headingText: string): MemoSection {
 	if (RULED_OUT_SECTION_PATTERN.test(headingText)) {
 		return 'ruled_out';
 	}
+	if (UNVERIFIED_SECTION_PATTERN.test(headingText)) {
+		return 'unverified';
+	}
+	if (ACTIONABLE_SECTION_PATTERN.test(headingText)) {
+		return 'actionable';
+	}
 	return 'neutral';
 }
 
@@ -254,6 +271,31 @@ function hasActionableLoanLikeProgram(bodyMarkdown: string): boolean {
 	return false;
 }
 
+function lineLooksUnverifiedRecommendation(line: string): boolean {
+	return UNVERIFIED_RECOMMENDATION_PATTERNS.some((pattern) => pattern.test(line));
+}
+
+function hasUnverifiedActionableProgram(bodyMarkdown: string): boolean {
+	let section: MemoSection = 'neutral';
+
+	for (const line of bodyMarkdown.split('\n')) {
+		const h2Match = H2_HEADING_PATTERN.exec(line);
+		if (h2Match) {
+			section = classifyMemoSection(h2Match[1]);
+			continue;
+		}
+
+		if (section !== 'actionable') {
+			continue;
+		}
+		if (lineLooksUnverifiedRecommendation(line)) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
 function parseCreateInput(
 	input: Record<string, unknown>,
 	errors: ArtifactValidationError[]
@@ -284,6 +326,13 @@ function parseCreateInput(
 		errors.push({
 			field: 'bodyMarkdown',
 			message: 'loan-like products must be ruled out, not listed as actionable programs'
+		});
+		return null;
+	}
+	if (hasUnverifiedActionableProgram(bodyMarkdown)) {
+		errors.push({
+			field: 'bodyMarkdown',
+			message: 'unverified programs must stay out of recommendation sections'
 		});
 		return null;
 	}

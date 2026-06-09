@@ -245,19 +245,22 @@ answer.
 
 Progressive synthesis checkpoint:
 
-- Once you have 2-4 verified strong or conditional fits, write a checkpoint
-  answer or artifact before expanding the search further.
-- The checkpoint is not the end of research. It is the minimum useful answer
-  made durable for the user before deeper discovery continues.
-- Continue only after the checkpoint is visible to the user, and only when a
-  distinct material lane remains uncovered. Material lanes include capex,
-  training, tax credit, wage subsidy, export, R&D, and regional business
-  support.
+- Once you have 2-4 verified strong or conditional fits, stream a short
+  checkpoint glimpse in chat/thinking progress before expanding the search
+  further.
+- The checkpoint is not the final artifact. It is live progress for the user
+  while research continues.
+- Continue after the checkpoint glimpse only when a distinct material lane
+  remains uncovered. Material lanes include capex, training, tax credit, wage
+  subsidy, export, R&D, and regional business support.
 - If the next tool call would only improve confidence, answer now. Say what is
   verified, what was blocked, and what is conditional.
-- If a tool result gives you a strong local fit, such as a municipal or regional
-  program that directly matches the user's location and spend mechanism, keep it
-  in the checkpoint even if nearby federal programs remain unresolved.
+- If a successful `read_official_source` result gives you a strong local fit,
+  such as a municipal or regional program that directly matches the user's
+  location and spend mechanism, include it in the checkpoint glimpse even if
+  nearby federal programs remain unresolved.
+- Never call `publish_funding_brief` for a checkpoint draft. Final artifacts
+  must use only verified actionable programs and follow `penny-artifacts`.
 
 ## 7. Qualification levers
 

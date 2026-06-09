@@ -154,3 +154,39 @@ test('publishFundingBriefTool fills strict artifact metadata from simple model a
 		'PEI page was verified through Firecrawl official scrape fallback.'
 	);
 });
+
+test('publishFundingBriefTool rejects checkpoint draft recommendations', async () => {
+	const tool = publishFundingBriefTool(
+		{ repoRoot: '/tmp/penny-go' },
+		SESSION_KEY,
+		async () => {
+			throw new Error('action should not run for invalid artifact body');
+		}
+	);
+
+	const result = await tool.execute('call-7', {
+		title: 'Laval robotics funding brief',
+		bodyMarkdown: [
+			'# Laval robotics funding brief',
+			'',
+			'## Recommendations',
+			'',
+			'### 1. Laval Economique - Virage Techno Manufacturier',
+			'',
+			'| Field | Detail |',
+			'| --- | --- |',
+			'| **Fit** | Strong |',
+			'| **Verdict** | Could not verify - official page blocked by anti-bot measures |',
+			'| **Next step** | Contact the program before buying equipment |',
+			'',
+			'## Action checklist',
+			'',
+			'- [ ] Call the advisor.'
+		].join('\n'),
+		verifiedUrls: ['https://www.revenuquebec.ca/fr/entreprises/']
+	});
+
+	const details = result.details as Record<string, unknown>;
+	assert.equal(details.success, false);
+	assert.equal(details.error, 'validation_failed');
+});

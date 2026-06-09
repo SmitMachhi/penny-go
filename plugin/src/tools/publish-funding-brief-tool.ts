@@ -1,5 +1,8 @@
 import { Type } from '@sinclair/typebox';
-import { MAX_EVIDENCE_PROGRAMS } from '@penny/shared/artifact-validation';
+import {
+	MAX_EVIDENCE_PROGRAMS,
+	validateCreateFundingArtifactInput
+} from '@penny/shared/artifact-validation';
 import type { ArtifactEvidenceProgram } from '@penny/shared/artifact-types';
 import type { AnyAgentTool } from 'openclaw/plugin-sdk/plugin-entry';
 
@@ -74,21 +77,34 @@ export function publishFundingBriefTool(
 				});
 			}
 
+			const artifactParams = {
+				sessionUuid,
+				title: args.title,
+				triggerReason: 'auto' as const,
+				bodyMarkdown: args.bodyMarkdown,
+				evidence: {
+					programs: buildEvidencePrograms(args.verifiedUrls)
+				},
+				verification: {
+					verifiedAt: new Date().toISOString(),
+					urlsChecked: args.verifiedUrls,
+					notes: args.notes
+				}
+			};
+			const validation = validateCreateFundingArtifactInput(artifactParams);
+			if (!validation.ok) {
+				return toToolJsonResult({
+					success: false,
+					error: 'validation_failed',
+					details: validation.errors
+				});
+			}
+
 			const result = await action(
 				config,
 				{
-					sessionUuid,
-					title: args.title,
-					triggerReason: 'auto',
-					bodyMarkdown: args.bodyMarkdown,
-					evidence: {
-						programs: buildEvidencePrograms(args.verifiedUrls)
-					},
-					verification: {
-						verifiedAt: new Date().toISOString(),
-						urlsChecked: args.verifiedUrls,
-						notes: args.notes
-					}
+					...validation.value,
+					sessionUuid
 				},
 				signal
 			);

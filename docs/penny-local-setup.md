@@ -1,6 +1,6 @@
 # Penny local setup
 
-Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated funding database, verifies every suggestion with `read_official_source` (Crawl4AI first, Exa official contents fallback on anti-bot pages), and may use Exa `web_search` only when database results are insufficient.
+Goal: run Penny as an OpenClaw agent on your laptop. She searches the curated funding database, verifies every suggestion with `read_official_source` (Crawl4AI first, Firecrawl scrape fallback on anti-bot pages), and may use Exa `web_search` only when database results are insufficient.
 
 Use this document for local OpenClaw and gateway setup. For Fly.io deployment, use the root `README.md`.
 
@@ -11,7 +11,7 @@ Use this document for local OpenClaw and gateway setup. For Fly.io deployment, u
 | Node.js | 22.x or newer (`node -v`) |
 | OpenClaw CLI | `npm install -g openclaw@latest` |
 | Python | 3.11+ for Crawl4AI |
-| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
+| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
 
 ## Repo layout involved
 
@@ -39,6 +39,7 @@ Use the repo root `.env.example` as a checklist. Minimum:
 ```
 DEEPSEEK_API_KEY=...
 EXA_API_KEY=...
+FIRECRAWL_API_KEY=...
 
 PENNY_REPO_ROOT=/ABSOLUTE_PATH_TO/penny-go
 PENNY_CORPUS_PATH=/ABSOLUTE_PATH_TO/penny-go/database/data/funding/curated/verified-programs.jsonl
@@ -149,9 +150,9 @@ Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` i
 openclaw models list --provider deepseek
 ```
 
-### Exa
+### Exa and Firecrawl
 
-If `web_search` or the anti-bot fallback inside `read_official_source` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`).
+If `web_search` fails, confirm `EXA_API_KEY` is loaded into the Gateway environment (typically via `~/.openclaw/.env`). If the anti-bot fallback inside `read_official_source` fails, confirm `FIRECRAWL_API_KEY` is loaded.
 
 ## 6. Verification ladder (do in order)
 

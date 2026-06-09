@@ -109,7 +109,7 @@ site:<official domain> <jurisdiction> <sector> <project mechanism> grant busines
 
 Use official Canadian government or agency domains. Exa search snippets are
 discovery only. Every web result still needs `read_official_source` before
-recommendation. `read_official_source` may use Exa `/contents` internally after
+recommendation. `read_official_source` may use Firecrawl `/scrape` internally after
 Crawl4AI is blocked, but only for the same official URL.
 
 Search sufficiency:
@@ -131,7 +131,7 @@ Search sufficiency:
 
 For every candidate you might name as actionable, call `read_official_source` on
 the official URL. Official page content returned by `read_official_source`
-overrides database fields. Treat `reader: "crawl4ai"` and `reader: "exa_contents"`
+overrides database fields. Treat `reader: "crawl4ai"` and `reader: "firecrawl_scrape"`
 as successful official-URL reads. Treat `reader: "blocked"` or
 `error: "blocked_by_anti_bot"` as not verified.
 

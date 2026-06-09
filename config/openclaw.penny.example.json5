@@ -49,9 +49,9 @@
         "enabled": true,
         "config": {
           "corpusPath": "/ABSOLUTE_PATH_TO_REPO/database/data/funding/curated/verified-programs.jsonl",
-          // Optional when EXA_API_KEY is present in the Gateway environment.
+          // Optional when FIRECRAWL_API_KEY is present in the Gateway environment.
           // Used only as a same-URL fallback when Crawl4AI hits anti-bot protection.
-          "exaApiKey": "env:EXA_API_KEY",
+          "firecrawlApiKey": "env:FIRECRAWL_API_KEY",
           "pythonPath": "/ABSOLUTE_PATH_TO_REPO/.venv/bin/python",
           "repoRoot": "/ABSOLUTE_PATH_TO_REPO"
         }

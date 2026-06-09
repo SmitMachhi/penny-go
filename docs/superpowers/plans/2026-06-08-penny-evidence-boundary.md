@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Keep Exa as a real fallback for blocked official pages, but make Penny's evidence path and artifact path structurally unable to leak tool failure text into user-facing artifacts.
+**Goal:** Keep Firecrawl as the fallback for blocked official pages, but make Penny's evidence path and artifact path structurally unable to leak tool failure text into user-facing artifacts.
 
-**Architecture:** The source reader stays the retrieval boundary and returns structured outcomes for crawl, Exa fallback, and blocked pages. A small redaction helper turns that internal result into a model-safe tool payload with a neutral summary, while the artifact validator rejects any markdown that still contains internal failure phrases or raw tooling language. Penny's always-loaded instructions are updated so the model follows the same rule set the code enforces.
+**Architecture:** The source reader stays the retrieval boundary and returns structured outcomes for crawl, Firecrawl fallback, and blocked pages. A small redaction helper turns that internal result into a model-safe tool payload with a neutral summary, while the artifact validator rejects any markdown that still contains internal failure phrases or raw tooling language. Penny's always-loaded instructions are updated so the model follows the same rule set the code enforces.
 
 **Tech Stack:** TypeScript, JSON5 config, `node:test`, OpenClaw plugin runtime, existing `shared/` validation helpers.
 
@@ -71,22 +71,22 @@ git commit -m "skills stay asleep"
 
 - [ ] **Step 1: Write the failing test**
 
-Add a regression that proves the reader still falls back to Exa, and that the redacted payload the model sees does not expose anti-bot error strings:
+Add a regression that proves the reader still falls back to Firecrawl, and that the redacted payload the model sees does not expose anti-bot error strings:
 
 ```ts
-test('readOfficialSourceAction returns Exa success without raw blocked text', async () => {
+test('readOfficialSourceAction returns Firecrawl success without raw blocked text', async () => {
 	clearOfficialSourceReadCacheForTests();
 
 	const result = await readOfficialSourceWithFallback({
 		url: OFFICIAL_URL,
-		exaApiKey: EXA_KEY,
+		firecrawlApiKey: FIRECRAWL_KEY,
 		readWithCrawl4Ai: async () => ({
 			success: false,
 			url: OFFICIAL_URL,
 			error: 'Blocked by anti-bot protection: Structural: no <body> tag (15145 bytes)',
 			fetched_at: '2026-06-06T20:44:25.270528+00:00'
 		}),
-		readWithExaContents: async () => ({
+		readWithFirecrawlScrape: async () => ({
 			success: true,
 			url: OFFICIAL_URL,
 			markdown: '# Employ PEI\n\nEmploy PEI is a wage subsidy for eligible employers.',
@@ -94,8 +94,8 @@ test('readOfficialSourceAction returns Exa success without raw blocked text', as
 		})
 	});
 
-	assert.equal(result.reader, 'exa_contents');
-	assert.equal(result.verification_source, 'exa_official_contents');
+	assert.equal(result.reader, 'firecrawl_scrape');
+	assert.equal(result.verification_source, 'firecrawl_official_scrape');
 	assert.equal(result.success, true);
 });
 ```
@@ -125,8 +125,8 @@ Use a result shape like:
 {
 	success: boolean;
 	url: string;
-	reader: 'crawl4ai' | 'exa_contents' | 'blocked';
-	verification_source: 'live_official_page' | 'exa_official_contents' | 'unverified_blocked';
+	reader: 'crawl4ai' | 'firecrawl_scrape' | 'blocked';
+	verification_source: 'live_official_page' | 'firecrawl_official_scrape' | 'unverified_blocked';
 	summary: string;
 	markdown?: string;
 	fetched_at?: string;
@@ -140,7 +140,7 @@ For blocked pages, emit a neutral `summary` such as `Could not verify this page.
 
 Run: `cd plugin && npm test`
 
-Expected: PASS, with Exa still used when Crawl4AI fails.
+Expected: PASS, with Firecrawl still used when Crawl4AI fails.
 
 - [ ] **Step 5: Commit**
 
@@ -256,7 +256,7 @@ test('always-loaded Penny instructions describe neutral fallback behavior', asyn
 	const voiceRules = await readProjectFile('workspace/SOUL.md');
 	const allRules = `${agentRules}\n${voiceRules}`;
 
-	assert.match(allRules, /Exa/i);
+	assert.match(allRules, /Firecrawl/i);
 	assert.doesNotMatch(allRules, /blocked_by_anti_bot|anti-bot protection|read tool not found/i);
 });
 ```
@@ -272,7 +272,7 @@ Expected: FAIL until the instructions explicitly describe neutral fallback handl
 Rewrite the workspace instructions so they say:
 
 ```markdown
-If Crawl4AI is blocked, try Exa's official contents path next.
+If Crawl4AI is blocked, try Firecrawl's official scrape path next.
 If neither source verifies the page, mark the program as not verified or ruled out in neutral language.
 Never quote tool failure text, raw anti-bot strings, or filesystem paths in the artifact.
 ```

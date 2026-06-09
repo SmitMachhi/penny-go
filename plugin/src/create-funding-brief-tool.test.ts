@@ -128,7 +128,7 @@ test('publishFundingBriefTool fills strict artifact metadata from simple model a
 		bodyMarkdown:
 			'# PEI cybersecurity funding brief\n\n## Recommended path\n\n- [ ] Call SkillsPEI this week.',
 		verifiedUrls: ['https://www.princeedwardisland.ca/en/service/employ-pei'],
-		notes: 'PEI page was verified through Exa official contents fallback.'
+		notes: 'PEI page was verified through Firecrawl official scrape fallback.'
 	});
 
 	const details = result.details as Record<string, unknown>;
@@ -151,6 +151,6 @@ test('publishFundingBriefTool fills strict artifact metadata from simple model a
 	assert.equal(typeof (seen[0]?.verification as { verifiedAt?: unknown }).verifiedAt, 'string');
 	assert.equal(
 		(seen[0]?.verification as { notes?: string }).notes,
-		'PEI page was verified through Exa official contents fallback.'
+		'PEI page was verified through Firecrawl official scrape fallback.'
 	);
 });

@@ -55,7 +55,7 @@
         "enabled": true,
         "config": {
           "corpusPath": "/app/database/data/funding/curated/verified-programs.jsonl",
-          "exaApiKey": "env:EXA_API_KEY",
+          "firecrawlApiKey": "env:FIRECRAWL_API_KEY",
           "pythonPath": "/app/.venv/bin/python",
           "repoRoot": "/app"
         }

@@ -5,7 +5,7 @@ import {
 import { filterAndRankPrograms, type SearchCorpusParams } from '../domain/corpus-search.js';
 import {
 	type PennyToolsConfigShape,
-	resolveExaApiKey,
+	resolveFirecrawlApiKey,
 	readerScriptPath,
 	resolveCorpusPath,
 	resolvePython,
@@ -13,7 +13,7 @@ import {
 } from '../services/penny-config.js';
 import { loadProgramsFromFile } from '../services/corpus-load.js';
 import { runJsonStdinSubprocess } from '../services/subprocess-json.js';
-import { readExaOfficialContents } from '../services/exa-contents.js';
+import { readFirecrawlScrape } from '../services/firecrawl-scrape.js';
 import {
 	readOfficialSourceWithFallback,
 	redactOfficialSourceResultForModel
@@ -45,7 +45,7 @@ export async function readOfficialSourceAction(
 	const result = await readOfficialSourceWithFallback({
 		url,
 		config,
-		exaApiKey: resolveExaApiKey(config),
+		firecrawlApiKey: resolveFirecrawlApiKey(config),
 		htmlTimeoutMs: READ_OFFICIAL_SOURCE_HTML_TIMEOUT_MS,
 		pdfTimeoutMs: READ_OFFICIAL_SOURCE_TIMEOUT_MS,
 		signal,
@@ -68,8 +68,8 @@ export async function readOfficialSourceAction(
 
 			return outcome.parsed;
 		},
-		readWithExaContents: async (input) =>
-			readExaOfficialContents({
+		readWithFirecrawlScrape: async (input) =>
+			readFirecrawlScrape({
 				url: input.url,
 				apiKey: input.apiKey,
 				signal: input.signal

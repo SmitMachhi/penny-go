@@ -95,7 +95,7 @@ OpenClaw gateway.
 | Shared code | `shared/` | Artifact, session, markdown, PDF, and validation helpers. |
 | Agent workspace | `workspace/` | Penny instructions, skills, voice, and memory rules. |
 | Funding database | `database/data/funding/curated/` | Tracked data that powers Penny's recommendations. |
-| Source reader | `tools/read_official_source.py` | Crawl4AI official-page reader with Exa same-URL fallback. |
+| Source reader | `tools/read_official_source.py` | Crawl4AI official-page reader with Firecrawl same-URL fallback. |
 
 ## Funding Database
 
@@ -136,7 +136,8 @@ Search results alone are not recommendations.
 - Python 3.11 or newer
 - OpenClaw CLI
 - DeepSeek API key for the default model
-- Exa API key for web search and official-source fallback
+- Exa API key for web search
+- Firecrawl API key for official-source fallback
 
 Install OpenClaw:
 
@@ -172,6 +173,7 @@ Minimum OpenClaw environment:
 ```bash
 DEEPSEEK_API_KEY=<your-deepseek-key>
 EXA_API_KEY=<your-exa-key>
+FIRECRAWL_API_KEY=<your-firecrawl-key>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
 PENNY_CORPUS_PATH=/absolute/path/to/penny-go/database/data/funding/curated/verified-programs.jsonl
 PENNY_PYTHON=/absolute/path/to/penny-go/.venv/bin/python

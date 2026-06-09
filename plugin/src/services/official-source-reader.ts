@@ -25,10 +25,10 @@ type RawSourceReadResult = Record<string, unknown> & {
 	fetched_at?: unknown;
 };
 
-export type OfficialSourceReader = 'crawl4ai' | 'exa_contents' | 'blocked';
+export type OfficialSourceReader = 'crawl4ai' | 'firecrawl_scrape' | 'blocked';
 export type VerificationSource =
 	| 'live_official_page'
-	| 'exa_official_contents'
+	| 'firecrawl_official_scrape'
 	| 'unverified_blocked';
 
 export type OfficialSourceReadResult = Record<string, unknown> & {
@@ -58,7 +58,7 @@ export type OfficialSourceReaderDeps = {
 		timeoutMs: number;
 		signal?: AbortSignal | undefined;
 	}) => Promise<RawSourceReadResult>;
-	readWithExaContents: (input: {
+	readWithFirecrawlScrape: (input: {
 		url: string;
 		apiKey: string | undefined;
 		signal?: AbortSignal | undefined;
@@ -107,8 +107,8 @@ export function redactOfficialSourceResultForModel(
 		reader: result.reader,
 		verification_source: result.verification_source,
 		summary:
-			result.verification_source === 'exa_official_contents'
-				? 'Retrieved official page content via Exa.'
+			result.verification_source === 'firecrawl_official_scrape'
+				? 'Retrieved official page content via Firecrawl.'
 				: 'Retrieved official page content.',
 		markdown: result.markdown,
 		fetched_at: result.fetched_at,
@@ -119,12 +119,12 @@ export function redactOfficialSourceResultForModel(
 export async function readOfficialSourceWithFallback(input: {
 	url: string;
 	config?: PennyToolsConfigShape | undefined;
-	exaApiKey?: string | undefined;
+	firecrawlApiKey?: string | undefined;
 	htmlTimeoutMs?: number | undefined;
 	pdfTimeoutMs?: number | undefined;
 	signal?: AbortSignal | undefined;
 	readWithCrawl4Ai: OfficialSourceReaderDeps['readWithCrawl4Ai'];
-	readWithExaContents: OfficialSourceReaderDeps['readWithExaContents'];
+	readWithFirecrawlScrape: OfficialSourceReaderDeps['readWithFirecrawlScrape'];
 }): Promise<OfficialSourceReadResult> {
 	const normalizedUrl = normalizeOfficialUrl(input.url);
 	const cached = readCachedResult(normalizedUrl);
@@ -141,27 +141,27 @@ export async function readOfficialSourceWithFallback(input: {
 		normalizedUrl,
 		'crawl4ai'
 	);
-	const exaPromise = readSafely(
-		input.readWithExaContents({
+	const firecrawlPromise = readSafely(
+		input.readWithFirecrawlScrape({
 			url: normalizedUrl,
-			apiKey: input.exaApiKey,
+			apiKey: input.firecrawlApiKey,
 			signal: input.signal
 		}),
 		normalizedUrl,
-		'exa_contents'
+		'firecrawl_scrape'
 	);
 	const cleanResult = await firstCleanSuccessfulRead(
-		[crawlPromise, exaPromise],
+		[crawlPromise, firecrawlPromise],
 		normalizedUrl
 	);
 	if (cleanResult) {
 		return cacheAndReturn(normalizedUrl, cleanResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS);
 	}
 
-	const [crawlResult, exaResult] = await Promise.all([crawlPromise, exaPromise]);
+	const [crawlResult, firecrawlResult] = await Promise.all([crawlPromise, firecrawlPromise]);
 	return cacheAndReturn(
 		normalizedUrl,
-		blockedResult(normalizedUrl, exaResult.fetched_at ?? crawlResult.fetched_at),
+		blockedResult(normalizedUrl, firecrawlResult.fetched_at ?? crawlResult.fetched_at),
 		OFFICIAL_SOURCE_BLOCKED_CACHE_TTL_MS
 	);
 }
@@ -196,7 +196,7 @@ function normalizeReaderPayload(
 	const error = readString(payload.error);
 	const success = payload.success === true;
 	const verification_source =
-		reader === 'crawl4ai' ? 'live_official_page' : 'exa_official_contents';
+		reader === 'crawl4ai' ? 'live_official_page' : 'firecrawl_official_scrape';
 
 	return {
 		...payload,

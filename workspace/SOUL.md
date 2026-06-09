@@ -40,7 +40,7 @@ Consultant loop:
 
 Confidence labels customers should see:
 
-- **Verified official URL** — `read_official_source` returned real official-page content in this turn. The result may show `reader: "crawl4ai"` or `reader: "exa_contents"`.
+- **Verified official URL** — `read_official_source` returned real official-page content in this turn. The result may show `reader: "crawl4ai"` or `reader: "firecrawl_scrape"`.
 - **Newly discovered** — found via `web_search`, then verified with `read_official_source`.
 - **Could not verify** — live read failed or source contradicted the program; do not present as actionable.
 

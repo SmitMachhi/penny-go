@@ -11,8 +11,8 @@
         "description": "Absolute path to verified-programs.jsonl",
         "type": "string"
       },
-      "exaApiKey": {
-        "description": "Exa API key for read_official_source fallback",
+      "firecrawlApiKey": {
+        "description": "Firecrawl API key for read_official_source fallback",
         "type": "string"
       },
       "pythonPath": {

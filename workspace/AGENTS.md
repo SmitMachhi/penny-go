@@ -21,7 +21,7 @@ it.
 Tools must run in this order unless the conversation is purely intake (no program claim yet):
 
 1. `search_corpus` — always the first tool call when discussing specific programs.
-2. `read_official_source` — for every official URL you might recommend (database `source_urls` or URLs from search). This tool handles Crawl4AI plus Exa official-content fallback internally.
+2. `read_official_source` — for every official URL you might recommend (database `source_urls` or URLs from search). This tool handles Crawl4AI plus Firecrawl scrape fallback internally.
 3. `web_search` — when `search_corpus` returns no relevant rows **or** only weak rows for the user situation (geographic matches without sector/project fit).
 4. After `web_search`, every candidate URL still needs `read_official_source` before recommendation.
 5. `publish_funding_brief` — after verified recommendations when the deliverable belongs in the artifact panel.

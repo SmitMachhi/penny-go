@@ -15,8 +15,8 @@ const configSchema = Type.Object(
     corpusPath: Type.Optional(
       Type.String({ description: "Absolute path to verified-programs.jsonl" }),
     ),
-    exaApiKey: Type.Optional(
-      Type.String({ description: "Exa API key for read_official_source fallback" }),
+    firecrawlApiKey: Type.Optional(
+      Type.String({ description: "Firecrawl API key for read_official_source fallback" }),
     ),
     pythonPath: Type.Optional(
       Type.String({ description: "Python interpreter for read_official_source.py" }),

@@ -8,7 +8,7 @@ const ENV_SECRET_PREFIX = 'env:';
 
 export type PennyToolsConfigShape = {
 	corpusPath?: string | undefined;
-	exaApiKey?: string | undefined;
+	firecrawlApiKey?: string | undefined;
 	pythonPath?: string | undefined;
 	repoRoot?: string | undefined;
 };
@@ -25,13 +25,13 @@ export function resolvePython(config: PennyToolsConfigShape): string {
 	return config.pythonPath?.trim() ?? process.env.PENNY_PYTHON?.trim() ?? 'python3';
 }
 
-export function resolveExaApiKey(config: PennyToolsConfigShape): string | undefined {
-	const configured = config.exaApiKey?.trim();
+export function resolveFirecrawlApiKey(config: PennyToolsConfigShape): string | undefined {
+	const configured = config.firecrawlApiKey?.trim();
 	if (configured?.startsWith(ENV_SECRET_PREFIX)) {
 		const envName = configured.slice(ENV_SECRET_PREFIX.length).trim();
 		return envName ? process.env[envName]?.trim() || undefined : undefined;
 	}
-	return configured || process.env.EXA_API_KEY?.trim() || undefined;
+	return configured || process.env.FIRECRAWL_API_KEY?.trim() || undefined;
 }
 
 export function resolveCorpusPath(config: PennyToolsConfigShape): string {

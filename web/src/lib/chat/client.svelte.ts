@@ -310,9 +310,7 @@ export class ChatClient {
 			activeRunId: this.activeRunId,
 			finalizeAssistantMessage: (event) => this.finalizeAssistantMessage(event),
 			pendingRunArtifactIds: this.pendingRunArtifactIds,
-			recoverAfterAbort: () => {
-				void this.loadHistory();
-			},
+			recoverAfterAbort: () => void this.loadHistory(),
 			refreshArtifactsAfterBrief: () => this.refreshArtifactsAfterBrief(),
 			resetRun: () => this.resetRun(),
 			state: this.state

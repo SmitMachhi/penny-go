@@ -439,6 +439,41 @@ describe('ChatClient', () => {
 		);
 	});
 
+	it('reloads history after an aborted run so checkpoint recovery can appear', async () => {
+		const recoveryText = 'Penny verified these before the run was interrupted.';
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path === '/api/chat/send') {
+				return jsonResponse({ runId: RUN_ID, sessionKey: SESSION_KEY });
+			}
+			if (path.startsWith('/api/sessions')) {
+				return jsonResponse({
+					sessionKey: SESSION_KEY,
+					sessionId: SESSION_ID,
+					messages: [
+						{ id: 'user-1', role: 'user', text: MESSAGE },
+						{ id: 'assistant-1', role: 'assistant', text: recoveryText }
+					]
+				});
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		client.state.sessionKey = SESSION_KEY;
+		client.state.sessionId = SESSION_ID;
+		await client.sendMessage(MESSAGE, { skipHistoryReload: true });
+
+		(client as unknown as ChatClientInternals).handleStreamEvent({
+			type: 'chat.aborted',
+			runId: RUN_ID
+		});
+
+		await vi.waitFor(() => expect(client.state.messages.at(-1)?.text).toBe(recoveryText));
+		expect(client.state.sending).toBe(false);
+	});
+
 	it('does not recover a pre-response stream event from stale history', async () => {
 		vi.useFakeTimers();
 		let resolveSend: (response: Response) => void = () => {};

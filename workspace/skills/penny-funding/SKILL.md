@@ -243,10 +243,21 @@ Default shape:
 It is acceptable to return one strong program, or none, when that is the honest
 answer.
 
-Latency rule: once you have 2-4 verified strong or conditional fits, stop
-expanding the search and produce the answer or artifact. More searching is only
-useful when the current verified set does not cover the user's stated mechanism
-(for example hiring plus export plus capex).
+Progressive synthesis checkpoint:
+
+- Once you have 2-4 verified strong or conditional fits, write a checkpoint
+  answer or artifact before expanding the search further.
+- The checkpoint is not the end of research. It is the minimum useful answer
+  made durable for the user before deeper discovery continues.
+- Continue only after the checkpoint is visible to the user, and only when a
+  distinct material lane remains uncovered. Material lanes include capex,
+  training, tax credit, wage subsidy, export, R&D, and regional business
+  support.
+- If the next tool call would only improve confidence, answer now. Say what is
+  verified, what was blocked, and what is conditional.
+- If a tool result gives you a strong local fit, such as a municipal or regional
+  program that directly matches the user's location and spend mechanism, keep it
+  in the checkpoint even if nearby federal programs remain unresolved.
 
 ## 7. Qualification levers
 

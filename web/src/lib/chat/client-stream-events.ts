@@ -13,6 +13,7 @@ type StreamEventHandlers = {
 	activeRunId: string | null;
 	pendingRunArtifactIds: string[];
 	refreshArtifactsAfterBrief: () => Promise<void>;
+	recoverAfterAbort: () => void;
 	finalizeAssistantMessage: (payload: Extract<SsePayload, { type: 'chat.final' }>) => Promise<void>;
 	resetRun: () => void;
 	state: ChatClientState;
@@ -69,6 +70,7 @@ export function applyStreamEvent(payload: SsePayload, handlers: StreamEventHandl
 			break;
 		case 'chat.aborted':
 			handlers.resetRun();
+			handlers.recoverAfterAbort();
 			break;
 		case 'chat.error':
 			handlers.state.operationError = payload.message;

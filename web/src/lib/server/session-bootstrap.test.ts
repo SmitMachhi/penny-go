@@ -129,4 +129,78 @@ describe('session bootstrap', () => {
 			turnId: TURN_ID
 		});
 	});
+
+	it('adds a checkpoint recovery answer when verified evidence exists after an aborted run', async () => {
+		await upsertPennyTurn({
+			turnId: TURN_ID,
+			sessionKey: SESSION_KEY,
+			message: 'We run a 42-person precision parts manufacturer near Laval, Quebec.',
+			status: 'aborted',
+			runId: RUN_ID,
+			createdAt: CREATED_AT,
+			updatedAt: CREATED_AT
+		});
+		fetchChatHistory.mockResolvedValueOnce({
+			sessionKey: SESSION_KEY,
+			sessionId: 'session-1',
+			messages: [
+				{
+					type: 'message',
+					message: {
+						role: 'user',
+						content: [
+							{
+								type: 'text',
+								text: 'We run a 42-person precision parts manufacturer near Laval, Quebec.'
+							}
+						]
+					}
+				},
+				{
+					type: 'message',
+					message: {
+						role: 'assistant',
+						content: [{ type: 'text', text: 'Verifying official source.' }],
+						stopReason: 'toolUse'
+					}
+				},
+				{
+					type: 'message',
+					message: {
+						role: 'toolResult',
+						content: [
+							{
+								type: 'text',
+								text: JSON.stringify({
+									success: true,
+									url: 'https://lavaleconomique.com/programme/virage-techno-manufacturier/',
+									reader: 'firecrawl_scrape',
+									verification_source: 'firecrawl_official_scrape',
+									markdown:
+										'# Virage techno manufacturier\nSubvention allant jusqu a 50 000 $ pour automatisation et robotisation.'
+								})
+							}
+						]
+					}
+				},
+				{
+					type: 'message',
+					message: {
+						role: 'assistant',
+						content: [],
+						stopReason: 'aborted'
+					}
+				}
+			]
+		});
+
+		const bootstrap = await getSessionBootstrap(SESSION_KEY);
+
+		expect(bootstrap.activeTurn).toBeNull();
+		expect(bootstrap.messages.at(-1)).toMatchObject({
+			role: 'assistant',
+			text: expect.stringContaining('Penny verified these before the run was interrupted')
+		});
+		expect(bootstrap.messages.at(-1)?.text).toContain('Virage techno manufacturier');
+	});
 });

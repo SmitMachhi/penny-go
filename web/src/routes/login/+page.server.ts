@@ -1,4 +1,3 @@
-import type { Provider } from '@supabase/supabase-js';
 import { fail, redirect } from '@sveltejs/kit';
 import type { Actions, PageServerLoad } from './$types';
 
@@ -27,28 +26,6 @@ function readNext(form: FormData): string {
 
 function readEmail(form: FormData): string {
 	return String(form.get('email') ?? '').trim().toLowerCase();
-}
-
-function callbackUrl(origin: string, next: string): string {
-	const url = new URL('/auth/callback', origin);
-	url.searchParams.set('next', next);
-	return url.toString();
-}
-
-async function oauthRedirect(event: Parameters<Actions['google']>[0], provider: Provider) {
-	const form = await event.request.formData();
-	const next = readNext(form);
-	const { data, error } = await event.locals.supabase.auth.signInWithOAuth({
-		provider,
-		options: { redirectTo: callbackUrl(event.url.origin, next) }
-	});
-	if (error || !data.url) {
-		return fail(BAD_REQUEST_STATUS, {
-			error: error?.message ?? 'Login failed.',
-			next
-		} satisfies LoginFailure);
-	}
-	redirect(REDIRECT_STATUS, data.url);
 }
 
 function invalidLogin(email: string, next: string, error: string) {
@@ -81,7 +58,5 @@ export const actions: Actions = {
 			return invalidLogin(email, next, error.message);
 		}
 		redirect(REDIRECT_STATUS, next);
-	},
-	google: (event) => oauthRedirect(event, 'google'),
-	microsoft: (event) => oauthRedirect(event, 'azure')
+	}
 };

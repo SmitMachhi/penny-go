@@ -54,34 +54,5 @@
 		<a class="mt-3 block text-sm font-medium text-muted-foreground" href={`/register?next=${encodeURIComponent(nextPath)}`}>
 			Create account
 		</a>
-
-		<div class="my-5 flex items-center gap-3 text-xs font-semibold uppercase text-muted-foreground">
-			<div class="h-px flex-1 bg-border"></div>
-			<span>SSO</span>
-			<div class="h-px flex-1 bg-border"></div>
-		</div>
-
-		<div class="space-y-3">
-			<form method="POST" action="?/google">
-				<input type="hidden" name="next" value={nextPath} />
-				<button
-					type="submit"
-					class="h-11 w-full rounded-md border border-input bg-background px-4 text-sm font-semibold"
-				>
-					Continue with Google
-				</button>
-			</form>
-
-			<form method="POST" action="?/microsoft">
-				<input type="hidden" name="next" value={nextPath} />
-				<button
-					type="submit"
-					class="h-11 w-full rounded-md border border-input bg-background px-4 text-sm font-semibold"
-				>
-					Continue with Microsoft
-				</button>
-			</form>
-		</div>
-
 	</section>
 </main>

@@ -15,10 +15,10 @@
 
 <AuthShell
 	eyebrow="Welcome back"
-	title="Log in to Penny"
-	description="Use the email and password connected to your private workspace."
-	switchLabel="New here? "
-	switchCta="Create an account"
+	title="Log in"
+	description="Enter your email and password."
+	switchLabel="Need an account? "
+	switchCta="Create one"
 	switchHref={registerHref}
 >
 	<form method="POST" action="?/email" class="space-y-5">

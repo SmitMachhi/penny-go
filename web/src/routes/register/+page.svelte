@@ -14,11 +14,11 @@
 </svelte:head>
 
 <AuthShell
-	eyebrow={form?.sent ? 'Almost done' : 'Start private'}
-	title={form?.sent ? 'Check your email' : 'Create your account'}
+	eyebrow={form?.sent ? 'Check your email' : 'New account'}
+	title={form?.sent ? 'Confirm your email' : 'Create account'}
 	description={form?.sent
-		? 'Open the verification link to finish setting up your Penny workspace.'
-		: 'Set a password now. Penny will send a verification email before the account opens.'}
+		? 'We sent you a link. Open it to finish.'
+		: 'Enter your email and make a password. We will send you a link.'}
 	switchLabel={form?.sent ? 'Already confirmed? ' : 'Already have an account? '}
 	switchCta="Log in"
 	switchHref={loginHref}
@@ -32,9 +32,9 @@
 					<MailCheck class="h-5 w-5" strokeWidth={2.2} />
 				</div>
 				<div>
-					<p class="text-sm font-semibold text-[oklch(0.28_0.05_150)]">Verification email sent</p>
+					<p class="text-sm font-semibold text-[oklch(0.28_0.05_150)]">Email sent</p>
 					<p class="mt-1 text-sm leading-6 text-[oklch(0.42_0.045_150)]">
-						Check {form.email} and follow the link to activate your account.
+						Open the link we sent to {form.email}.
 					</p>
 				</div>
 			</div>

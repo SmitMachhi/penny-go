@@ -17,7 +17,7 @@
 	title={form?.sent ? 'Confirm your email' : 'Create account'}
 	description={form?.sent
 		? 'We sent you a link. Open it to finish.'
-		: 'Enter your email and make a password. We will send you a link.'}
+		: 'Enter your email and make a password.'}
 	switchLabel={form?.sent ? 'Already confirmed? ' : 'Already have an account? '}
 	switchCta="Log in"
 	switchHref={loginHref}

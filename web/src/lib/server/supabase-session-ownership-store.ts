@@ -7,19 +7,13 @@ type QueryError = {
 	message: string;
 };
 
-type QueryResult<T> = {
-	data: T | null;
+type QueryResult = {
+	data: unknown;
 	error: QueryError | null;
 };
 
 type MutationResult = {
 	error: QueryError | null;
-};
-
-type OwnedSessionRow = {
-	session_key: string;
-	title: string;
-	updated_at: string;
 };
 
 type OwnedSessionInsert = {
@@ -34,22 +28,22 @@ type OwnedSessionUpdate = {
 	updated_at: string;
 };
 
-type SelectBuilder<T> = {
+type SelectBuilder = {
 	eq(column: 'session_key', value: string): {
-		maybeSingle(): Promise<QueryResult<T>>;
+		maybeSingle(): PromiseLike<QueryResult>;
 	};
-	order(column: 'updated_at', options: { ascending: boolean }): Promise<QueryResult<T[]>>;
+	order(column: 'updated_at', options: { ascending: boolean }): PromiseLike<QueryResult>;
 };
 
 type UpdateBuilder = {
-	eq(column: 'session_key', value: string): Promise<MutationResult>;
+	eq(column: 'session_key', value: string): PromiseLike<MutationResult>;
 };
 
 export type PennySessionsTableClient = {
 	from(table: 'penny_sessions'): {
 		delete(): UpdateBuilder;
-		insert(row: OwnedSessionInsert): Promise<MutationResult>;
-		select<T extends OwnedSessionRow>(columns: string): SelectBuilder<T>;
+		insert(row: OwnedSessionInsert): PromiseLike<MutationResult>;
+		select(columns: string): SelectBuilder;
 		update(row: OwnedSessionUpdate): UpdateBuilder;
 	};
 };
@@ -64,7 +58,27 @@ function toUpdatedAt(value: number | null): string {
 	return new Date(value ?? Date.now()).toISOString();
 }
 
-function toView(row: OwnedSessionRow): PennySessionView {
+function isOwnedSessionRow(value: unknown): value is {
+	session_key: string;
+	title: string;
+	updated_at: string;
+} {
+	if (!value || typeof value !== 'object') {
+		return false;
+	}
+	const record = value as Record<string, unknown>;
+	return (
+		typeof record.session_key === 'string' &&
+		typeof record.title === 'string' &&
+		typeof record.updated_at === 'string'
+	);
+}
+
+function toView(row: {
+	session_key: string;
+	title: string;
+	updated_at: string;
+}): PennySessionView {
 	return {
 		key: row.session_key,
 		title: row.title,
@@ -81,7 +95,7 @@ export function createSupabasePennySessionOwnershipStore(
 		async hasSession(sessionKey: string): Promise<boolean> {
 			const result = await client
 				.from('penny_sessions')
-				.select<OwnedSessionRow>('session_key')
+				.select('session_key')
 				.eq('session_key', sessionKey)
 				.maybeSingle();
 			throwOnQueryError(result.error);
@@ -91,10 +105,10 @@ export function createSupabasePennySessionOwnershipStore(
 		async listSessions(): Promise<PennySessionView[]> {
 			const result = await client
 				.from('penny_sessions')
-				.select<OwnedSessionRow>('session_key,title,updated_at')
+				.select('session_key,title,updated_at')
 				.order('updated_at', { ascending: false });
 			throwOnQueryError(result.error);
-			return (result.data ?? []).map(toView);
+			return Array.isArray(result.data) ? result.data.filter(isOwnedSessionRow).map(toView) : [];
 		},
 
 		async createSession(session: PennySessionView): Promise<void> {

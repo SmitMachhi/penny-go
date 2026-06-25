@@ -33,6 +33,8 @@
 		"@fontsource-variable/sora": "^5.2.8",
 		"@lucide/svelte": "^1.16.0",
 		"@penny/shared": "file:../shared",
+		"@supabase/ssr": "^0.12.0",
+		"@supabase/supabase-js": "^2.108.2",
 		"bits-ui": "^2.18.1",
 		"clsx": "^2.1.1",
 		"isomorphic-dompurify": "^3.14.0",

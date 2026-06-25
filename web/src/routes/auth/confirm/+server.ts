@@ -2,6 +2,8 @@ import type { EmailOtpType } from '@supabase/supabase-js';
 import { redirect } from '@sveltejs/kit';
 
 const DEFAULT_NEXT_PATH = '/';
+const REDIRECT_STATUS = 303;
+
 function isEmailOtpType(value: string | null): value is EmailOtpType {
 	return (
 		value === 'email' ||
@@ -24,9 +26,17 @@ function safeNextPath(candidate: string | null): string {
 }
 
 export async function GET(event) {
+	const code = event.url.searchParams.get('code');
 	const tokenHash = event.url.searchParams.get('token_hash');
 	const type = event.url.searchParams.get('type');
 	const next = safeNextPath(event.url.searchParams.get('next'));
+
+	if (code) {
+		const { error } = await event.locals.supabase.auth.exchangeCodeForSession(code);
+		if (!error) {
+			redirect(REDIRECT_STATUS, next);
+		}
+	}
 
 	if (tokenHash && isEmailOtpType(type)) {
 		const { error } = await event.locals.supabase.auth.verifyOtp({
@@ -34,9 +44,9 @@ export async function GET(event) {
 			type
 		});
 		if (!error) {
-			redirect(303, next);
+			redirect(REDIRECT_STATUS, next);
 		}
 	}
 
-	redirect(303, `/auth/sign-in?next=${encodeURIComponent(next)}`);
+	redirect(REDIRECT_STATUS, `/auth/sign-in?next=${encodeURIComponent(next)}`);
 }

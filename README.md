@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://penny-go.fly.dev/">Live app</a>
+  <a href="https://penny.tanex.co/">Live app</a>
   |
   <a href="docs/penny-local-setup.md">Local setup</a>
   |
@@ -20,7 +20,7 @@
 
 <p align="center">
   <img alt="OpenClaw" src="https://img.shields.io/badge/powered%20by-OpenClaw-111827?style=for-the-badge">
-  <img alt="DeepSeek" src="https://img.shields.io/badge/DeepSeek-5786FE?style=for-the-badge&logo=deepseek&logoColor=white">
+  <img alt="Fireworks AI" src="https://img.shields.io/badge/Fireworks%20AI-111827?style=for-the-badge">
   <img alt="SvelteKit" src="https://img.shields.io/badge/sveltekit-%23ff3e00.svg?style=for-the-badge&logo=svelte&logoColor=white">
   <img alt="TypeScript" src="https://img.shields.io/badge/typescript-%23007ACC.svg?style=for-the-badge&logo=typescript&logoColor=white">
   <img alt="Vite" src="https://img.shields.io/badge/vite-%23646CFF.svg?style=for-the-badge&logo=vite&logoColor=white">
@@ -135,7 +135,7 @@ Search results alone are not recommendations.
 - npm
 - Python 3.11 or newer
 - OpenClaw CLI
-- DeepSeek API key for the default model
+- Fireworks AI API key for the default model
 - Exa API key for web search
 - Firecrawl API key for official-source fallback
 
@@ -171,7 +171,7 @@ checklists.
 Minimum OpenClaw environment:
 
 ```bash
-DEEPSEEK_API_KEY=<your-deepseek-key>
+FIREWORKS_API_KEY=<your-fireworks-key>
 EXA_API_KEY=<your-exa-key>
 FIRECRAWL_API_KEY=<your-firecrawl-key>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
@@ -188,9 +188,18 @@ PENNY_REPO_ROOT=/absolute/path/to/penny-go
 ```
 
 Merge `config/openclaw.penny.example.json5` into your OpenClaw config and
-replace the absolute paths. The default model is `deepseek/deepseek-v4-flash`.
-The example config pins provider routing to DeepSeek, disables fallbacks,
-enables high reasoning, and caps `params.max_tokens` at `16384`.
+replace the absolute paths. The default model is
+`fireworks/accounts/fireworks/models/deepseek-v4-flash` with
+`fireworks/accounts/fireworks/models/kimi-k2p7-code` as the fallback. The
+example config enables high reasoning for the primary model and caps
+`params.max_tokens` at `16384`.
+
+Compliance posture: Penny uses the OpenClaw Fireworks Chat Completions path,
+not the Fireworks Responses API storage path. Fireworks documents open-model
+serving as Zero Data Retention by default and says its platform is SOC 2 Type II
+certified. GDPR readiness still depends on the deployment controls around Penny:
+the Fireworks DPA/SCCs, privacy/subprocessor notices, deletion/export handling,
+and keeping prompts out of application logs.
 
 ## Run Locally
 
@@ -265,7 +274,7 @@ Set production secrets:
 fly secrets set \
   OPENCLAW_GATEWAY_TOKEN=<gateway-token> \
   PENNY_REPO_ROOT=/app \
-  DEEPSEEK_API_KEY=<your-deepseek-key> \
+  FIREWORKS_API_KEY=<your-fireworks-key> \
   EXA_API_KEY=<your-exa-key>
 ```
 

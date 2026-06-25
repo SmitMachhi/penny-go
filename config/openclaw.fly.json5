@@ -11,16 +11,24 @@
   "agents": {
     "defaults": {
       "models": {
-        "deepseek/deepseek-v4-flash": {
-          "alias": "DeepSeek V4 Flash",
+        "fireworks/accounts/fireworks/models/deepseek-v4-flash": {
+          "alias": "DeepSeek V4 Flash (Fireworks)",
           "params": {
-            "provider": { "order": ["deepseek"], "allow_fallbacks": false },
             "reasoning": { "effort": "high" },
+            "max_tokens": 16384
+          }
+        },
+        "fireworks/accounts/fireworks/models/kimi-k2p7-code": {
+          "alias": "Kimi K2.7 Code (Fireworks)",
+          "params": {
             "max_tokens": 16384
           }
         }
       },
-      "model": { "primary": "deepseek/deepseek-v4-flash" },
+      "model": {
+        "primary": "fireworks/accounts/fireworks/models/deepseek-v4-flash",
+        "fallbacks": ["fireworks/accounts/fireworks/models/kimi-k2p7-code"]
+      },
       "workspace": "/app/workspace",
       "memorySearch": {
         "sources": ["memory"]
@@ -44,12 +52,12 @@
   },
   "plugins": {
     "enabled": true,
-    "allow": ["deepseek", "exa", "penny-tools"],
+    "allow": ["fireworks", "exa", "penny-tools"],
     "load": {
       "paths": ["/app/plugin"]
     },
     "entries": {
-      "deepseek": { "enabled": true },
+      "fireworks": { "enabled": true },
       "exa": { "enabled": true },
       "penny-tools": {
         "enabled": true,

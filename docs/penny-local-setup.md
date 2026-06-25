@@ -11,7 +11,7 @@ Use this document for local OpenClaw and gateway setup. For Fly.io deployment, u
 | Node.js | 22.x or newer (`node -v`) |
 | OpenClaw CLI | `npm install -g openclaw@latest` |
 | Python | 3.11+ for Crawl4AI |
-| API keys | `DEEPSEEK_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
+| API keys | `FIREWORKS_API_KEY`, `EXA_API_KEY`, `FIRECRAWL_API_KEY` (usually in `~/.openclaw/.env`; see §5 Model provider) |
 
 ## Repo layout involved
 
@@ -37,7 +37,7 @@ That creates `~/.openclaw/openclaw.json`.
 Use the repo root `.env.example` as a checklist. Minimum:
 
 ```
-DEEPSEEK_API_KEY=...
+FIREWORKS_API_KEY=...
 EXA_API_KEY=...
 FIRECRAWL_API_KEY=...
 
@@ -105,14 +105,15 @@ Rebuild after edits: `npm run build && npm run plugin:build`.
 Open `config/openclaw.penny.example.json5` and manually merge keys into `~/.openclaw/openclaw.json`:
 
 - Restrict tools to database search + verifier + web search via explicit **`tools.allow`** only (do **not** combine `tools.profile: minimal` with `tools.allow` — OpenClaw intersects those policies and you end up with zero tools)
-- Set **`plugins.enabled: true`** and **`plugins.allow: ["penny-tools", "exa"]`**
+- Set **`plugins.enabled: true`** and **`plugins.allow: ["fireworks", "penny-tools", "exa"]`**
 - Disable `web.fetch` so the model cannot replace `read_official_source`
+- Enable `plugins.entries.fireworks`
 - Enable `plugins.entries.exa`
 - Enable `plugins.entries["penny-tools"]` with your absolute paths
-- Use `agents.defaults.model.primary: "deepseek/deepseek-v4-flash"` for the default DeepSeek setup
-- Keep the `deepseek/deepseek-v4-flash` model entry pinned to `params.provider.order: ["deepseek"]` with `allow_fallbacks: false`
-- Keep `params.reasoning.effort: "high"` on that model entry
-- Keep `params.max_tokens: 16384` on that model entry so Penny's output budget stays bounded
+- Use `agents.defaults.model.primary: "fireworks/accounts/fireworks/models/deepseek-v4-flash"` for the Fireworks DeepSeek V4 Flash setup
+- Keep `agents.defaults.model.fallbacks: ["fireworks/accounts/fireworks/models/kimi-k2p7-code"]` so Kimi K2.7 Code catches primary model failures
+- Keep `params.reasoning.effort: "high"` on the primary model entry
+- Keep `params.max_tokens: 16384` on both model entries so Penny's output budget stays bounded
 - Do not configure runtime skills unless generic `read` is also allowed. Penny's
   locked setup keeps behavior in always-loaded workspace files and tool
   descriptions so the model never tries to read skill files at runtime.
@@ -126,29 +127,38 @@ openclaw plugins inspect penny-tools --runtime
 
 ### Model provider key (where it actually lives)
 
-Penny defaults to DeepSeek with **`deepseek/deepseek-v4-flash`**, pinned to the first-party **`deepseek`** provider endpoint. OpenClaw resolves DeepSeek auth from **`DEEPSEEK_API_KEY`**.
+Penny defaults to Fireworks-hosted DeepSeek V4 Flash with **`fireworks/accounts/fireworks/models/deepseek-v4-flash`** and falls back to Kimi K2.7 Code with **`fireworks/accounts/fireworks/models/kimi-k2p7-code`**. OpenClaw resolves Fireworks auth from **`FIREWORKS_API_KEY`**.
 
 **Recommended (interactive):**
 
 ```bash
-openclaw models auth login --provider deepseek
+openclaw models auth login --provider fireworks
 ```
 
-That stores DeepSeek auth in your OpenClaw profile.
+That stores Fireworks auth in your OpenClaw profile.
 
 **Recommended (file the gateway can read):** add the same variable to **`~/.openclaw/.env`**:
 
 ```
-DEEPSEEK_API_KEY=...
+FIREWORKS_API_KEY=...
 ```
 
-If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `DEEPSEEK_API_KEY`, or the daemon will not see shell-only exports.
+If the gateway runs as a launchd/systemd service, that file (or your process manager’s env) must provide `FIREWORKS_API_KEY`, or the daemon will not see shell-only exports.
 
-Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `deepseek/deepseek-v4-flash` and the model entry has `params.provider.order: ["deepseek"]`. Then confirm the catalog:
+Merge `config/openclaw.penny.example.json5` so `agents.defaults.model.primary` is `fireworks/accounts/fireworks/models/deepseek-v4-flash` and `agents.defaults.model.fallbacks` includes `fireworks/accounts/fireworks/models/kimi-k2p7-code`. Then confirm the catalog:
 
 ```bash
-openclaw models list --provider deepseek
+openclaw models list --provider fireworks
 ```
+
+### Compliance posture
+
+Penny uses the OpenClaw Fireworks Chat Completions path and should not use the
+Fireworks Responses API unless `store=false` is set. Fireworks documents
+open-model serving as Zero Data Retention by default and says its platform is
+SOC 2 Type II certified. GDPR readiness still needs Penny-side controls:
+Fireworks DPA/SCCs, privacy/subprocessor notices, deletion/export handling, and
+logs that do not retain prompts or generated answers.
 
 ### Exa and Firecrawl
 

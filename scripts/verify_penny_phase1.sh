@@ -12,7 +12,7 @@ usage() {
 Usage: scripts/verify_penny_phase1.sh [options]
 
 Options:
-  --live           Run live agent smoke prompts (uses DeepSeek + Exa; costs API credits)
+  --live           Run live agent smoke prompts (uses Fireworks + Exa; costs API credits)
   --skip-reader    Skip Crawl4AI HTML/PDF smoke tests
   --keep-artifacts Leave /tmp penny-verify-* JSON outputs (default: delete on success)
   -h, --help       Show this help

@@ -7,18 +7,24 @@
   "agents": {
     "defaults": {
       "models": {
-        "deepseek/deepseek-v4-flash": {
-          "alias": "DeepSeek V4 Flash",
+        "fireworks/accounts/fireworks/models/deepseek-v4-flash": {
+          "alias": "DeepSeek V4 Flash (Fireworks)",
           "params": {
-            // Keep Penny on the first-party DeepSeek endpoint; do not silently
-            // fall back to another OpenRouter-hosted provider.
-            "provider": { "order": ["deepseek"], "allow_fallbacks": false },
             "reasoning": { "effort": "high" },
+            "max_tokens": 16384
+          }
+        },
+        "fireworks/accounts/fireworks/models/kimi-k2p7-code": {
+          "alias": "Kimi K2.7 Code (Fireworks)",
+          "params": {
             "max_tokens": 16384
           }
         }
       },
-      "model": { "primary": "deepseek/deepseek-v4-flash" },
+      "model": {
+        "primary": "fireworks/accounts/fireworks/models/deepseek-v4-flash",
+        "fallbacks": ["fireworks/accounts/fireworks/models/kimi-k2p7-code"]
+      },
       "workspace": "/ABSOLUTE_PATH_TO_REPO/workspace",
       // Keep memory search scoped to workspace Markdown only — do NOT add "sessions"
       // and do NOT enable experimental.sessionMemory (cross-session transcript indexing).
@@ -43,7 +49,10 @@
     }
   },
   "plugins": {
+    "enabled": true,
+    "allow": ["fireworks", "exa", "penny-tools"],
     "entries": {
+      "fireworks": { "enabled": true },
       "exa": { "enabled": true },
       "penny-tools": {
         "enabled": true,

@@ -10,12 +10,29 @@ import {
 	fetchChatHistory
 } from '$lib/server/gateway-chat-service.js';
 import { listSessionArtifactSummaries } from '$lib/server/artifact-storage.js';
+import {
+	assertOwnedPennySession,
+	type PennySessionOwnershipStore
+} from '$lib/server/penny-session-ownership.js';
 import { bumpPennySessionIndex } from '$lib/server/penny-session-index.js';
 import { submitPennyTurn } from '$lib/server/penny-turn-service.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
 
-export async function getChatHistory(sessionKeyRaw: string | null | undefined) {
-	const sessionKey = resolveSessionKey(sessionKeyRaw);
+type OwnedSessionInput = {
+	ownershipStore?: PennySessionOwnershipStore;
+	sessionKey?: string | null;
+};
+
+async function resolveOwnedSessionKey(input: OwnedSessionInput): Promise<string> {
+	return input.ownershipStore
+		? assertOwnedPennySession(input.ownershipStore, input.sessionKey)
+		: resolveSessionKey(input.sessionKey);
+}
+
+export async function getChatHistory(input: OwnedSessionInput | string | null | undefined) {
+	const sessionKey = await resolveOwnedSessionKey(
+		typeof input === 'object' && input !== null ? input : { sessionKey: input }
+	);
 	const history = await fetchChatHistory({
 		sessionKey,
 		limit: CHAT_HISTORY_LIMIT,
@@ -31,10 +48,11 @@ export async function getChatHistory(sessionKeyRaw: string | null | undefined) {
 export async function sendChat(input: {
 	sessionKey?: string;
 	message?: string;
+	ownershipStore?: PennySessionOwnershipStore;
 	sessionId?: string;
 	turnId?: string;
 }) {
-	const sessionKey = resolveSessionKey(input.sessionKey);
+	const sessionKey = await resolveOwnedSessionKey(input);
 	const response = await submitPennyTurn({
 		message: input.message,
 		sessionKey,

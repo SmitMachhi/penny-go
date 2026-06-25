@@ -15,6 +15,7 @@ vi.mock('$lib/server/gateway-chat-service.js', () => ({
 }));
 
 import { sendChat } from './chat-orchestration.js';
+import type { PennySessionOwnershipStore } from './penny-session-ownership.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const SESSION_ID = 'session-1';
@@ -63,5 +64,23 @@ describe('chat orchestration', () => {
 			sessionKey: SESSION_KEY,
 			turn: { runId: RUN_ID, turnId: TURN_ID }
 		});
+	});
+
+	it('rejects chat submission before OpenClaw when the session is not owned', async () => {
+		const ownershipStore: PennySessionOwnershipStore = {
+			hasSession: vi.fn().mockResolvedValue(false)
+		};
+
+		await expect(
+			sendChat({
+				message: MESSAGE,
+				ownershipStore,
+				sessionId: SESSION_ID,
+				sessionKey: SESSION_KEY,
+				turnId: TURN_ID
+			})
+		).rejects.toThrow('session does not belong to the current user');
+
+		expect(sendChatMessage).not.toHaveBeenCalled();
 	});
 });

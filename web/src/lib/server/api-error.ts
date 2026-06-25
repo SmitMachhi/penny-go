@@ -33,6 +33,20 @@ export function toApiErrorResponse(
 	error: unknown,
 	fallback: string
 ): { body: { error: string }; status: number } {
-	const message = error instanceof Error ? error.message : fallback;
+	const message = publicApiErrorMessage(error, fallback);
 	return { body: { error: message }, status: classifyApiErrorStatus(error) };
+}
+
+function publicApiErrorMessage(error: unknown, fallback: string): string {
+	if (
+		error instanceof AuthRequiredError ||
+		error instanceof SessionKeyError ||
+		error instanceof ValidationError
+	) {
+		return error.message;
+	}
+	if (isHttpError(error)) {
+		return typeof error.body.message === 'string' ? error.body.message : fallback;
+	}
+	return fallback;
 }

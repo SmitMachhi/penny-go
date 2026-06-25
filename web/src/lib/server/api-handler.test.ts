@@ -27,6 +27,16 @@ describe('withApiJson', () => {
 		expect(response.headers.get('Server-Timing')).toMatch(/^history;dur=\d+(\.\d+)?$/);
 	});
 
+	it('does not expose unexpected exception messages', async () => {
+		const response = await withApiJson(async () => {
+			throw new Error('database path /app/workspace/private failed');
+		}, 'failed safely');
+		const body = (await response.json()) as { error: string };
+
+		expect(response.status).toBe(503);
+		expect(body.error).toBe('failed safely');
+	});
+
 	it('maps missing auth to 401', async () => {
 		const response = await withApiJson(async () => {
 			throw new AuthRequiredError();

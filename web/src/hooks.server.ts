@@ -1,6 +1,7 @@
 import type { Handle } from '@sveltejs/kit';
 
 import { isBlockedHost } from '$lib/server/host-gate.js';
+import { applySecurityHeaders } from '$lib/server/security-headers.js';
 import { createRequestSupabaseClient } from '$lib/server/supabase-server.js';
 
 export const handle: Handle = async ({ event, resolve }) => {
@@ -12,5 +13,5 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const { data } = await event.locals.supabase.auth.getUser();
 	event.locals.user = data.user;
 
-	return resolve(event);
+	return applySecurityHeaders(await resolve(event));
 };

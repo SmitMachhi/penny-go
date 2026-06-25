@@ -57,8 +57,8 @@
 						<span class="block whitespace-nowrap">not weeks.</span>
 					</h2>
 					<p class="mt-5 max-w-[34rem] text-base leading-7 text-[oklch(0.43_0.035_255)]">
-						<span class="block">Penny looks for grants and programs,</span>
-						<span class="block">checks the source, and helps make a plan.</span>
+						<span class="block">Penny looks for grants and programs, checks the source,</span>
+						<span class="block">and helps make a plan.</span>
 					</p>
 				</div>
 

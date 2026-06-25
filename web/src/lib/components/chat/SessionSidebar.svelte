@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { PanelLeftClose, SquarePen } from '@lucide/svelte';
+	import { LogOut, PanelLeftClose, SquarePen } from '@lucide/svelte';
 
 	import { getPennyContext } from '$lib/chat/penny-context.js';
 	import { chatPathFromSessionKey, routeIdFromSessionKey } from '$lib/chat/session-routes.js';
@@ -130,6 +130,16 @@
 		{/if}
 	</div>
 
+	<form method="POST" action="/logout" class="border-t border-border p-2">
+		<Button
+			type="submit"
+			variant="ghost"
+			class="h-9 w-full justify-start gap-2 px-2 text-sm font-normal"
+		>
+			<LogOut class="h-4 w-4" />
+			Sign out
+		</Button>
+	</form>
 </aside>
 
 <DeleteSessionDialog

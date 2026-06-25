@@ -9,6 +9,8 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	event.locals.supabase = createRequestSupabaseClient(event);
+	const { data } = await event.locals.supabase.auth.getUser();
+	event.locals.user = data.user;
 
 	return resolve(event);
 };

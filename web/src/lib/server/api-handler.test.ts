@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { AuthRequiredError } from './api-error.js';
 import { withApiJson } from './api-handler.js';
 
 describe('withApiJson', () => {
@@ -24,5 +25,13 @@ describe('withApiJson', () => {
 
 		expect(response.status).toBe(503);
 		expect(response.headers.get('Server-Timing')).toMatch(/^history;dur=\d+(\.\d+)?$/);
+	});
+
+	it('maps missing auth to 401', async () => {
+		const response = await withApiJson(async () => {
+			throw new AuthRequiredError();
+		}, 'failed');
+
+		expect(response.status).toBe(401);
 	});
 });

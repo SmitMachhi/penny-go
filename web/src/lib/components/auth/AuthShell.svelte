@@ -50,7 +50,7 @@
 				<div class="max-w-xl">
 					<p class="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-muted-foreground">
 						<span>Built for Canadian businesses</span>
-						<span aria-hidden="true">🇨🇦</span>
+						<span class="text-5xl leading-none" aria-hidden="true">🇨🇦</span>
 					</p>
 					<h2 class="mt-4 max-w-[15ch] font-display text-5xl font-semibold leading-tight tracking-normal text-[oklch(0.26_0.035_255)]">
 						<span class="block whitespace-nowrap">Find funding in minutes,</span>

@@ -41,6 +41,7 @@ import {
 import { readPennyTurn, upsertPennyTurn } from './penny-turn-store.js';
 import { replacePennySessionIndex } from './penny-session-index.js';
 import { LEGACY_SESSION_KEY } from './session-key.js';
+import type { PennySessionOwnershipRegistry } from './penny-session-ownership.js';
 
 describe('session orchestration', () => {
 	let repoRoot = '';
@@ -199,6 +200,45 @@ describe('session orchestration', () => {
 		);
 	});
 
+	it('lists owned sessions from the ownership registry', async () => {
+		const registry: PennySessionOwnershipRegistry = {
+			createSession: vi.fn(),
+			deleteSession: vi.fn(),
+			hasSession: vi.fn(),
+			listSessions: vi.fn().mockResolvedValue([
+				{
+					key: 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001',
+					title: 'Owned chat',
+					titleStatus: 'ready',
+					updatedAt: 100,
+					isLegacy: false
+				}
+			]),
+			updateSession: vi.fn()
+		};
+
+		const sessions = await listPennySessions(registry);
+
+		expect(sessions.map((session) => session.title)).toEqual(['Owned chat']);
+		expect(listGatewaySessions).not.toHaveBeenCalled();
+	});
+
+	it('records ownership after creating an OpenClaw session', async () => {
+		const registry: PennySessionOwnershipRegistry = {
+			createSession: vi.fn().mockResolvedValue(undefined),
+			deleteSession: vi.fn(),
+			hasSession: vi.fn(),
+			listSessions: vi.fn(),
+			updateSession: vi.fn()
+		};
+		createGatewaySession.mockResolvedValueOnce(undefined);
+
+		const session = await createPennySession('Ontario SaaS', registry);
+
+		expect(createGatewaySession).toHaveBeenCalled();
+		expect(registry.createSession).toHaveBeenCalledWith(session);
+	});
+
 	it('deletes the session turn ledger', async () => {
 		const sessionKey = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 		await upsertPennyTurn({
@@ -218,5 +258,24 @@ describe('session orchestration', () => {
 			key: sessionKey,
 			deleteTranscript: true
 		});
+	});
+
+	it('deletes owned session metadata with the runtime session', async () => {
+		const registry: PennySessionOwnershipRegistry = {
+			createSession: vi.fn(),
+			deleteSession: vi.fn().mockResolvedValue(undefined),
+			hasSession: vi.fn(),
+			listSessions: vi.fn(),
+			updateSession: vi.fn()
+		};
+		const sessionKey = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
+
+		await deletePennySession(sessionKey, registry);
+
+		expect(deleteGatewaySession).toHaveBeenCalledWith({
+			key: sessionKey,
+			deleteTranscript: true
+		});
+		expect(registry.deleteSession).toHaveBeenCalledWith(sessionKey);
 	});
 });

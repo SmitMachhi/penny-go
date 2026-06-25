@@ -24,6 +24,7 @@ import {
 	upsertPennySessionIndex
 } from '$lib/server/penny-session-index.js';
 import { deletePennyTurnsForSession } from '$lib/server/penny-turn-store.js';
+import type { PennySessionOwnershipRegistry } from '$lib/server/penny-session-ownership.js';
 import { sanitizeSessionDisplayText } from '$lib/server/session-display-sanitize.js';
 import { parseOptionalSessionLabel, parseSessionLabel } from '$lib/server/session-label.js';
 import {
@@ -41,7 +42,16 @@ export type { PennySessionView };
 const PENNY_MAIN_AGENT_ID = 'main';
 const SESSION_LIST_LIMIT = 50;
 
-async function listTakenSessionLabels(excludeKey: string): Promise<string[]> {
+async function listTakenSessionLabels(
+	excludeKey: string,
+	registry?: PennySessionOwnershipRegistry
+): Promise<string[]> {
+	if (registry) {
+		return (await registry.listSessions())
+			.filter((row) => row.key !== excludeKey)
+			.map((row) => row.title.trim())
+			.filter((label) => Boolean(label));
+	}
 	const rows = await listGatewaySessions({
 		agentId: PENNY_MAIN_AGENT_ID,
 		includeDerivedTitles: false,
@@ -69,7 +79,12 @@ async function legacySessionHasHistory(): Promise<boolean> {
 	}
 }
 
-export async function listPennySessions(): Promise<PennySessionView[]> {
+export async function listPennySessions(
+	registry?: PennySessionOwnershipRegistry
+): Promise<PennySessionView[]> {
+	if (registry) {
+		return registry.listSessions();
+	}
 	const rows = await listGatewaySessions({
 		agentId: PENNY_MAIN_AGENT_ID,
 		includeDerivedTitles: false,
@@ -102,7 +117,12 @@ export async function listPennySessions(): Promise<PennySessionView[]> {
 	return [];
 }
 
-export async function getPennySessionIndex(): Promise<PennySessionView[]> {
+export async function getPennySessionIndex(
+	registry?: PennySessionOwnershipRegistry
+): Promise<PennySessionView[]> {
+	if (registry) {
+		return registry.listSessions();
+	}
 	const snapshot = await readPennySessionIndexSnapshot();
 	if (snapshot.exists) {
 		return snapshot.sessions;
@@ -110,7 +130,10 @@ export async function getPennySessionIndex(): Promise<PennySessionView[]> {
 	return listPennySessions();
 }
 
-export async function createPennySession(label?: string): Promise<PennySessionView> {
+export async function createPennySession(
+	label?: string,
+	registry?: PennySessionOwnershipRegistry
+): Promise<PennySessionView> {
 	const uuid = randomUUID();
 	const key = buildPennySessionKey(uuid);
 	const trimmedLabel = parseOptionalSessionLabel(label);
@@ -122,14 +145,27 @@ export async function createPennySession(label?: string): Promise<PennySessionVi
 	});
 
 	const session = buildCreatedSessionView({ key, label: trimmedLabel });
+	if (registry) {
+		try {
+			await registry.createSession(session);
+		} catch (error) {
+			await deleteGatewaySession({ key, deleteTranscript: true }).catch(() => undefined);
+			throw error;
+		}
+		return session;
+	}
 	await upsertPennySessionIndex(session);
 	return session;
 }
 
-export async function renamePennySession(key: string, label: string): Promise<PennySessionView> {
+export async function renamePennySession(
+	key: string,
+	label: string,
+	registry?: PennySessionOwnershipRegistry
+): Promise<PennySessionView> {
 	const sessionKey = resolveSessionKey(key);
 	const trimmedLabel = parseSessionLabel(label);
-	const takenLabels = await listTakenSessionLabels(sessionKey);
+	const takenLabels = await listTakenSessionLabels(sessionKey, registry);
 	const uniqueLabel = uniqueSessionLabel(trimmedLabel, takenLabels);
 
 	await patchGatewaySession({ key: sessionKey, label: uniqueLabel });
@@ -139,6 +175,10 @@ export async function renamePennySession(key: string, label: string): Promise<Pe
 		label: uniqueLabel,
 		isLegacy: sessionKey === LEGACY_SESSION_KEY
 	});
+	if (registry) {
+		await registry.updateSession(session);
+		return session;
+	}
 	await upsertPennySessionIndex(session);
 	return session;
 }
@@ -215,12 +255,19 @@ export async function generatePennySessionTitle(
 	return renamePennySession(sessionKey, title);
 }
 
-export async function deletePennySession(key: string): Promise<void> {
+export async function deletePennySession(
+	key: string,
+	registry?: PennySessionOwnershipRegistry
+): Promise<void> {
 	const sessionKey = resolveSessionKey(key);
 
 	await deleteGatewaySession({ key: sessionKey, deleteTranscript: true });
 	await deleteEngagementMemory(sessionKey);
 	await deleteSessionArtifacts(sessionKey);
 	await deletePennyTurnsForSession(sessionKey);
+	if (registry) {
+		await registry.deleteSession(sessionKey);
+		return;
+	}
 	await deletePennySessionIndex(sessionKey);
 }

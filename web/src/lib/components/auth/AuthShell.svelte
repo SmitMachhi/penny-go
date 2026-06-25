@@ -53,7 +53,8 @@
 						<span aria-hidden="true">🇨🇦</span>
 					</p>
 					<h2 class="mt-4 max-w-[13ch] font-display text-5xl font-semibold leading-tight tracking-normal text-[oklch(0.26_0.035_255)]">
-						Find funding in minutes, not weeks.
+						<span class="block">Find funding in minutes,</span>
+						<span class="block">not weeks.</span>
 					</h2>
 					<p class="mt-5 max-w-[34rem] text-base leading-7 text-[oklch(0.43_0.035_255)]">
 						Tell Penny about your business. Penny looks for grants and programs, checks the source, and helps make a plan.

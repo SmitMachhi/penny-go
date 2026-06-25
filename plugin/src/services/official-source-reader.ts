@@ -1,12 +1,14 @@
 import {
 	FIRECRAWL_SCRAPE_RETRY_ATTEMPTS,
 	FIRECRAWL_SCRAPE_RETRY_DELAY_MS,
+	OFFICIAL_SOURCE_SUBSTANTIVE_PAGE_MIN_CHARS,
 	OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS
 } from '../constants.js';
 import {
 	officialBenefitScopeFromMarkdown,
 	type OfficialBenefitScope
 } from '../domain/official-benefit-scope.js';
+import { recoveryHintForBlockedUrl } from './official-source-recovery-hints.js';
 import type { PennyToolsConfigShape } from './penny-config.js';
 
 const WWW_PREFIX_PATTERN = /^www\./i;
@@ -52,6 +54,7 @@ export type OfficialSourceModelResult = {
 	markdown?: string | undefined;
 	fetched_at?: string | undefined;
 	benefit_scope?: OfficialBenefitScope | undefined;
+	recovery_hint?: string | undefined;
 };
 
 export type OfficialSourceReadDiagnostics = {
@@ -96,9 +99,23 @@ export function detectBlockedSourceContent(text: string): boolean {
 		RADWARE_PATTERN.test(text) ||
 		VERIFY_BROWSER_PATTERN.test(text) ||
 		INCIDENT_ID_PATTERN.test(text) ||
-		CAPTCHA_PATTERN.test(text) ||
+		captchaIndicatesBlock(text) ||
 		ACCESS_DENIED_PATTERN.test(text) ||
 		STRUCTURAL_BODY_ERROR_PATTERN.test(text)
+	);
+}
+
+function captchaIndicatesBlock(text: string): boolean {
+	if (!CAPTCHA_PATTERN.test(text)) {
+		return false;
+	}
+	if (text.length >= OFFICIAL_SOURCE_SUBSTANTIVE_PAGE_MIN_CHARS) {
+		return false;
+	}
+	return (
+		VERIFY_BROWSER_PATTERN.test(text) ||
+		RADWARE_PATTERN.test(text) ||
+		INCIDENT_ID_PATTERN.test(text)
 	);
 }
 
@@ -110,13 +127,15 @@ export function redactOfficialSourceResultForModel(
 	result: OfficialSourceReadResult
 ): OfficialSourceModelResult {
 	if (!result.success || result.reader === 'blocked' || !result.markdown) {
+		const blocked = result.reader === 'blocked';
 		return {
 			success: false,
 			url: result.url,
 			reader: result.reader,
 			verification_source: result.verification_source,
 			summary: 'Could not verify this page.',
-			fetched_at: result.fetched_at
+			fetched_at: result.fetched_at,
+			recovery_hint: blocked ? recoveryHintForBlockedUrl(result.url) : undefined
 		};
 	}
 

@@ -65,7 +65,7 @@ Funding brief artifact rules:
   the web UI opens the memo in the artifact panel.
 - After publishing, keep chat short and point to the funding plan in the panel.
 
-Do **not** recommend a program from database text, Exa search snippets, third-party grant pages, or memory alone. A successful `read_official_source` result from the same official URL is proof. If `read_official_source` returns `reader: "blocked"` or `error: "blocked_by_anti_bot"`, the page is not verified.
+Do **not** recommend a program from database text, Exa search snippets, third-party grant pages, or memory alone. A successful `read_official_source` result from the same official URL is proof. If `read_official_source` returns `reader: "blocked"` or `error: "blocked_by_anti_bot"`, the page is not verified — use `recovery_hint` and the Plan B workflow in `penny-funding` (targeted official-domain PDF search, then `read_official_source` on candidates) before ruling out.
 
 Fit is adjudicated after verification: **strong**, **conditional**, **stretch**, or **ruled out**. Strong fits need live-source support plus user-specific anchors.
 

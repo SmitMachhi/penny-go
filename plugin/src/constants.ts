@@ -19,6 +19,9 @@ export const FIRECRAWL_SCRAPE_RETRY_DELAY_MS = 500;
 /** Milliseconds to cache successful official source reads in-process. */
 export const OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS = 10 * 60 * 1000;
 
+/** Below this length, a lone CAPTCHA mention may still indicate a challenge page. */
+export const OFFICIAL_SOURCE_SUBSTANTIVE_PAGE_MIN_CHARS = 2_000;
+
 /** Milliseconds allowed for slide PDF subprocess. */
 export const RENDER_SLIDES_PDF_TIMEOUT_MS = 60_000;
 

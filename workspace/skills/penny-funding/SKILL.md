@@ -150,6 +150,30 @@ Never use Radware, browser-verification, CAPTCHA, access-denied, or incident-ID
 text as evidence. If the tool returns that status after fallback, rule the
 candidate out as **Could not verify** unless another official URL verifies it.
 
+## 4b. Blocked page recovery (Plan B)
+
+When `read_official_source` returns `reader: "blocked"`, read `recovery_hint` if
+present and follow it before ruling out. Plan B is always: **targeted
+`web_search` on official domains → `read_official_source` on PDF or mirror
+candidates**. Never use Exa snippets, blogs, or accounting-firm pages as proof.
+
+Domain recipes:
+
+| Blocked host | Plan B `web_search` shape |
+|--------------|---------------------------|
+| `investquebec.com` | `site:cdn-contenu.quebec.ca "<program name>" cadre normatif ESSOR` |
+| `revenuquebec.ca` | `site:quebec.ca "<program name>" crédit d'impôt` |
+| Other official `.gc.ca` / provincial | `site:<official-domain> "<program>" filetype:pdf` |
+
+Rules:
+
+- Each new candidate URL gets one `read_official_source` call; duplicate URLs are
+  still forbidden.
+- One official policy PDF can verify multiple related schedules when the content
+  covers them.
+- If Plan B also fails, rule out honestly. Do not invent amounts, deadlines, or
+  application steps.
+
 If `read_official_source` returns `benefit_scope.scope_verdict: ruled_out`, that
 candidate is outside Penny's non-loan scope. This is a binding veto, not a
 caveat. Do not recommend it, do not call it closest, conditional, stretch,

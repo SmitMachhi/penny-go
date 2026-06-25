@@ -9,9 +9,12 @@ import {
 	readOfficialSourceWithFallback,
 	redactOfficialSourceResultForModel
 } from './services/official-source-reader.js';
+import { recoveryHintForBlockedUrl } from './services/official-source-recovery-hints.js';
 import { resolveFirecrawlApiKey } from './services/penny-config.js';
 
 const OFFICIAL_URL = 'https://www.princeedwardisland.ca/en/service/employ-pei';
+const INVESTISSEMENT_QUEBEC_ESSOR_URL =
+	'https://www.investquebec.com/fr/financement/programmes-gouvernementaux/essor/appui-la-concretisation-de-projets-dinvestissement';
 const FIRECRAWL_KEY = 'firecrawl-test-key';
 const TEST_FIRECRAWL_ENV_VAR = 'PENNY_TEST_FIRECRAWL_KEY';
 
@@ -20,6 +23,68 @@ test('detectBlockedSourceContent catches Radware challenge text', () => {
 		detectBlockedSourceContent('Radware Page\nVerifying your browser before proceeding...\nIncident ID: abc'),
 		true
 	);
+});
+
+test('detectBlockedSourceContent ignores footer reCAPTCHA widget on long program pages', () => {
+	const body =
+		'# ESSOR\n\nAccélérez la concrétisation d’un projet d’investissement.\n\n'.repeat(120) +
+		'\n\nCAPTCHA\n\nCharger le contenu externe fourni par Google reCAPTCHA';
+	assert.equal(detectBlockedSourceContent(body), false);
+});
+
+test('detectBlockedSourceContent still blocks short captcha challenge pages', () => {
+	assert.equal(
+		detectBlockedSourceContent('Please complete the CAPTCHA\nVerifying your browser before proceeding'),
+		true
+	);
+});
+
+test('recoveryHintForBlockedUrl suggests Quebec cadre normatif for investquebec.com', () => {
+	const hint = recoveryHintForBlockedUrl(INVESTISSEMENT_QUEBEC_ESSOR_URL);
+	assert.match(hint ?? '', /cdn-contenu\.quebec\.ca|cadre normatif/i);
+});
+
+test('redactOfficialSourceResultForModel includes recovery_hint when blocked', () => {
+	const publicResult = redactOfficialSourceResultForModel({
+		success: false,
+		url: INVESTISSEMENT_QUEBEC_ESSOR_URL,
+		reader: 'blocked',
+		verification_source: 'unverified_blocked',
+		error: 'blocked_by_anti_bot',
+		fetched_at: '2026-06-25T00:00:00.000Z'
+	});
+
+	assert.equal(publicResult.success, false);
+	assert.match(publicResult.recovery_hint ?? '', /cadre normatif|cdn-contenu\.quebec\.ca/i);
+	assert.doesNotMatch(JSON.stringify(publicResult), /blocked_by_anti_bot|EPIPE/i);
+});
+
+test('readOfficialSourceWithFallback accepts Investissement Quebec page with footer captcha chrome', async () => {
+	clearOfficialSourceReadCacheForTests();
+	const programBody =
+		'# ESSOR\n\nAccélérez la concrétisation d’un projet d’investissement pour votre entreprise.\n\n'.repeat(
+			120
+		) + '\n\nCAPTCHA\n\nCharger le contenu externe fourni par Google reCAPTCHA';
+
+	const { result } = await readOfficialSourceWithFallback({
+		url: INVESTISSEMENT_QUEBEC_ESSOR_URL,
+		firecrawlApiKey: FIRECRAWL_KEY,
+		readWithCrawl4Ai: async () => ({
+			success: false,
+			url: INVESTISSEMENT_QUEBEC_ESSOR_URL,
+			error: 'Blocked by anti-bot protection: HTTP 403',
+			fetched_at: '2026-06-06T20:44:25.270528+00:00'
+		}),
+		readWithFirecrawlScrape: async () => ({
+			success: true,
+			url: INVESTISSEMENT_QUEBEC_ESSOR_URL,
+			markdown: programBody,
+			fetched_at: '2026-06-06T20:44:26.000Z'
+		})
+	});
+
+	assert.equal(result.success, true);
+	assert.equal(result.reader, 'firecrawl_scrape');
 });
 
 test('resolveFirecrawlApiKey reads env-backed config markers', () => {

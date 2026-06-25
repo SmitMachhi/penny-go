@@ -5610,7 +5610,8 @@
     "eligible_projects": "feasibility studies, digital diagnostics, digital plans, implementation plans, system selection, and investment-project preparation",
     "evidence": [
       "Official Investissement Québec source states this ESSOR stream accelerates investment projects through feasibility studies and digital diagnostics.",
-      "Official source states non-repayable contributions can cover up to 50% of eligible expenses with maximums including $20,000 or $50,000 depending on substream."
+      "Official source states non-repayable contributions can cover up to 50% of eligible expenses with maximums including $20,000 or $50,000 depending on substream.",
+      "Authoritative rules: MEIE cadre normatif PDF (Gazette officielle); Investissement Québec site is the application layer."
     ],
     "funding_amount": "up to 50% of eligible expenses; maximum $20,000 for selected digital diagnostics/plans and $50,000 for selected studies or implementation-plan substreams",
     "jurisdiction": "quebec",
@@ -5618,7 +5619,8 @@
     "program_type": "grant_or_contribution",
     "provider": "Investissement Quebec",
     "source_urls": [
-      "https://www.investquebec.com/fr/financement/programmes-gouvernementaux/essor/appui-la-concretisation-de-projets-dinvestissement"
+      "https://www.investquebec.com/fr/financement/programmes-gouvernementaux/essor/appui-la-concretisation-de-projets-dinvestissement",
+      "https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/economie/publications-adm/cadres-normatifs-programmes/CN_ESSOR_2025-2027_MAJ-0725_MEIE.pdf"
     ],
     "status": "active"
   },

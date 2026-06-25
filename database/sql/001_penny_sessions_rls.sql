@@ -8,6 +8,11 @@ create table if not exists public.penny_sessions (
 );
 
 alter table public.penny_sessions enable row level security;
+alter table public.penny_sessions force row level security;
+
+revoke all on table public.penny_sessions from anon;
+revoke all on table public.penny_sessions from authenticated;
+grant select, insert, update, delete on table public.penny_sessions to authenticated;
 
 drop policy if exists "penny_sessions_select_own" on public.penny_sessions;
 create policy "penny_sessions_select_own"

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { AuthRequiredError } from './api-error.js';
 import { withApiJson } from './api-handler.js';
-import { SessionOwnershipError } from './penny-session-ownership.js';
 
 describe('withApiJson', () => {
 	it('adds a server timing header when a metric name is provided', async () => {
@@ -26,21 +24,5 @@ describe('withApiJson', () => {
 
 		expect(response.status).toBe(503);
 		expect(response.headers.get('Server-Timing')).toMatch(/^history;dur=\d+(\.\d+)?$/);
-	});
-
-	it('maps missing auth to 401', async () => {
-		const response = await withApiJson(async () => {
-			throw new AuthRequiredError();
-		}, 'failed');
-
-		expect(response.status).toBe(401);
-	});
-
-	it('maps session ownership errors to 403', async () => {
-		const response = await withApiJson(async () => {
-			throw new SessionOwnershipError();
-		}, 'failed');
-
-		expect(response.status).toBe(403);
 	});
 });

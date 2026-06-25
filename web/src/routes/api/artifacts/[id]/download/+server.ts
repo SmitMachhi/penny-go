@@ -2,21 +2,17 @@ import { buildArtifactDownloadFilename } from '@penny/shared/artifact-download-f
 import { error } from '@sveltejs/kit';
 
 import { withApiCatch } from '$lib/server/api-handler.js';
-import { ownershipRegistryForEvent } from '$lib/server/auth-context.js';
 import {
 	artifactPdfExists,
 	getArtifactMeta,
 	readArtifactPdfBytes
 } from '$lib/server/artifact-storage.js';
 import { parseArtifactVersionParam } from '$lib/server/artifact-route.js';
-import { assertOwnedPennySession } from '$lib/server/penny-session-ownership.js';
+import { resolveSessionKey } from '$lib/server/session-key.js';
 
 export async function GET(event) {
 	return withApiCatch(async () => {
-		const sessionKey = await assertOwnedPennySession(
-			ownershipRegistryForEvent(event),
-			event.url.searchParams.get('sessionKey')
-		);
+		const sessionKey = resolveSessionKey(event.url.searchParams.get('sessionKey'));
 		const artifactId = event.params.id?.trim();
 		if (!artifactId) {
 			throw error(400, 'artifact id required');

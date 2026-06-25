@@ -66,7 +66,7 @@ describe('chat orchestration', () => {
 		});
 	});
 
-	it('rejects chat submission before OpenClaw when the session is not owned', async () => {
+	it('rejects chat submission before OpenClaw when the session is unavailable', async () => {
 		const ownershipStore: PennySessionOwnershipStore = {
 			hasSession: vi.fn().mockResolvedValue(false)
 		};
@@ -79,7 +79,7 @@ describe('chat orchestration', () => {
 				sessionKey: SESSION_KEY,
 				turnId: TURN_ID
 			})
-		).rejects.toThrow('session does not belong to the current user');
+		).rejects.toThrow('session is not available');
 
 		expect(sendChatMessage).not.toHaveBeenCalled();
 	});

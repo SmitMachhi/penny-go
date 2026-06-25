@@ -1,14 +1,6 @@
 import { isHttpError } from '@sveltejs/kit';
 
-import { SessionOwnershipError } from '$lib/server/penny-session-ownership.js';
 import { SessionKeyError } from '$lib/server/session-key.js';
-
-export class AuthRequiredError extends Error {
-	constructor(message = 'authentication required') {
-		super(message);
-		this.name = 'AuthRequiredError';
-	}
-}
 
 export class ValidationError extends Error {
 	constructor(message: string) {
@@ -20,12 +12,6 @@ export class ValidationError extends Error {
 export function classifyApiErrorStatus(error: unknown): number {
 	if (isHttpError(error)) {
 		return error.status;
-	}
-	if (error instanceof AuthRequiredError) {
-		return 401;
-	}
-	if (error instanceof SessionOwnershipError) {
-		return 403;
 	}
 	if (error instanceof SessionKeyError || error instanceof ValidationError) {
 		return error instanceof ValidationError ? 400 : 403;

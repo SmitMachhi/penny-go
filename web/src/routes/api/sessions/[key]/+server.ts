@@ -1,6 +1,4 @@
 import { withApiJsonEvent } from '$lib/server/api-handler.js';
-import { ownershipRegistryForEvent } from '$lib/server/auth-context.js';
-import { assertOwnedPennySession } from '$lib/server/penny-session-ownership.js';
 import {
 	deletePennySession,
 	renamePennySession
@@ -14,10 +12,8 @@ export async function PATCH(event) {
 			if (!key) {
 				throw new Error('session key is required');
 			}
-			const registry = ownershipRegistryForEvent(event);
-			await assertOwnedPennySession(registry, key);
 			const body = (await request.json()) as { label?: string };
-			const session = await renamePennySession(key, body.label ?? '', registry);
+			const session = await renamePennySession(key, body.label ?? '');
 			return { session };
 		},
 		'failed to rename session'
@@ -32,9 +28,7 @@ export async function DELETE(event) {
 			if (!key) {
 				throw new Error('session key is required');
 			}
-			const registry = ownershipRegistryForEvent(event);
-			await assertOwnedPennySession(registry, key);
-			await deletePennySession(key, registry);
+			await deletePennySession(key);
 			return { ok: true, key };
 		},
 		'failed to delete session'

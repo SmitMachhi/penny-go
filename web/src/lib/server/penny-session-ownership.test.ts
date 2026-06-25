@@ -10,7 +10,7 @@ import { LEGACY_SESSION_KEY } from './session-key.js';
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 
 describe('penny session ownership', () => {
-	it('rejects legacy sessions because they have no user owner', async () => {
+	it('rejects legacy sessions because they are not registry sessions', async () => {
 		const store: PennySessionOwnershipStore = {
 			hasSession: vi.fn()
 		};
@@ -21,7 +21,7 @@ describe('penny session ownership', () => {
 		expect(store.hasSession).not.toHaveBeenCalled();
 	});
 
-	it('returns a valid penny session key when the user owns it', async () => {
+	it('returns a valid penny session key when the registry has it', async () => {
 		const store: PennySessionOwnershipStore = {
 			hasSession: vi.fn().mockResolvedValue(true)
 		};
@@ -30,7 +30,7 @@ describe('penny session ownership', () => {
 		expect(store.hasSession).toHaveBeenCalledWith(SESSION_KEY);
 	});
 
-	it('rejects a valid penny session key when the user does not own it', async () => {
+	it('rejects a valid penny session key when the registry is missing it', async () => {
 		const store: PennySessionOwnershipStore = {
 			hasSession: vi.fn().mockResolvedValue(false)
 		};

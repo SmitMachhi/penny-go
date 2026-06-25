@@ -15,7 +15,7 @@ export type PennySessionOwnershipRegistry = PennySessionOwnershipStore & {
 };
 
 export class SessionOwnershipError extends Error {
-	constructor(message = 'session does not belong to the current user') {
+	constructor(message = 'session is not available') {
 		super(message);
 		this.name = 'SessionOwnershipError';
 	}

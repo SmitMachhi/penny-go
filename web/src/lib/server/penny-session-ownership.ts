@@ -1,9 +1,17 @@
 import { isPennySessionKey } from '@penny/shared/session-key';
 
+import type { PennySessionView } from '$lib/types/penny-session.js';
 import { SessionKeyError, resolveSessionKey } from '$lib/server/session-key.js';
 
 export type PennySessionOwnershipStore = {
 	hasSession(sessionKey: string): Promise<boolean>;
+};
+
+export type PennySessionOwnershipRegistry = PennySessionOwnershipStore & {
+	createSession(session: PennySessionView): Promise<void>;
+	deleteSession(sessionKey: string): Promise<void>;
+	listSessions(): Promise<PennySessionView[]>;
+	updateSession(session: PennySessionView): Promise<void>;
 };
 
 export class SessionOwnershipError extends Error {

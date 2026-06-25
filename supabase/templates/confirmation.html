@@ -5,33 +5,48 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<title>Verify your Penny account</title>
 	</head>
-	<body style="margin:0;background:#f6f2ea;color:#211b14;font-family:Arial,Helvetica,sans-serif;">
-		<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f2ea;padding:32px 16px;">
+	<body style="margin:0;background:#f4f7fb;color:#252525;font-family:'Plus Jakarta Sans','Segoe UI',Arial,sans-serif;">
+		<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f7fb;padding:40px 16px;">
 			<tr>
 				<td align="center">
-					<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffaf0;border:1px solid #e3d5bf;border-radius:8px;padding:32px;">
-						<tr>
-							<td style="font-size:14px;line-height:20px;color:#6f604e;">A small wave from Penny</td>
-						</tr>
+					<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#ffffff;border:1px solid #d7dfec;border-radius:16px;padding:32px;">
 						<tr>
 							<td>
-								<h1 style="margin:12px 0 12px;font-size:28px;line-height:34px;color:#211b14;">You are one click from making cents of funding.</h1>
+								<table role="presentation" cellspacing="0" cellpadding="0">
+									<tr>
+										<td style="width:44px;height:44px;border-radius:12px;background:#3a6cf5;color:#ffffff;text-align:center;font-family:'Sora','Segoe UI',Arial,sans-serif;font-size:17px;font-weight:700;line-height:44px;">P</td>
+										<td style="padding-left:12px;">
+											<p style="margin:0;font-size:14px;font-weight:700;line-height:18px;color:#252525;">Penny</p>
+											<p style="margin:3px 0 0;font-size:12px;line-height:16px;color:#68748a;">AI Grant Consultant</p>
+										</td>
+									</tr>
+								</table>
 							</td>
 						</tr>
 						<tr>
 							<td>
-								<p style="margin:0 0 18px;font-size:16px;line-height:24px;color:#3d3328;">Thanks for signing up. Confirm your email so Penny knows this is really you and can keep your funding work tied to the right inbox.</p>
+								<p style="margin:32px 0 10px;font-size:12px;font-weight:700;letter-spacing:0.12em;line-height:16px;text-transform:uppercase;color:#68748a;">Small wave from Penny</p>
 							</td>
 						</tr>
 						<tr>
 							<td>
-								<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#211b14;color:#fffaf0;text-decoration:none;border-radius:6px;padding:12px 18px;font-size:15px;font-weight:700;">Verify my email</a>
+								<h1 style="margin:0 0 14px;font-family:'Sora','Segoe UI',Arial,sans-serif;font-size:30px;font-weight:650;line-height:36px;color:#232f45;">Ready to make cents of funding?</h1>
 							</td>
 						</tr>
 						<tr>
 							<td>
-								<p style="margin:22px 0 0;font-size:13px;line-height:20px;color:#6f604e;">If the button does not work, paste this link into your browser:</p>
-								<p style="margin:6px 0 0;font-size:12px;line-height:18px;color:#6f604e;word-break:break-all;">{{ .ConfirmationURL }}</p>
+								<p style="margin:0 0 24px;font-size:15px;line-height:24px;color:#536079;">Thanks for signing up. Confirm your email so Penny can keep your grant search, source checks, and funding plan tied to the right inbox.</p>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#3a6cf5;color:#ffffff;text-decoration:none;border-radius:12px;padding:13px 18px;font-size:14px;font-weight:800;line-height:18px;">Verify my email</a>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<p style="margin:24px 0 0;font-size:12px;line-height:19px;color:#68748a;">If the button does not work, paste this link into your browser:</p>
+								<p style="margin:7px 0 0;font-size:12px;line-height:18px;color:#536079;word-break:break-all;">{{ .ConfirmationURL }}</p>
 							</td>
 						</tr>
 					</table>

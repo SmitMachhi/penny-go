@@ -7,13 +7,17 @@ const REDIRECT_STATUS = 303;
 
 type LoginActionEvent = Parameters<NonNullable<typeof actions.google>>[0];
 
-function actionEvent(auth: Record<string, unknown>, next = NEXT_PATH): LoginActionEvent {
+function actionEvent(
+	auth: Record<string, unknown>,
+	values: Record<string, string> = {}
+): LoginActionEvent {
 	const event = {
 		locals: { supabase: { auth }, user: null },
 		request: {
 			formData: async () => {
 				const form = new FormData();
-				form.set('next', next);
+				form.set('next', NEXT_PATH);
+				Object.entries(values).forEach(([key, value]) => form.set(key, value));
 				return form;
 			}
 		},
@@ -23,6 +27,24 @@ function actionEvent(auth: Record<string, unknown>, next = NEXT_PATH): LoginActi
 }
 
 describe('login actions', () => {
+	it('signs in with email and password without sending email', async () => {
+		const signInWithPassword = vi.fn().mockResolvedValue({ error: null });
+
+		await expect(
+			actions.email(
+				actionEvent({ signInWithPassword }, {
+					email: 'USER@Example.com',
+					password: 'password123'
+				})
+			)
+		).rejects.toMatchObject({ location: NEXT_PATH, status: REDIRECT_STATUS });
+
+		expect(signInWithPassword).toHaveBeenCalledWith({
+			email: 'user@example.com',
+			password: 'password123'
+		});
+	});
+
 	it('redirects to Google OAuth', async () => {
 		const signInWithOAuth = vi.fn().mockResolvedValue({
 			data: { url: 'https://accounts.google.com/oauth' },

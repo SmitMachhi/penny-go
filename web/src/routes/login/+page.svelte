@@ -1,6 +1,7 @@
 <script lang="ts">
 	let { data, form } = $props();
 	let nextPath = $derived(form?.next ?? data.next);
+	let emailValue = $derived(form?.email ?? '');
 </script>
 
 <svelte:head>
@@ -12,6 +13,52 @@
 		<div class="mb-8">
 			<p class="text-sm font-semibold text-muted-foreground">Penny</p>
 			<h1 class="mt-2 text-3xl font-semibold tracking-normal">Log in</h1>
+		</div>
+
+		<form method="POST" action="?/email" class="space-y-4">
+			<input type="hidden" name="next" value={nextPath} />
+			<label class="block space-y-2">
+				<span class="text-sm font-medium">Email</span>
+				<input
+					class="h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-ring"
+					name="email"
+					type="email"
+					autocomplete="email"
+					value={emailValue}
+					required
+				/>
+			</label>
+			<label class="block space-y-2">
+				<span class="text-sm font-medium">Password</span>
+				<input
+					class="h-11 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus:border-ring"
+					name="password"
+					type="password"
+					autocomplete="current-password"
+					required
+				/>
+			</label>
+
+			{#if form?.error}
+				<p class="text-sm text-destructive">{form.error}</p>
+			{/if}
+
+			<button
+				type="submit"
+				class="h-11 w-full rounded-md bg-primary px-4 text-sm font-semibold text-primary-foreground"
+			>
+				Log in
+			</button>
+		</form>
+
+		<a class="mt-3 block text-sm font-medium text-muted-foreground" href={`/register?next=${encodeURIComponent(nextPath)}`}>
+			Create account
+		</a>
+
+		<div class="my-5 flex items-center gap-3 text-xs font-semibold uppercase text-muted-foreground">
+			<div class="h-px flex-1 bg-border"></div>
+			<span>SSO</span>
+			<div class="h-px flex-1 bg-border"></div>
 		</div>
 
 		<div class="space-y-3">
@@ -36,8 +83,5 @@
 			</form>
 		</div>
 
-		{#if form?.error}
-			<p class="mt-4 text-sm text-destructive">{form.error}</p>
-		{/if}
 	</section>
 </main>

@@ -6,7 +6,6 @@
 	type Props = {
 		children: Snippet;
 		description: string;
-		eyebrow: string;
 		switchCta: string;
 		switchHref: string;
 		switchLabel: string;
@@ -16,7 +15,6 @@
 	let {
 		children,
 		description,
-		eyebrow,
 		switchCta,
 		switchHref,
 		switchLabel,
@@ -89,8 +87,7 @@
 				</div>
 
 				<div class="mb-8">
-					<p class="text-sm font-semibold text-primary">{eyebrow}</p>
-					<h1 class="mt-3 font-display text-4xl font-semibold leading-tight tracking-normal text-[oklch(0.25_0.025_255)]">
+					<h1 class="font-display text-4xl font-semibold leading-tight tracking-normal text-[oklch(0.25_0.025_255)]">
 						{title}
 					</h1>
 					<p class="mt-3 max-w-[32rem] text-sm leading-6 text-muted-foreground">

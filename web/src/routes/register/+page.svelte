@@ -14,7 +14,6 @@
 </svelte:head>
 
 <AuthShell
-	eyebrow={form?.sent ? 'Check your email' : 'New account'}
 	title={form?.sent ? 'Confirm your email' : 'Create account'}
 	description={form?.sent
 		? 'We sent you a link. Open it to finish.'

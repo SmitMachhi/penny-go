@@ -14,7 +14,6 @@
 </svelte:head>
 
 <AuthShell
-	eyebrow="Welcome back"
 	title="Log in"
 	description="Enter your email and password."
 	switchLabel="Need an account? "

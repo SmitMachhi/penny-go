@@ -248,6 +248,10 @@ admin_email = "auth@penny.tanex.co"
 sender_name = "Penny"
 
 # Uncomment to customize email template
+[auth.email.template.confirmation]
+subject = "Here is your Penny Verification"
+content_path = "./supabase/templates/confirmation.html"
+
 # [auth.email.template.invite]
 # subject = "You have been invited"
 # content_path = "./supabase/templates/invite.html"

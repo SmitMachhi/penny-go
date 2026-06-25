@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<title>Verify your Penny account</title>
+	</head>
+	<body style="margin:0;background:#f6f2ea;color:#211b14;font-family:Arial,Helvetica,sans-serif;">
+		<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f6f2ea;padding:32px 16px;">
+			<tr>
+				<td align="center">
+					<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:560px;background:#fffaf0;border:1px solid #e3d5bf;border-radius:8px;padding:32px;">
+						<tr>
+							<td style="font-size:14px;line-height:20px;color:#6f604e;">A small wave from Penny</td>
+						</tr>
+						<tr>
+							<td>
+								<h1 style="margin:12px 0 12px;font-size:28px;line-height:34px;color:#211b14;">You are one click from making cents of funding.</h1>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<p style="margin:0 0 18px;font-size:16px;line-height:24px;color:#3d3328;">Thanks for signing up. Confirm your email so Penny knows this is really you and can keep your funding work tied to the right inbox.</p>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<a href="{{ .ConfirmationURL }}" style="display:inline-block;background:#211b14;color:#fffaf0;text-decoration:none;border-radius:6px;padding:12px 18px;font-size:15px;font-weight:700;">Verify my email</a>
+							</td>
+						</tr>
+						<tr>
+							<td>
+								<p style="margin:22px 0 0;font-size:13px;line-height:20px;color:#6f604e;">If the button does not work, paste this link into your browser:</p>
+								<p style="margin:6px 0 0;font-size:12px;line-height:18px;color:#6f604e;word-break:break-all;">{{ .ConfirmationURL }}</p>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+	</body>
+</html>

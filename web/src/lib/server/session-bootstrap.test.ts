@@ -26,7 +26,6 @@ const ARTIFACT_ID = '00000000-0000-4000-8000-000000000001';
 const ARTIFACT_VERSION = 3;
 const TURN_ID = 'turn-1';
 const RUN_ID = 'run-1';
-const CREATED_AT = 1_000;
 
 describe('session bootstrap', () => {
 	let repoRoot = '';
@@ -105,15 +104,73 @@ describe('session bootstrap', () => {
 		]);
 	});
 
-	it('returns the backend active turn for an unfinished reply', async () => {
+	it('returns active run progress for an unfinished reply', async () => {
+		const now = Date.now();
 		await upsertPennyTurn({
 			turnId: TURN_ID,
 			sessionKey: SESSION_KEY,
 			message: 'still running',
 			status: 'submitted',
 			runId: RUN_ID,
-			createdAt: CREATED_AT,
-			updatedAt: CREATED_AT
+			createdAt: now,
+			updatedAt: now
+		});
+		fetchChatHistory.mockResolvedValueOnce({
+			sessionKey: SESSION_KEY,
+			sessionId: 'session-1',
+			messages: [
+				{
+					type: 'message',
+					message: {
+						role: 'user',
+						content: [{ type: 'text', text: 'still running' }]
+					}
+				},
+				{
+					type: 'message',
+					message: {
+						role: 'assistant',
+						content: [
+							{ type: 'text', text: 'Searching the corpus.' },
+							{
+								type: 'toolCall',
+								toolName: 'search_corpus',
+								toolCallId: 'call-1'
+							}
+						],
+						stopReason: 'toolUse'
+					}
+				}
+			]
+		});
+
+		const bootstrap = await getSessionBootstrap(SESSION_KEY);
+
+		expect(bootstrap.activeTurn).toMatchObject({
+			runId: RUN_ID,
+			status: 'running',
+			turnId: TURN_ID
+		});
+		expect(bootstrap.activeRunProgress).toMatchObject({
+			streamingAnswerText: 'Searching the corpus.',
+			tools: [expect.objectContaining({ name: 'search_corpus', phase: 'running' })]
+		});
+		expect(bootstrap.messages.at(-1)).toMatchObject({
+			role: 'assistant',
+			text: 'Searching the corpus.'
+		});
+	});
+
+	it('returns the backend active turn for an unfinished reply', async () => {
+		const now = Date.now();
+		await upsertPennyTurn({
+			turnId: TURN_ID,
+			sessionKey: SESSION_KEY,
+			message: 'still running',
+			status: 'submitted',
+			runId: RUN_ID,
+			createdAt: now,
+			updatedAt: now
 		});
 		fetchChatHistory.mockResolvedValueOnce({
 			sessionKey: SESSION_KEY,
@@ -131,14 +188,15 @@ describe('session bootstrap', () => {
 	});
 
 	it('adds a checkpoint recovery answer when verified evidence exists after an aborted run', async () => {
+		const now = Date.now();
 		await upsertPennyTurn({
 			turnId: TURN_ID,
 			sessionKey: SESSION_KEY,
 			message: 'We run a 42-person precision parts manufacturer near Laval, Quebec.',
 			status: 'aborted',
 			runId: RUN_ID,
-			createdAt: CREATED_AT,
-			updatedAt: CREATED_AT
+			createdAt: now,
+			updatedAt: now
 		});
 		fetchChatHistory.mockResolvedValueOnce({
 			sessionKey: SESSION_KEY,

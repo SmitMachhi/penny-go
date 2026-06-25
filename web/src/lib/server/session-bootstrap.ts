@@ -18,6 +18,11 @@ import {
 	extractVerifiedFundingEvidence,
 	hasCompletedAssistantAfterLastUser
 } from '$lib/server/funding-evidence-recovery.js';
+import {
+	extractActiveRunProgress,
+	mergeMessagesForActiveTurn,
+	type ActiveRunProgress
+} from '$lib/server/run-progress-from-history.js';
 
 function latestInterruptedTurn(turns: readonly PennyTurn[]): PennyTurn | null {
 	for (let index = turns.length - 1; index >= 0; index -= 1) {
@@ -55,6 +60,13 @@ function appendCheckpointIfNeeded(input: {
 	];
 }
 
+function resolveActiveRunProgress(
+	rawMessages: readonly unknown[],
+	activeTurn: PennyTurn
+): ActiveRunProgress | null {
+	return extractActiveRunProgress(rawMessages, activeTurn.message);
+}
+
 export async function getSessionBootstrap(sessionKeyRaw: string | null | undefined) {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
 	const [index, history, artifacts, turns] = await Promise.all([
@@ -69,8 +81,11 @@ export async function getSessionBootstrap(sessionKeyRaw: string | null | undefin
 	]);
 	const baseMessages = normalizeHistoryMessages(history.messages);
 	const activeTurn = await reconcileActivePennyTurn({ sessionKey, messages: baseMessages });
+	const activeRunProgress = activeTurn
+		? resolveActiveRunProgress(history.messages, activeTurn)
+		: null;
 	const messages = activeTurn
-		? baseMessages
+		? mergeMessagesForActiveTurn(baseMessages, activeTurn.message, activeRunProgress)
 		: appendCheckpointIfNeeded({
 				messages: baseMessages,
 				rawMessages: history.messages,
@@ -82,6 +97,9 @@ export async function getSessionBootstrap(sessionKeyRaw: string | null | undefin
 		sessionId: history.sessionId,
 		messages,
 		artifacts,
-		activeTurn
+		activeTurn,
+		activeRunProgress
 	};
 }
+
+export type { ActiveRunProgress };

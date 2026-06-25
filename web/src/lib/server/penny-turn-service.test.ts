@@ -12,12 +12,13 @@ vi.mock('$lib/server/gateway-chat-service.js', () => ({
 	sendChatMessage
 }));
 
-import { readPennyTurn } from './penny-turn-store.js';
+import { readPennyTurn, upsertPennyTurn } from './penny-turn-store.js';
 import {
 	reconcileActivePennyTurn,
 	recordPennyTurnRunEvent,
 	submitPennyTurn
 } from './penny-turn-service.js';
+import { ACTIVE_TURN_IN_FLIGHT_MESSAGE, ACTIVE_TURN_STALE_MS } from './penny-turn-lifecycle.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440001';
 const SESSION_ID = 'session-1';
@@ -157,5 +158,46 @@ describe('penny turn service', () => {
 
 		expect(activeAfterReply).toBeNull();
 		expect(await readPennyTurn(SESSION_KEY, TURN_ID)).toMatchObject({ status: 'completed' });
+	});
+
+	it('rejects a new turn while another turn is still active', async () => {
+		await submitPennyTurn({
+			message: MESSAGE,
+			now: CREATED_AT,
+			sessionKey: SESSION_KEY,
+			turnId: TURN_ID
+		});
+
+		await expect(
+			submitPennyTurn({
+				message: 'follow up',
+				now: CREATED_AT + 1,
+				sessionKey: SESSION_KEY,
+				turnId: 'turn-2'
+			})
+		).rejects.toThrow(ACTIVE_TURN_IN_FLIGHT_MESSAGE);
+	});
+
+	it('expires stale active turns during reconciliation', async () => {
+		const staleUpdatedAt = CREATED_AT - ACTIVE_TURN_STALE_MS - 1;
+		await upsertPennyTurn({
+			turnId: TURN_ID,
+			sessionKey: SESSION_KEY,
+			message: MESSAGE,
+			status: 'running',
+			runId: RUN_ID,
+			createdAt: staleUpdatedAt,
+			updatedAt: staleUpdatedAt
+		});
+
+		await expect(
+			reconcileActivePennyTurn({
+				messages: [{ id: 'history-0', role: 'user', text: MESSAGE }],
+				sessionKey: SESSION_KEY,
+				updatedAt: CREATED_AT
+			})
+		).resolves.toBeNull();
+
+		expect(await readPennyTurn(SESSION_KEY, TURN_ID)).toMatchObject({ status: 'failed' });
 	});
 });

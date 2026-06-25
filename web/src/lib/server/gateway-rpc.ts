@@ -1,4 +1,5 @@
 import type { ChatSendResult, GatewayEventListener, GatewaySessionRow, ListGatewaySessionsInput } from '$lib/gateway/types.js';
+import { CHAT_HISTORY_RPC_TIMEOUT_MS } from '$lib/server/penny-request-timeouts.js';
 import { getGatewayClient } from '$lib/server/gateway-client.js';
 
 type ChatHistoryPayload = {
@@ -12,7 +13,11 @@ type SessionsListResult = {
 
 export class GatewayRpc {
 	async chatHistory(input: { sessionKey: string; limit: number; maxChars: number }) {
-		const payload = (await getGatewayClient().request('chat.history', input)) as ChatHistoryPayload;
+		const payload = (await getGatewayClient().request(
+			'chat.history',
+			input,
+			{ timeoutMs: CHAT_HISTORY_RPC_TIMEOUT_MS }
+		)) as ChatHistoryPayload;
 		return {
 			sessionKey: input.sessionKey,
 			sessionId: payload.sessionId,

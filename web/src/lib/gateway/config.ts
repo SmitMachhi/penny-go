@@ -1,5 +1,7 @@
+import { GATEWAY_DEFAULT_RPC_TIMEOUT_MS } from '$lib/server/penny-request-timeouts.js';
+
 const DEFAULT_GATEWAY_URL = 'ws://127.0.0.1:18789';
-const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = GATEWAY_DEFAULT_RPC_TIMEOUT_MS;
 
 export type GatewayConfig = {
 	url: string;

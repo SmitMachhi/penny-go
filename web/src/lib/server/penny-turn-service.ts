@@ -1,11 +1,16 @@
 import { randomUUID } from 'node:crypto';
 
-import { ValidationError } from '$lib/server/api-error.js';
+import { ConflictError, ValidationError } from '$lib/server/api-error.js';
 import { sendChatMessage } from '$lib/server/gateway-chat-service.js';
 import {
+	ACTIVE_TURN_IN_FLIGHT_MESSAGE,
+	expireStaleActiveTurnIfNeeded,
+	isActivePennyTurnStatus
+} from '$lib/server/penny-turn-lifecycle.js';
+import {
 	patchPennyTurn,
-	readPennyTurns,
 	readPennyTurn,
+	readPennyTurns,
 	upsertPennyTurn,
 	type PennyTurn
 } from '$lib/server/penny-turn-store.js';
@@ -43,7 +48,6 @@ type ReconcileActivePennyTurnInput = {
 const CHAT_DELIVER = false;
 const MAX_TURN_ID_LENGTH = 128;
 const TURN_ID_PATTERN = /^[A-Za-z0-9._:-]+$/;
-const ACTIVE_TURN_STATUSES = new Set<PennyTurn['status']>(['pending', 'submitted', 'running']);
 
 function normalizeTurnId(candidate: string | undefined): string {
 	const turnId = candidate?.trim() || randomUUID();
@@ -74,6 +78,7 @@ export async function submitPennyTurn(
 	const message = normalizeMessage(input.message);
 	const turnId = normalizeTurnId(input.turnId);
 	const now = input.now ?? Date.now();
+	await assertNoConflictingActiveTurn(sessionKey, turnId, now);
 	const existing = await readPennyTurn(sessionKey, turnId);
 
 	if (existing?.runId) {
@@ -121,10 +126,36 @@ export async function submitPennyTurn(
 	}
 }
 
+async function assertNoConflictingActiveTurn(
+	sessionKey: string,
+	turnId: string,
+	now: number
+): Promise<void> {
+	const activeTurn = await resolveLatestActiveTurn(sessionKey, now);
+	if (activeTurn && activeTurn.turnId !== turnId) {
+		throw new ConflictError(ACTIVE_TURN_IN_FLIGHT_MESSAGE);
+	}
+}
+
+async function resolveLatestActiveTurn(
+	sessionKey: string,
+	now: number
+): Promise<PennyTurn | null> {
+	let activeTurn = findLatestActiveTurn(await readPennyTurns(sessionKey));
+	if (!activeTurn) {
+		return null;
+	}
+	const reconciled = await expireStaleActiveTurnIfNeeded(activeTurn, now);
+	if (!reconciled || !isActivePennyTurnStatus(reconciled.status)) {
+		return findLatestActiveTurn(await readPennyTurns(sessionKey));
+	}
+	return reconciled;
+}
+
 function findLatestActiveTurn(turns: readonly PennyTurn[]): PennyTurn | null {
 	for (let index = turns.length - 1; index >= 0; index -= 1) {
 		const turn = turns[index];
-		if (turn && ACTIVE_TURN_STATUSES.has(turn.status)) {
+		if (turn && isActivePennyTurnStatus(turn.status)) {
 			return turn;
 		}
 	}
@@ -163,7 +194,8 @@ export async function reconcileActivePennyTurn(
 	input: ReconcileActivePennyTurnInput
 ): Promise<PennyTurn | null> {
 	const sessionKey = resolveSessionKey(input.sessionKey);
-	const activeTurn = findLatestActiveTurn(await readPennyTurns(sessionKey));
+	const now = input.updatedAt ?? Date.now();
+	const activeTurn = await resolveLatestActiveTurn(sessionKey, now);
 	if (!activeTurn) {
 		return null;
 	}

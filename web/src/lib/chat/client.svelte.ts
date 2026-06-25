@@ -1,12 +1,16 @@
 import { refreshArtifactsUntilReady } from '$lib/chat/client-artifact-refresh.js';
 import { applyLoadedArtifacts, snapshotArtifactVersions, syncChangedLatestArtifact, type ArtifactVersionSnapshot } from '$lib/chat/client-artifact-state.js';
 import { closeArtifactPanel, openArtifactPanel, toggleArtifactPanel } from '$lib/chat/client-artifact-panel.js';
-import { abortChatRun, fetchArtifacts, sendChatMessage, type ActiveTurn } from '$lib/chat/client-api.js';
+import { abortChatRun, fetchArtifacts, sendChatMessage } from '$lib/chat/client-api.js';
 import { isFundingBriefTool } from '$lib/chat/artifact-tools.js';
 import { refreshGatewayHealth } from '$lib/chat/client-health.js';
 import { markFirstMessagePaint, markSendStart, markSessionSwitchStart, measureSendToFirstToken, measureSessionSwitch } from '$lib/chat/client-performance-flow.js';
 import { persistSessionThreadCache } from '$lib/chat/client-session-cache.js';
-import { countUserMessages, hasPendingReply } from '$lib/chat/client-thread-reconcile.js';
+import { countUserMessages } from '$lib/chat/client-thread-reconcile.js';
+import {
+	reconcileActiveTurnFromHistory,
+	shouldApplyBootstrapMessages
+} from '$lib/chat/client-active-turn-resume.js';
 import { fetchHistoryWithRetry } from '$lib/chat/history-fetch-retry.js';
 import { appendAssistantMessage, appendUserMessage, applyCachedSessionThread, clearChatSessionState, createInitialChatState, prepareSessionSwitchState, resetRunState, startRunState, type ChatClientState } from '$lib/chat/client-state.js';
 import { stripTrailingAssistantMessages } from '$lib/chat/display-messages.js';
@@ -155,13 +159,27 @@ export class ChatClient {
 			}
 			const localUserCount = this.state.messages.filter((entry) => entry.role === 'user').length;
 			const remoteUserCount = countUserMessages(payload.messages);
-			if (localUserCount <= remoteUserCount) {
+			if (
+				shouldApplyBootstrapMessages({
+					localUserCount,
+					remoteUserCount,
+					hasActiveTurn: Boolean(payload.activeTurn)
+				})
+			) {
 				this.state.messages = payload.messages;
 			}
 			applyLoadedArtifacts(this.state, payload.artifacts ?? []);
 			this.state.sessionId = payload.sessionId ?? null;
 			this.state.operationError = null;
-			this.reconcileThreadAfterHistory(payload.messages, payload.activeTurn ?? null);
+			if (payload.activeTurn) {
+				this.expectedUserMessageCount = reconcileActiveTurnFromHistory(
+					this.state,
+					payload.activeTurn,
+					payload.activeRunProgress ?? null
+				);
+				this.activeRunId = payload.activeTurn.runId;
+				this.scheduleRunRecovery(this.expectedUserMessageCount);
+			}
 			if (this.state.messages.length > 0) {
 				markFirstMessagePaint();
 			}
@@ -400,35 +418,6 @@ export class ChatClient {
 		this.runRecoveryTimer = setTimeout(() => {
 			void this.tryRecoverRunFromHistory(expectedUserMessageCount);
 		}, RUN_RECOVERY_POLL_MS);
-	}
-
-	private reconcileThreadAfterHistory(
-		messages: ChatClientState['messages'],
-		activeTurn: ActiveTurn | null
-	): void {
-		const userCount = countUserMessages(messages);
-
-		if (activeTurn) {
-			const lastMessage = this.state.messages.at(-1);
-			if (lastMessage?.role !== 'user' || lastMessage.text !== activeTurn.message) {
-				appendUserMessage(this.state, activeTurn.message);
-			}
-			if (!this.state.sending) {
-				startRunState(this.state);
-			}
-			this.activeRunId = activeTurn.runId;
-			this.expectedUserMessageCount = countUserMessages(this.state.messages);
-			this.scheduleRunRecovery(this.expectedUserMessageCount);
-			return;
-		}
-
-		if (hasPendingReply(messages)) {
-			if (!this.state.sending) {
-				startRunState(this.state);
-			}
-			this.expectedUserMessageCount = userCount;
-			this.scheduleRunRecovery(userCount);
-		}
 	}
 
 	private clearRunRecovery(): void {

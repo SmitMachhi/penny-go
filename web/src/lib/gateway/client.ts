@@ -67,18 +67,19 @@ export class GatewayClient {
 		return this.connectPromise;
 	}
 
-	async request(method: string, params?: unknown): Promise<unknown> {
+	async request(method: string, params?: unknown, options?: { timeoutMs?: number }): Promise<unknown> {
 		await this.connect();
 		if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
 			throw new Error('gateway not connected');
 		}
 
 		const id = randomUUID();
+		const timeoutMs = options?.timeoutMs ?? this.config.requestTimeoutMs;
 		return new Promise((resolve, reject) => {
 			const timer = setTimeout(() => {
 				this.pending.delete(id);
 				reject(new Error(`gateway request timed out: ${method}`));
-			}, this.config.requestTimeoutMs);
+			}, timeoutMs);
 
 			this.pending.set(id, {
 				resolve,

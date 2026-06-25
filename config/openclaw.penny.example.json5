@@ -2,10 +2,18 @@
   "session": {
     // Use idle reset instead of daily 4 AM reset so active Penny transcripts survive across days.
     // OpenClaw requires a positive value here; 10080 minutes is one idle week.
-    "reset": { "mode": "idle", "idleMinutes": 10080 }
+    "reset": { "mode": "idle", "idleMinutes": 10080 },
+    // Long research runs may hold the transcript lock for up to an hour.
+    "writeLock": {
+      "acquireTimeoutMs": 120000,
+      "maxHoldMs": 3600000,
+      "staleMs": 3600000
+    }
   },
   "agents": {
     "defaults": {
+      // Allow up to 30-minute (and longer) tool-heavy research turns.
+      "timeoutSeconds": 3600,
       "models": {
         "fireworks/accounts/fireworks/models/deepseek-v4-flash": {
           "alias": "DeepSeek V4 Flash (Fireworks)",

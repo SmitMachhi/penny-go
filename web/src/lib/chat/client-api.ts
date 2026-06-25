@@ -1,6 +1,17 @@
 import type { ArtifactSummary, ArtifactsResponse } from '$lib/chat/artifacts.js';
-import type { ChatMessage } from '$lib/chat/messages.js';
+import type { RunTraceState } from '$lib/chat/client-run-trace.js';
+import type { ChatMessage, ToolActivity } from '$lib/chat/messages.js';
 import { apiJson } from '$lib/chat/api-client.js';
+
+const MINUTE_MS = 60_000;
+const BOOTSTRAP_FETCH_TIMEOUT_MS = 2 * MINUTE_MS;
+
+export type ActiveRunProgress = {
+	tools: ToolActivity[];
+	runTrace: RunTraceState;
+	streamingAnswerText: string;
+	inProgressMessages: ChatMessage[];
+};
 
 export type HistoryResponse = {
 	sessionKey: string;
@@ -8,6 +19,7 @@ export type HistoryResponse = {
 	messages: ChatMessage[];
 	artifacts?: ArtifactSummary[];
 	activeTurn?: ActiveTurn | null;
+	activeRunProgress?: ActiveRunProgress | null;
 };
 
 export type SendResponse = {
@@ -27,7 +39,9 @@ export function fetchHealth(): Promise<{ ok?: boolean; message?: string }> {
 }
 
 export function fetchHistory(sessionKey: string): Promise<HistoryResponse> {
-	return apiJson(`/api/sessions/${encodeURIComponent(sessionKey)}/bootstrap`);
+	return apiJson(`/api/sessions/${encodeURIComponent(sessionKey)}/bootstrap`, undefined, {
+		timeoutMs: BOOTSTRAP_FETCH_TIMEOUT_MS
+	});
 }
 
 export function fetchArtifacts(sessionKey: string): Promise<ArtifactsResponse> {

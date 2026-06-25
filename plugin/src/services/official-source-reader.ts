@@ -1,5 +1,6 @@
 import {
-	OFFICIAL_SOURCE_BLOCKED_CACHE_TTL_MS,
+	FIRECRAWL_SCRAPE_RETRY_ATTEMPTS,
+	FIRECRAWL_SCRAPE_RETRY_DELAY_MS,
 	OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS
 } from '../constants.js';
 import {
@@ -16,6 +17,7 @@ const CAPTCHA_PATTERN = /\bcaptcha\b/i;
 const ACCESS_DENIED_PATTERN = /\baccess denied\b/i;
 const STRUCTURAL_BODY_ERROR_PATTERN = /no <body> tag/i;
 const EMPTY_CONTENT_PATTERN = /^\s*$/;
+const FIRST_RETRY_ATTEMPT = 1;
 
 type RawSourceReadResult = Record<string, unknown> & {
 	success?: unknown;
@@ -50,6 +52,23 @@ export type OfficialSourceModelResult = {
 	markdown?: string | undefined;
 	fetched_at?: string | undefined;
 	benefit_scope?: OfficialBenefitScope | undefined;
+};
+
+export type OfficialSourceReadDiagnostics = {
+	url: string;
+	cacheHit: boolean;
+	crawlSuccess: boolean;
+	crawlClean: boolean;
+	crawlError?: string | undefined;
+	firecrawlSkipped: boolean;
+	firecrawlAttempts: number;
+	firecrawlErrors: string[];
+	outcome: OfficialSourceReader;
+};
+
+export type OfficialSourceReadOutcome = {
+	result: OfficialSourceReadResult;
+	diagnostics: OfficialSourceReadDiagnostics;
 };
 
 export type OfficialSourceReaderDeps = {
@@ -116,6 +135,14 @@ export function redactOfficialSourceResultForModel(
 	};
 }
 
+export function logOfficialSourceReadDiagnostics(diagnostics: OfficialSourceReadDiagnostics): void {
+	if (diagnostics.cacheHit || diagnostics.outcome === 'crawl4ai') {
+		return;
+	}
+
+	console.warn(`[penny-tools] read_official_source ${JSON.stringify(diagnostics)}`);
+}
+
 export async function readOfficialSourceWithFallback(input: {
 	url: string;
 	config?: PennyToolsConfigShape | undefined;
@@ -125,14 +152,26 @@ export async function readOfficialSourceWithFallback(input: {
 	signal?: AbortSignal | undefined;
 	readWithCrawl4Ai: OfficialSourceReaderDeps['readWithCrawl4Ai'];
 	readWithFirecrawlScrape: OfficialSourceReaderDeps['readWithFirecrawlScrape'];
-}): Promise<OfficialSourceReadResult> {
+}): Promise<OfficialSourceReadOutcome> {
 	const normalizedUrl = normalizeOfficialUrl(input.url);
 	const cached = readCachedResult(normalizedUrl);
 	if (cached) {
-		return cached;
+		return {
+			result: cached,
+			diagnostics: {
+				url: normalizedUrl,
+				cacheHit: true,
+				crawlSuccess: cached.reader === 'crawl4ai',
+				crawlClean: cached.reader === 'crawl4ai',
+				firecrawlSkipped: true,
+				firecrawlAttempts: 0,
+				firecrawlErrors: [],
+				outcome: cached.reader
+			}
+		};
 	}
 
-	const crawlPromise = readSafely(
+	const crawlResult = await readSafely(
 		input.readWithCrawl4Ai({
 			url: normalizedUrl,
 			timeoutMs: resolveTimeoutMs(normalizedUrl, input),
@@ -141,29 +180,61 @@ export async function readOfficialSourceWithFallback(input: {
 		normalizedUrl,
 		'crawl4ai'
 	);
-	const firecrawlPromise = readSafely(
-		input.readWithFirecrawlScrape({
-			url: normalizedUrl,
-			apiKey: input.firecrawlApiKey,
-			signal: input.signal
-		}),
-		normalizedUrl,
-		'firecrawl_scrape'
-	);
-	const cleanResult = await firstCleanSuccessfulRead(
-		[crawlPromise, firecrawlPromise],
-		normalizedUrl
-	);
-	if (cleanResult) {
-		return cacheAndReturn(normalizedUrl, cleanResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS);
+	const crawlClean = isCleanSuccessfulRead(crawlResult, normalizedUrl);
+
+	if (crawlClean) {
+		return {
+			result: cacheAndReturn(normalizedUrl, crawlResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS),
+			diagnostics: buildDiagnostics({
+				url: normalizedUrl,
+				crawlResult,
+				crawlClean: true,
+				firecrawlSkipped: true,
+				firecrawlAttempts: 0,
+				firecrawlErrors: [],
+				outcome: 'crawl4ai'
+			})
+		};
 	}
 
-	const [crawlResult, firecrawlResult] = await Promise.all([crawlPromise, firecrawlPromise]);
-	return cacheAndReturn(
-		normalizedUrl,
-		blockedResult(normalizedUrl, firecrawlResult.fetched_at ?? crawlResult.fetched_at),
-		OFFICIAL_SOURCE_BLOCKED_CACHE_TTL_MS
-	);
+	const firecrawlSkipped = !input.firecrawlApiKey?.trim();
+	const firecrawlAttempt = firecrawlSkipped
+		? { result: null, attempts: 0, errors: [] as string[] }
+		: await readFirecrawlWithRetries(input, normalizedUrl);
+	const firecrawlResult = firecrawlAttempt.result;
+	const firecrawlClean =
+		firecrawlResult !== null && isCleanSuccessfulRead(firecrawlResult, normalizedUrl);
+
+	if (firecrawlClean && firecrawlResult) {
+		return {
+			result: cacheAndReturn(normalizedUrl, firecrawlResult, OFFICIAL_SOURCE_SUCCESS_CACHE_TTL_MS),
+			diagnostics: buildDiagnostics({
+				url: normalizedUrl,
+				crawlResult,
+				crawlClean: false,
+				firecrawlSkipped,
+				firecrawlAttempts: firecrawlAttempt.attempts,
+				firecrawlErrors: firecrawlAttempt.errors,
+				outcome: 'firecrawl_scrape'
+			})
+		};
+	}
+
+	return {
+		result: blockedResult(
+			normalizedUrl,
+			firecrawlResult?.fetched_at ?? crawlResult.fetched_at
+		),
+		diagnostics: buildDiagnostics({
+			url: normalizedUrl,
+			crawlResult,
+			crawlClean: false,
+			firecrawlSkipped,
+			firecrawlAttempts: firecrawlAttempt.attempts,
+			firecrawlErrors: firecrawlAttempt.errors,
+			outcome: 'blocked'
+		})
+	};
 }
 
 export function normalizeOfficialUrl(url: string): string {
@@ -232,6 +303,94 @@ async function readSafely(
 	}
 }
 
+type FirecrawlRetryOutcome = {
+	result: OfficialSourceReadResult | null;
+	attempts: number;
+	errors: string[];
+};
+
+async function readFirecrawlWithRetries(
+	input: {
+		firecrawlApiKey?: string | undefined;
+		signal?: AbortSignal | undefined;
+		readWithFirecrawlScrape: OfficialSourceReaderDeps['readWithFirecrawlScrape'];
+	},
+	normalizedUrl: string
+): Promise<FirecrawlRetryOutcome> {
+	const errors: string[] = [];
+	let lastResult: OfficialSourceReadResult | null = null;
+
+	for (let attempt = FIRST_RETRY_ATTEMPT; attempt <= FIRECRAWL_SCRAPE_RETRY_ATTEMPTS; attempt += 1) {
+		if (attempt > FIRST_RETRY_ATTEMPT) {
+			await pause(FIRECRAWL_SCRAPE_RETRY_DELAY_MS);
+		}
+
+		const result = await readSafely(
+			input.readWithFirecrawlScrape({
+				url: normalizedUrl,
+				apiKey: input.firecrawlApiKey,
+				signal: input.signal
+			}),
+			normalizedUrl,
+			'firecrawl_scrape'
+		);
+		lastResult = result;
+		errors.push(describeFirecrawlAttempt(result, normalizedUrl));
+		if (isCleanSuccessfulRead(result, normalizedUrl)) {
+			return { result, attempts: attempt, errors };
+		}
+	}
+
+	return { result: lastResult, attempts: FIRECRAWL_SCRAPE_RETRY_ATTEMPTS, errors };
+}
+
+function buildDiagnostics(input: {
+	url: string;
+	crawlResult: OfficialSourceReadResult;
+	crawlClean: boolean;
+	firecrawlSkipped: boolean;
+	firecrawlAttempts: number;
+	firecrawlErrors: string[];
+	outcome: OfficialSourceReader;
+}): OfficialSourceReadDiagnostics {
+	return {
+		url: input.url,
+		cacheHit: false,
+		crawlSuccess: input.crawlResult.success === true,
+		crawlClean: input.crawlClean,
+		crawlError: input.crawlResult.error,
+		firecrawlSkipped: input.firecrawlSkipped,
+		firecrawlAttempts: input.firecrawlAttempts,
+		firecrawlErrors: input.firecrawlErrors,
+		outcome: input.outcome
+	};
+}
+
+function describeFirecrawlAttempt(
+	result: OfficialSourceReadResult,
+	requestedUrl: string
+): string {
+	if (isCleanSuccessfulRead(result, requestedUrl)) {
+		return 'clean';
+	}
+	if (result.error) {
+		return result.error;
+	}
+	if (result.markdown && detectBlockedSourceContent(result.markdown)) {
+		return 'blocked_content';
+	}
+	if (!result.success) {
+		return 'request_failed';
+	}
+	return 'not_clean';
+}
+
+function pause(delayMs: number): Promise<void> {
+	return new Promise((resolve) => {
+		setTimeout(resolve, delayMs);
+	});
+}
+
 function isCleanSuccessfulRead(result: OfficialSourceReadResult, requestedUrl: string): boolean {
 	if (result.success !== true || !result.markdown) {
 		return false;
@@ -243,23 +402,6 @@ function isCleanSuccessfulRead(result: OfficialSourceReadResult, requestedUrl: s
 		return false;
 	}
 	return !detectBlockedSourceContent(result.markdown);
-}
-
-async function firstCleanSuccessfulRead(
-	promises: Promise<OfficialSourceReadResult>[],
-	requestedUrl: string
-): Promise<OfficialSourceReadResult | null> {
-	const pending = [...promises];
-	while (pending.length > 0) {
-		const settled = await Promise.race(
-			pending.map((promise, index) => promise.then((result) => ({ index, result })))
-		);
-		pending.splice(settled.index, 1);
-		if (isCleanSuccessfulRead(settled.result, requestedUrl)) {
-			return settled.result;
-		}
-	}
-	return null;
 }
 
 function isMeaningfulSourceContent(text: string): boolean {

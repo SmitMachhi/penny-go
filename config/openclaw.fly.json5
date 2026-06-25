@@ -6,10 +6,16 @@
     "bind": "loopback"
   },
   "session": {
-    "reset": { "mode": "idle", "idleMinutes": 10080 }
+    "reset": { "mode": "idle", "idleMinutes": 10080 },
+    "writeLock": {
+      "acquireTimeoutMs": 120000,
+      "maxHoldMs": 3600000,
+      "staleMs": 3600000
+    }
   },
   "agents": {
     "defaults": {
+      "timeoutSeconds": 3600,
       "models": {
         "fireworks/accounts/fireworks/models/deepseek-v4-flash": {
           "alias": "DeepSeek V4 Flash (Fireworks)",

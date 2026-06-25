@@ -1,8 +1,11 @@
 import type { Handle } from '@sveltejs/kit';
 
+import { initPennyChatEventPipeline } from '$lib/server/chat-stream-hub.js';
 import { isBlockedHost } from '$lib/server/host-gate.js';
 import { applySecurityHeaders } from '$lib/server/security-headers.js';
 import { createRequestSupabaseClient } from '$lib/server/supabase-server.js';
+
+initPennyChatEventPipeline();
 
 export const handle: Handle = async ({ event, resolve }) => {
 	if (isBlockedHost(event.url.host)) {

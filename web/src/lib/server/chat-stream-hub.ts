@@ -27,7 +27,7 @@ function ensureHub(): void {
 				dispatchMappedEvent(payload as AgentEventPayload, mapAgentEventToSse);
 			}
 		},
-		shouldReconnect: () => subscribers.size > 0
+		shouldReconnect: () => true
 	});
 }
 
@@ -133,6 +133,10 @@ function safeSend(subscriber: StreamSubscriber, payload: SsePayload): void {
 	} catch {
 		subscribers.delete(subscriber);
 	}
+}
+
+export function initPennyChatEventPipeline(): void {
+	ensureHub();
 }
 
 export function subscribeToStream(

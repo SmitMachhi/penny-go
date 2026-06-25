@@ -16,12 +16,22 @@ export class ValidationError extends Error {
 	}
 }
 
+export class ConflictError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'ConflictError';
+	}
+}
+
 export function classifyApiErrorStatus(error: unknown): number {
 	if (isHttpError(error)) {
 		return error.status;
 	}
 	if (error instanceof AuthRequiredError) {
 		return 401;
+	}
+	if (error instanceof ConflictError) {
+		return 409;
 	}
 	if (error instanceof SessionKeyError || error instanceof ValidationError) {
 		return error instanceof ValidationError ? 400 : 403;
@@ -41,7 +51,8 @@ function publicApiErrorMessage(error: unknown, fallback: string): string {
 	if (
 		error instanceof AuthRequiredError ||
 		error instanceof SessionKeyError ||
-		error instanceof ValidationError
+		error instanceof ValidationError ||
+		error instanceof ConflictError
 	) {
 		return error.message;
 	}

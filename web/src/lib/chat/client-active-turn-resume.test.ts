@@ -29,7 +29,7 @@ describe('ChatClient active turn resume', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('resumes awaiting UI when history has a pending user turn', async () => {
+	it('does not resume awaiting UI from history alone without a backend active turn', async () => {
 		const fetchMock = vi.fn<typeof fetch>(async (input) => {
 			const path = requestPath(input);
 			if (path.startsWith('/api/sessions')) {
@@ -46,8 +46,61 @@ describe('ChatClient active turn resume', () => {
 		const client = new ChatClient();
 		await client.switchSession(SESSION_KEY);
 
-		await vi.waitFor(() => expect(client.state.sending).toBe(true));
+		await vi.waitFor(() => expect(client.state.loading).toBe(false));
+		expect(client.state.sending).toBe(false);
 		expect(client.state.messages.some((message) => message.role === 'user')).toBe(true);
+	});
+
+	it('hydrates run progress when bootstrap includes activeRunProgress', async () => {
+		const fetchMock = vi.fn<typeof fetch>(async (input) => {
+			const path = requestPath(input);
+			if (path.startsWith('/api/sessions')) {
+				return jsonResponse({
+					sessionKey: SESSION_KEY,
+					sessionId: SESSION_ID,
+					messages: [
+						{ id: 'user-1', role: 'user', text: ACTIVE_MESSAGE },
+						{
+							id: 'assistant-1',
+							role: 'assistant',
+							text: 'Searching the corpus.',
+							phase: 'commentary'
+						}
+					],
+					activeTurn: {
+						turnId: 'turn-1',
+						runId: RUN_ID,
+						status: 'running',
+						message: ACTIVE_MESSAGE
+					},
+					activeRunProgress: {
+						tools: [{ id: 'tool-1', name: 'search_corpus', phase: 'running' }],
+						runTrace: { segments: [], liveSegment: 'Searching the corpus.' },
+						streamingAnswerText: 'Searching the corpus.',
+						inProgressMessages: [
+							{
+								id: 'assistant-1',
+								role: 'assistant',
+								text: 'Searching the corpus.',
+								phase: 'commentary'
+							}
+						]
+					}
+				});
+			}
+			return jsonResponse({});
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = new ChatClient();
+		await client.switchSession(SESSION_KEY);
+
+		await vi.waitFor(() => expect(client.state.sending).toBe(true));
+		expect(client.state.tools).toEqual([
+			{ id: 'tool-1', name: 'search_corpus', phase: 'running' }
+		]);
+		expect(client.state.runTrace.liveSegment).toBe('Searching the corpus.');
+		expect(client.state.streamingAnswerText).toBe('Searching the corpus.');
 	});
 
 	it('resumes awaiting UI from a backend active turn when history is empty', async () => {

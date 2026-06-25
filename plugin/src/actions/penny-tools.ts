@@ -16,6 +16,7 @@ import { runJsonStdinSubprocess } from '../services/subprocess-json.js';
 import { readFirecrawlScrape } from '../services/firecrawl-scrape.js';
 import {
 	readOfficialSourceWithFallback,
+	logOfficialSourceReadDiagnostics,
 	redactOfficialSourceResultForModel
 } from '../services/official-source-reader.js';
 
@@ -42,7 +43,7 @@ export async function readOfficialSourceAction(
 	signal?: AbortSignal | undefined
 ) {
 	const repoRoot = resolveRepoRoot(config);
-	const result = await readOfficialSourceWithFallback({
+	const { result, diagnostics } = await readOfficialSourceWithFallback({
 		url,
 		config,
 		firecrawlApiKey: resolveFirecrawlApiKey(config),
@@ -75,5 +76,6 @@ export async function readOfficialSourceAction(
 				signal: input.signal
 			})
 	});
+	logOfficialSourceReadDiagnostics(diagnostics);
 	return redactOfficialSourceResultForModel(result);
 }

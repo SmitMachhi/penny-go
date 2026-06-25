@@ -25,7 +25,7 @@ The core GDPR principles to design against are lawfulness, fairness and transpar
 | Right to erasure | First backend slice implemented | `POST /api/privacy/delete` deletes all owned Penny sessions after `DELETE_MY_PENNY_DATA` confirmation. |
 | Storage limitation | Not complete | No production retention window or scheduled purge exists yet. |
 | Data minimisation | In progress | Persistent browser transcript cache was removed; runtime workspace data still needs retention controls. |
-| Breach evidence | Not complete | No structured audit log for data access, export, delete, auth failures, or admin/operator reads. |
+| Breach evidence | Partially implemented | Privacy export/delete emit structured audit events; broader session reads, auth failures, and operator access still need coverage. |
 | International transfers | Not complete | Vendors/subprocessors and SCC/DPA coverage are not documented in repo. |
 | DPIA | Not complete | AI-agent processing should be screened for DPIA need before EU launch. |
 
@@ -90,7 +90,7 @@ This deletes all owned Penny sessions through `deletePennySession`, which calls 
 
 | ID | Priority | Work | Notes |
 | --- | --- | --- | --- |
-| GDPR-001 | High | Add structured privacy audit events for export/delete/session reads/session deletes/auth failures | Needed for accountability and breach investigation. |
+| GDPR-001 | High | Extend structured privacy audit events beyond export/delete to session reads/session deletes/auth failures | Initial export/delete audit events are implemented; broader coverage is still needed for accountability and breach investigation. |
 | GDPR-002 | High | Prove OpenClaw tenant isolation from source and runtime tests | Use `opensrc path openclaw/openclaw` before touching OpenClaw-specific behavior. |
 | GDPR-003 | High | Add retention config and scheduled purge | Cover OpenClaw state, artifacts, turn ledgers, engagement memory, logs, and backups. |
 | GDPR-004 | High | Add user-facing privacy controls | Export data, delete Penny data, and link privacy notice from authenticated UI. |

@@ -215,7 +215,8 @@ function titleFromHistoryMessage(message: string): string | null {
 
 export async function generatePennySessionTitle(
 	key: string,
-	firstMessage?: string
+	firstMessage?: string,
+	registry?: PennySessionOwnershipRegistry
 ): Promise<PennySessionView> {
 	const sessionKey = resolveSessionKey(key);
 	const rows = await listGatewaySessions({
@@ -252,7 +253,7 @@ export async function generatePennySessionTitle(
 		);
 	}
 
-	return renamePennySession(sessionKey, title);
+	return renamePennySession(sessionKey, title, registry);
 }
 
 export async function deletePennySession(

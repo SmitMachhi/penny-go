@@ -77,8 +77,10 @@ export function subscribeToChatStream(
 	return subscribeToStream(sessionKey, send);
 }
 
-export async function getSessionArtifacts(sessionKeyRaw: string | null | undefined) {
-	const sessionKey = resolveSessionKey(sessionKeyRaw);
+export async function getSessionArtifacts(input: OwnedSessionInput | string | null | undefined) {
+	const sessionKey = await resolveOwnedSessionKey(
+		typeof input === 'object' && input !== null ? input : { sessionKey: input }
+	);
 	const artifacts = await listSessionArtifactSummaries(sessionKey);
 	return { artifacts };
 }

@@ -1,14 +1,16 @@
 import { withApiJson } from '$lib/server/api-handler.js';
+import { ownershipRegistryForEvent } from '$lib/server/auth-context.js';
 import { sendChat } from '$lib/server/chat-orchestration.js';
 
-export async function POST({ request }) {
+export async function POST(event) {
 	return withApiJson(async () => {
+		const { request } = event;
 		const body = (await request.json()) as {
 			message?: string;
 			sessionKey?: string;
 			sessionId?: string;
 			turnId?: string;
 		};
-		return sendChat(body);
+		return sendChat({ ...body, ownershipStore: ownershipRegistryForEvent(event) });
 	}, 'failed to send message', { timingName: 'send' });
 }

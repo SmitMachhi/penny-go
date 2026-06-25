@@ -41,6 +41,21 @@ describe('sanitizeAssistantDisplayText', () => {
 		expect(output).not.toContain('repayable');
 	});
 
+	it('allows explanatory ruled-out loan language without a ruled-out heading', () => {
+		const output = sanitizeAssistantDisplayText(
+			[
+				"**ESSOR Volet 2 is primarily a loan program.**",
+				'Instruments include repayable contributions (loans, interest-free loans) and loan guarantees.',
+				"If you're firm on non-loan only, ESSOR Volet 2 is a weak fit.",
+				'**Non-loan alternatives:** Quebec Investment and Innovation Tax Credit.'
+			].join('\n')
+		);
+
+		expect(output).toContain('primarily a loan program');
+		expect(output).toContain('Non-loan alternatives');
+		expect(output).not.toContain('scope issue');
+	});
+
 	it('allows loan-like language inside ruled-out sections', () => {
 		const output = sanitizeAssistantDisplayText(
 			[

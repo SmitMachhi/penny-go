@@ -50,6 +50,18 @@ test('does not treat negative wording as a loan recommendation', () => {
 	);
 });
 
+test('does not treat explanatory ruled-out loan descriptions as recommendations', () => {
+	const markdown = [
+		'**ESSOR Volet 2 is primarily a loan program.**',
+		'The available instruments are repayable contributions (loans, interest-free loans) and loan guarantees.',
+		"If you're firm on non-loan only, ESSOR Volet 2 is a weak fit.",
+		'**Non-loan alternatives worth your time:** Quebec Investment and Innovation Tax Credit.'
+	].join('\n');
+
+	assert.equal(containsActionableLoanLikeLanguage(markdown), false);
+	assert.equal(findActionableLoanLikeEvidence(markdown), null);
+});
+
 test('strips ruled-out markdown before actionable loan scan', () => {
 	const markdown = [
 		'## Strong fits',

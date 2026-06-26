@@ -20,7 +20,8 @@ import {
 	artifactPdfExists,
 	getArtifactMeta,
 	listSessionArtifactSummaries,
-	listSessionArtifacts
+	listSessionArtifacts,
+	readArtifactPdfBytes
 } from './artifact-storage.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
@@ -139,6 +140,11 @@ describe('artifact storage', () => {
 	it('getArtifactMeta returns null for invalid artifact ids', async () => {
 		const meta = await getArtifactMeta(SESSION_KEY, 'not-a-valid-uuid');
 		expect(meta).toBeNull();
+	});
+
+	it('reads artifact pdf bytes from version folder', async () => {
+		const bytes = await readArtifactPdfBytes(SESSION_KEY, ARTIFACT_ID, 1);
+		expect(bytes.subarray(0, 8).toString('utf8')).toBe('%PDF-1.4');
 	});
 
 	it('detects pdf from legacy root path and repairs into version folder', async () => {

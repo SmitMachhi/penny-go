@@ -30,7 +30,7 @@ import {
 } from '@penny/shared/penny-paths';
 
 import type { ArtifactSummary, ArtifactVersionSummary } from '$lib/chat/artifacts.js';
-import { sessionContentKeyForUuid } from '$lib/server/penny-encryption.js';
+import { sessionContentKeyFor } from '$lib/server/penny-encryption.js';
 import { parsePennySessionUuid } from '$lib/server/session-key.js';
 import { resolvePennyRepoRootFromEnv } from '$lib/server/penny-config.js';
 
@@ -186,7 +186,7 @@ export async function readArtifactPdfBytes(
 	if (!pdfPath) {
 		throw new Error('pdf_not_available');
 	}
-	return readSecureBinaryFile(pdfPath, sessionContentKeyForUuid(sessionUuid));
+	return readSecureBinaryFile(pdfPath, sessionContentKeyFor(sessionKey));
 }
 
 export async function artifactPdfExists(
@@ -287,7 +287,7 @@ async function readVersionSnapshot(
 			version,
 			VERSION_META_FILENAME
 		);
-		const raw = await readSecureTextFile(snapshotPath, sessionContentKeyForUuid(sessionUuid));
+		const raw = await readSecureTextFile(snapshotPath, sessionContentKeyFor(sessionKey));
 		return JSON.parse(raw) as ArtifactVersionSnapshot;
 	} catch {
 		return null;

@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import {
+	reconcileActiveTurnFromHistory,
+	shouldApplyBootstrapMessages
+} from './client-active-turn-resume.js';
 import { ChatClient } from './client.svelte.js';
+import { createInitialChatState } from './client-state.js';
 import { clearSessionThreadCache } from './session-thread-cache.js';
 
 const SESSION_KEY = 'agent:main:penny:550e8400-e29b-41d4-a716-446655440000';
@@ -15,6 +20,44 @@ function jsonResponse(body: unknown): Response {
 function requestPath(input: RequestInfo | URL): string {
 	return String(input);
 }
+
+describe('active turn resume helpers', () => {
+	it('does not append a duplicate user message when progress commentary follows it', () => {
+		const state = createInitialChatState();
+		state.messages = [
+			{ id: 'user-1', role: 'user', text: ACTIVE_MESSAGE },
+			{
+				id: 'assistant-1',
+				role: 'assistant',
+				text: 'Searching the corpus.',
+				phase: 'commentary'
+			}
+		];
+
+		reconcileActiveTurnFromHistory(
+			state,
+			{
+				turnId: 'turn-1',
+				runId: RUN_ID,
+				status: 'running',
+				message: ACTIVE_MESSAGE
+			},
+			null
+		);
+
+		expect(state.messages.filter((message) => message.role === 'user')).toHaveLength(1);
+	});
+
+	it('replaces stale local threads that picked up an extra optimistic user message', () => {
+		expect(
+			shouldApplyBootstrapMessages({
+				localUserCount: 2,
+				remoteUserCount: 1,
+				hasActiveTurn: false
+			})
+		).toBe(true);
+	});
+});
 
 describe('ChatClient active turn resume', () => {
 	beforeEach(() => {
@@ -96,6 +139,7 @@ describe('ChatClient active turn resume', () => {
 		await client.switchSession(SESSION_KEY);
 
 		await vi.waitFor(() => expect(client.state.sending).toBe(true));
+		expect(client.state.messages.filter((message) => message.role === 'user')).toHaveLength(1);
 		expect(client.state.tools).toEqual([
 			{ id: 'tool-1', name: 'search_corpus', phase: 'running' }
 		]);

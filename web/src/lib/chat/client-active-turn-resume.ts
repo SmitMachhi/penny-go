@@ -5,13 +5,25 @@ import {
 	type ChatClientState
 } from '$lib/chat/client-state.js';
 import { countUserMessages } from '$lib/chat/client-thread-reconcile.js';
+import type { ChatMessage } from '$lib/chat/messages.js';
 
 export function shouldApplyBootstrapMessages(input: {
 	localUserCount: number;
 	remoteUserCount: number;
 	hasActiveTurn: boolean;
 }): boolean {
-	return input.hasActiveTurn || input.localUserCount <= input.remoteUserCount;
+	if (input.hasActiveTurn) {
+		return true;
+	}
+	if (input.localUserCount > input.remoteUserCount) {
+		return true;
+	}
+	return input.localUserCount <= input.remoteUserCount;
+}
+
+function hasUserMessage(messages: readonly ChatMessage[], text: string): boolean {
+	const trimmed = text.trim();
+	return messages.some((message) => message.role === 'user' && message.text.trim() === trimmed);
 }
 
 export function reconcileActiveTurnFromHistory(
@@ -19,8 +31,7 @@ export function reconcileActiveTurnFromHistory(
 	activeTurn: ActiveTurn,
 	activeRunProgress: ActiveRunProgress | null
 ): number {
-	const lastMessage = state.messages.at(-1);
-	if (lastMessage?.role !== 'user' || lastMessage.text !== activeTurn.message) {
+	if (!hasUserMessage(state.messages, activeTurn.message)) {
 		appendUserMessage(state, activeTurn.message);
 	}
 	if (!state.sending) {

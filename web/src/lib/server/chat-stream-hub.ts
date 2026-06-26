@@ -7,6 +7,7 @@ import { mapAgentEventToSse, mapChatEventToSse } from '$lib/server/chat-event-ma
 import { buildArtifactSseForToolDone } from '$lib/server/artifact-sse-bridge.js';
 import { ensureGatewayEventBus } from '$lib/server/gateway-events-service.js';
 import { recordPennyTurnRunEvent } from '$lib/server/penny-turn-service.js';
+import { encryptSessionTranscriptAtRest } from '$lib/server/openclaw-transcript-encryption.js';
 
 type StreamSubscriber = {
 	id: string;
@@ -70,6 +71,11 @@ function recordTurnEvent(sessionKey: string, payload: SsePayload): void {
 	}).catch((error) => {
 		console.error('penny_turn_event_record_failed', error);
 	});
+	if (status === 'completed' || status === 'failed' || status === 'aborted') {
+		void encryptSessionTranscriptAtRest(sessionKey).catch((error) => {
+			console.error('session_transcript_encrypt_failed', error);
+		});
+	}
 }
 
 function turnStatusFromPayload(

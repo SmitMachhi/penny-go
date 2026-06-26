@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 
 import { ConflictError, ValidationError } from '$lib/server/api-error.js';
 import { sendChatMessage } from '$lib/server/gateway-chat-service.js';
+import { ensureSessionTranscriptPlaintext } from '$lib/server/openclaw-transcript-encryption.js';
 import {
 	ACTIVE_TURN_IN_FLIGHT_MESSAGE,
 	expireStaleActiveTurnIfNeeded,
@@ -102,6 +103,7 @@ export async function submitPennyTurn(
 		}));
 
 	try {
+		await ensureSessionTranscriptPlaintext(sessionKey);
 		const response = await sendChatMessage({
 			message,
 			sessionKey,

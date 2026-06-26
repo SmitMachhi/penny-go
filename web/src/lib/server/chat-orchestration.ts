@@ -9,6 +9,7 @@ import {
 	abortChatRun,
 	fetchChatHistory
 } from '$lib/server/gateway-chat-service.js';
+import { ensureSessionTranscriptPlaintext } from '$lib/server/openclaw-transcript-encryption.js';
 import { listSessionArtifactSummaries } from '$lib/server/artifact-storage.js';
 import {
 	assertOwnedPennySession,
@@ -33,6 +34,7 @@ export async function getChatHistory(input: OwnedSessionInput | string | null | 
 	const sessionKey = await resolveOwnedSessionKey(
 		typeof input === 'object' && input !== null ? input : { sessionKey: input }
 	);
+	await ensureSessionTranscriptPlaintext(sessionKey);
 	const history = await fetchChatHistory({
 		sessionKey,
 		limit: CHAT_HISTORY_LIMIT,

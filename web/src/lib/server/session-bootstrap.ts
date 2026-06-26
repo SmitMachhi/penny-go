@@ -7,6 +7,7 @@ import {
 	CHAT_HISTORY_MAX_CHARS
 } from '$lib/server/chat-history-config.js';
 import { fetchChatHistory } from '$lib/server/gateway-chat-service.js';
+import { ensureSessionTranscriptPlaintext } from '$lib/server/openclaw-transcript-encryption.js';
 import { listSessionArtifactSummaries } from '$lib/server/artifact-storage.js';
 import { readPennySessionIndex } from '$lib/server/penny-session-index.js';
 import { resolveSessionKey } from '$lib/server/session-key.js';
@@ -69,6 +70,7 @@ function resolveActiveRunProgress(
 
 export async function getSessionBootstrap(sessionKeyRaw: string | null | undefined) {
 	const sessionKey = resolveSessionKey(sessionKeyRaw);
+	await ensureSessionTranscriptPlaintext(sessionKey);
 	const [index, history, artifacts, turns] = await Promise.all([
 		readPennySessionIndex(),
 		fetchChatHistory({

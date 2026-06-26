@@ -185,7 +185,19 @@ Minimum web environment:
 OPENCLAW_GATEWAY_URL=ws://127.0.0.1:18789
 OPENCLAW_GATEWAY_TOKEN=<gateway-token>
 PENNY_REPO_ROOT=/absolute/path/to/penny-go
+PENNY_ENCRYPTION_MASTER_KEY=<32-byte-base64url-key>
 ```
+
+Generate a master key once:
+
+```bash
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '='
+```
+
+When `PENNY_ENCRYPTION_MASTER_KEY` is set, Penny encrypts session transcripts,
+turn ledgers, artifact documents/PDFs, and Supabase session titles at the
+application layer (AES-256-GCM with per-session derived keys). Without it, those
+files remain plaintext for local development.
 
 Merge `config/openclaw.penny.example.json5` into your OpenClaw config and
 replace the absolute paths. The default model is
@@ -274,6 +286,7 @@ Set production secrets:
 fly secrets set \
   OPENCLAW_GATEWAY_TOKEN=<gateway-token> \
   PENNY_REPO_ROOT=/app \
+  PENNY_ENCRYPTION_MASTER_KEY=<32-byte-base64url-key> \
   FIREWORKS_API_KEY=<your-fireworks-key> \
   EXA_API_KEY=<your-exa-key>
 ```

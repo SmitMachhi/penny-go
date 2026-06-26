@@ -1,4 +1,7 @@
 import { parsePennySessionUuid } from '@penny/shared/session-key';
+import { decryptUtf8, encryptUtf8 } from '@penny/shared/app-encryption';
+
+import { sessionContentKeyFor } from '$lib/server/penny-encryption.js';
 
 import type { PennySessionOwnershipRegistry } from '$lib/server/penny-session-ownership.js';
 import type { PennySessionView } from '$lib/types/penny-session.js';
@@ -74,10 +77,31 @@ function isOwnedSessionRow(value: unknown): value is {
 	);
 }
 
+function encryptStoredTitle(title: string, sessionKey: string): string {
+	const sessionUuid = parsePennySessionUuid(sessionKey);
+	const contentKey = sessionContentKeyFor(sessionKey);
+	if (!sessionUuid || !contentKey) {
+		return title;
+	}
+	return encryptUtf8(title, contentKey);
+}
+
+function decryptStoredTitle(title: string, sessionKey: string): string {
+	const contentKey = sessionContentKeyFor(sessionKey);
+	if (!contentKey) {
+		return title;
+	}
+	try {
+		return decryptUtf8(title, contentKey);
+	} catch {
+		return title;
+	}
+}
+
 function toView(row: { session_key: string; title: string; updated_at: string }): PennySessionView {
 	return {
 		key: row.session_key,
-		title: row.title,
+		title: decryptStoredTitle(row.title, row.session_key),
 		titleStatus: 'ready',
 		updatedAt: Date.parse(row.updated_at),
 		isLegacy: false
@@ -115,7 +139,7 @@ export function createSupabasePennySessionOwnershipStore(
 			const result = await client.from('penny_sessions').insert({
 				session_key: session.key,
 				session_uuid: sessionUuid,
-				title: session.title,
+				title: encryptStoredTitle(session.title, session.key),
 				updated_at: toUpdatedAt(session.updatedAt)
 			});
 			throwOnQueryError(result.error);
@@ -125,7 +149,7 @@ export function createSupabasePennySessionOwnershipStore(
 			const result = await client
 				.from('penny_sessions')
 				.update({
-					title: session.title,
+					title: encryptStoredTitle(session.title, session.key),
 					updated_at: toUpdatedAt(session.updatedAt)
 				})
 				.eq('session_key', session.key);

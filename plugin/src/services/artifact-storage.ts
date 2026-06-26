@@ -16,6 +16,7 @@ import type {
 	ArtifactVersionSnapshot,
 	CreateFundingArtifactParams
 } from '@penny/shared/artifact-types';
+import { writeSecureBinaryFile, writeSecureTextFile } from '@penny/shared/app-encryption';
 import {
 	DOCUMENT_MD_FILENAME,
 	LEGACY_BRIEF_FILENAME,
@@ -32,6 +33,7 @@ import {
 } from '@penny/shared/penny-paths';
 
 import { renderArtifactPdfFromHtml } from './artifact-pdf.js';
+import { artifactContentKey } from './artifact-encryption.js';
 import type { PennyToolsConfigShape } from './penny-config.js';
 
 export type PersistArtifactResult = {
@@ -120,6 +122,7 @@ export async function persistArtifactFiles(input: PersistArtifactInput): Promise
 	await writeFile(paths.renderHtmlPath, printHtml, 'utf8');
 
 	await renderPdfOrThrow(input, paths.renderHtmlPath, paths.pdfPath);
+	await sealArtifactPdf(paths.pdfPath, input.params.sessionUuid);
 	await finalizeArtifactPersistence(input, meta, paths);
 
 	return {
@@ -224,8 +227,26 @@ async function writeArtifactDocumentAndSnapshot(
 	snapshot: ArtifactVersionSnapshot,
 	paths: PersistArtifactPaths
 ): Promise<void> {
-	await writeFile(paths.documentPath, `${input.params.bodyMarkdown.trim()}\n`, 'utf8');
-	await writeFile(paths.snapshotPath, `${JSON.stringify(snapshot, null, 2)}\n`, 'utf8');
+	const contentKey = artifactContentKey(input.params.sessionUuid);
+	await writeSecureTextFile(
+		paths.documentPath,
+		`${input.params.bodyMarkdown.trim()}\n`,
+		contentKey
+	);
+	await writeSecureTextFile(
+		paths.snapshotPath,
+		`${JSON.stringify(snapshot, null, 2)}\n`,
+		contentKey
+	);
+}
+
+async function sealArtifactPdf(pdfPath: string, sessionUuid: string): Promise<void> {
+	const contentKey = artifactContentKey(sessionUuid);
+	if (!contentKey) {
+		return;
+	}
+	const pdfBytes = await readFile(pdfPath);
+	await writeSecureBinaryFile(pdfPath, pdfBytes, contentKey);
 }
 
 async function finalizeArtifactPersistence(
